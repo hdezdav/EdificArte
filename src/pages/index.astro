@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import DemoOne from '../components/ui/demo.tsx';
+import AiLoader from '../components/ui/AiLoader.astro';
 
 type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia';
 
@@ -348,7 +348,7 @@ const categoryLabel: Record<Category, string> = {
       >
         <!-- Loading State View -->
         <div id="ai-agent-loading-view" class="flex flex-col items-center justify-center py-4">
-          <DemoOne client:load />
+          <AiLoader />
         </div>
 
         <!-- Content State View (hidden initially) -->
