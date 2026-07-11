@@ -19,6 +19,25 @@ export default {
           900: '#1a0118',
           950: '#10010f',
         },
+        // Shadcn UI color mappings
+        card: {
+          DEFAULT: '#ffffff',
+          foreground: '#0f172a',
+        },
+        border: '#e2e8f0',
+        secondary: {
+          DEFAULT: '#f1f5f9',
+          foreground: '#0f172a',
+        },
+        muted: {
+          DEFAULT: '#f8fafc',
+          foreground: '#64748b',
+        },
+        // Sky gradient for profile card background fallback
+        sky: {
+          start: '#3f043a',
+          end: '#c45490',
+        },
       },
     },
   },

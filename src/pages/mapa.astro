@@ -62,24 +62,30 @@ import Layout from '../layouts/Layout.astro';
   <!-- Bottom Sheet -->
   <div
     id="bottom-sheet"
-    class="absolute bottom-20 left-3 right-3 z-20 mx-auto max-w-lg overflow-hidden rounded-3xl border border-white/50 bg-white/85 shadow-[0_-8px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl transition-all duration-300"
+    class="absolute bottom-20 left-3 right-3 z-20 mx-auto max-w-lg overflow-hidden rounded-3xl border border-white/50 bg-white/85 shadow-[0_-8px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl transition-all duration-300 transform translate-y-[calc(100%-54px)]"
   >
-    <!-- Drag Handle -->
-    <div class="flex w-full justify-center pb-1 pt-3">
-      <div class="h-[5px] w-10 rounded-full bg-black/15"></div>
+    <!-- Drag Handle & Toggle Header -->
+    <div id="sheet-header" class="w-full cursor-pointer pb-2 pt-3 flex flex-col items-center select-none">
+      <div class="h-[5px] w-10 rounded-full bg-black/15 mb-2"></div>
+      <div class="px-4 w-full flex items-center justify-between">
+        <h2 class="text-[14px] font-bold text-[#1b1c1c] flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">location_on</span>
+          Monumentos Cercanos
+        </h2>
+        <div class="flex items-center gap-2">
+          <span id="geo-status" class="inline-flex items-center gap-1 text-[10px] font-semibold text-[#5c5c5c]">
+            <span id="geo-dot" class="h-1.5 w-1.5 rounded-full bg-[#c0c0c0]"></span>
+            <span id="geo-text">Inactivo</span>
+          </span>
+          <span id="sheet-chevron" class="material-symbols-outlined text-[20px] text-black/40 transition-transform duration-300">keyboard_arrow_up</span>
+        </div>
+      </div>
     </div>
 
     <!-- Content -->
     <div class="max-h-[38vh] overflow-y-auto px-4 pb-5" id="sheet-body">
       <!-- List View -->
       <div id="view-list">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-[15px] font-bold text-[#1b1c1c]">Monumentos Cercanos</h2>
-          <span id="geo-status" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#5c5c5c]">
-            <span id="geo-dot" class="h-2 w-2 rounded-full bg-[#c0c0c0]"></span>
-            <span id="geo-text">Inactivo</span>
-          </span>
-        </div>
         <div class="no-scrollbar flex flex-col gap-2" id="monuments-list-container"></div>
       </div>
 
@@ -242,7 +248,7 @@ import Layout from '../layouts/Layout.astro';
   const TILE_ORDER = ['osm', 'light', 'dark', 'sat'];
 
   let tileIdx = 0;
-  const map = L.map('map', { center: CDMX, zoom: 15, zoomControl: false, attributionControl: false });
+  const map = L.map('map', { center: CDMX, zoom: 17, zoomControl: false, attributionControl: false });
   let tileLayer = L.tileLayer(TILES[TILE_ORDER[tileIdx]], { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
 
   // --- Pin helpers ---
@@ -275,6 +281,34 @@ import Layout from '../layouts/Layout.astro';
   const viewDetail = document.getElementById('view-detail');
   const listContainer = document.getElementById('monuments-list-container');
   const searchInput = document.getElementById('search-input');
+
+  // --- Bottom Sheet Collapse/Expand ---
+  const bottomSheet = document.getElementById('bottom-sheet');
+  const sheetHeader = document.getElementById('sheet-header');
+  const sheetChevron = document.getElementById('sheet-chevron');
+  let isCollapsed = true;
+
+  function updateSheetUI() {
+    if (!bottomSheet || !sheetChevron) return;
+    if (isCollapsed) {
+      bottomSheet.classList.add('translate-y-[calc(100%-54px)]');
+      sheetChevron.style.transform = 'rotate(0deg)';
+    } else {
+      bottomSheet.classList.remove('translate-y-[calc(100%-54px)]');
+      sheetChevron.style.transform = 'rotate(180deg)';
+    }
+  }
+
+  // Set initial state
+  if (bottomSheet) {
+    bottomSheet.classList.add('transform');
+    updateSheetUI();
+  }
+
+  sheetHeader?.addEventListener('click', () => {
+    isCollapsed = !isCollapsed;
+    updateSheetUI();
+  });
 
   // --- List render ---
   function renderList(list) {
@@ -311,7 +345,7 @@ import Layout from '../layouts/Layout.astro';
     const m = MONUMENTS.find((x) => x.id === id);
     if (!m) return;
 
-    map.setView([m.lat, m.lng], 16, { animate: true });
+    map.setView([m.lat, m.lng], 18, { animate: true });
 
     document.getElementById('detail-emoji').textContent = m.emoji;
     document.getElementById('detail-name').textContent = m.name;
@@ -328,6 +362,9 @@ import Layout from '../layouts/Layout.astro';
 
     viewList.classList.add('hidden');
     viewDetail.classList.remove('hidden');
+
+    isCollapsed = false;
+    updateSheetUI();
   }
 
   function deselect() {
@@ -336,6 +373,9 @@ import Layout from '../layouts/Layout.astro';
     markers.forEach((x) => x.inst.setIcon(pinIcon(x.emoji, false)));
     viewDetail.classList.add('hidden');
     viewList.classList.remove('hidden');
+
+    isCollapsed = true;
+    updateSheetUI();
   }
 
   document.getElementById('btn-close-detail').addEventListener('click', deselect);
@@ -485,8 +525,8 @@ import Layout from '../layouts/Layout.astro';
   }
 
   document.getElementById('btn-locate').addEventListener('click', () => {
-    if (userMarker) map.setView(userMarker.getLatLng(), 16, { animate: true });
-    else map.setView(CDMX, 15, { animate: true });
+    if (userMarker) map.setView(userMarker.getLatLng(), 18, { animate: true });
+    else map.setView(CDMX, 17, { animate: true });
   });
 
   setTimeout(() => map.invalidateSize(), 200);
