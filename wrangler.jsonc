@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "edificarte",
+  "compatibility_date": "2026-07-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "edificarte-db",
+      "database_id": "PLACEHOLDER_DATABASE_ID",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ASSETS",
+      "bucket_name": "edificarte-assets",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "PLACEHOLDER_KV_NAMESPACE_ID",
+    },
+  ],
+}
