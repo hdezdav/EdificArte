@@ -8,17 +8,95 @@ import Layout from '../layouts/Layout.astro';
     class="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col items-center gap-2 px-5"
     style="padding-top: calc(env(safe-area-inset-top, 0px) + 16px);"
   >
-    <div class="pointer-events-auto flex w-full max-w-lg items-center rounded-full border border-black/[0.06] bg-white/90 px-4 py-3 shadow-[0_2px_16px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all">
-      <span class="material-symbols-outlined mr-2.5 text-[20px] text-[#3f043a]">search</span>
-      <input
-        type="text"
-        id="search-input"
-        placeholder="Buscar monumentos o audioguías..."
-        class="w-full min-w-0 flex-grow border-none bg-transparent p-0 text-[13px] font-medium text-[#1b1c1c] placeholder-[#999] outline-none focus:ring-0"
-      />
-      <button class="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#3f043a] text-white transition-all active:scale-90">
-        <span class="material-symbols-outlined text-[16px]">tune</span>
-      </button>
+    <div class="relative w-full max-w-lg">
+      <div class="pointer-events-auto flex w-full items-center rounded-full border border-black/[0.06] bg-white/90 px-4 py-3 shadow-[0_2px_16px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all">
+        <span class="material-symbols-outlined mr-2.5 text-[20px] text-[#3f043a]">search</span>
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Buscar monumentos o audioguías..."
+          class="w-full min-w-0 flex-grow border-none bg-transparent p-0 text-[13px] font-medium text-[#1b1c1c] placeholder-[#999] outline-none focus:ring-0"
+        />
+        <button id="btn-search-filters" class="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#3f043a] text-white transition-all active:scale-90" aria-label="Filtros avanzados">
+          <span class="material-symbols-outlined text-[16px]">tune</span>
+        </button>
+      </div>
+
+      <!-- Search Filters Dropdown -->
+      <div
+        id="search-filters-dropdown"
+        class="hidden pointer-events-auto absolute left-0 right-0 mt-2 z-40 rounded-3xl border border-white/50 bg-white/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-2xl transition-all duration-200"
+      >
+        <h3 class="mb-3 text-[13px] font-bold text-[#1b1c1c] flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">tune</span> Filtros de Búsqueda
+        </h3>
+        
+        <div class="space-y-4">
+          <!-- Sort Option -->
+          <div>
+            <span class="block mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#5c5c5c]">Ordenar por</span>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 rounded-xl border border-black/[0.04] bg-white/50 p-2 text-[12px] font-medium text-[#1b1c1c] cursor-pointer hover:bg-white/80">
+                <input type="radio" name="sort-by" value="distance" checked class="text-[#3f043a] focus:ring-[#3f043a]" />
+                <span>Distancia</span>
+              </label>
+              <label class="flex items-center gap-2 rounded-xl border border-black/[0.04] bg-white/50 p-2 text-[12px] font-medium text-[#1b1c1c] cursor-pointer hover:bg-white/80">
+                <input type="radio" name="sort-by" value="name" class="text-[#3f043a] focus:ring-[#3f043a]" />
+                <span>Nombre</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Visited Option -->
+          <div>
+            <span class="block mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#5c5c5c]">Estado de Visita</span>
+            <div class="grid grid-cols-3 gap-1.5">
+              <label class="flex flex-col items-center justify-center rounded-xl border border-black/[0.04] bg-white/50 p-2 text-[11px] font-medium text-[#1b1c1c] cursor-pointer hover:bg-white/80 text-center">
+                <input type="radio" name="filter-visited" value="all" checked class="mb-1 text-[#3f043a]" />
+                <span>Todos</span>
+              </label>
+              <label class="flex flex-col items-center justify-center rounded-xl border border-black/[0.04] bg-white/50 p-2 text-[11px] font-medium text-[#1b1c1c] cursor-pointer hover:bg-white/80 text-center">
+                <input type="radio" name="filter-visited" value="visited" class="mb-1 text-[#3f043a]" />
+                <span>Visitados</span>
+              </label>
+              <label class="flex flex-col items-center justify-center rounded-xl border border-black/[0.04] bg-white/50 p-2 text-[11px] font-medium text-[#1b1c1c] cursor-pointer hover:bg-white/80 text-center">
+                <input type="radio" name="filter-visited" value="unvisited" class="mb-1 text-[#3f043a]" />
+                <span>No Visitados</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Feature Toggles -->
+          <div>
+            <span class="block mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#5c5c5c]">Características</span>
+            <div class="space-y-2">
+              <label class="flex items-center justify-between rounded-xl border border-black/[0.04] bg-white/50 p-2 px-3 text-[12px] font-medium text-[#1b1c1c] cursor-pointer hover:bg-white/80">
+                <span class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px] text-[#3f043a]">headphones</span>
+                  Con Audioguía
+                </span>
+                <input type="checkbox" id="filter-audioguide" class="rounded text-[#3f043a] focus:ring-[#3f043a]" />
+              </label>
+              <label class="flex items-center justify-between rounded-xl border border-black/[0.04] bg-white/50 p-2 px-3 text-[12px] font-medium text-[#1b1c1c] cursor-pointer hover:bg-white/80">
+                <span class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px] text-yellow-500">star</span>
+                  Sitio Destacado
+                </span>
+                <input type="checkbox" id="filter-featured" class="rounded text-[#3f043a] focus:ring-[#3f043a]" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 flex gap-2">
+          <button id="btn-reset-filters" class="flex-1 rounded-xl bg-slate-100 py-2 text-[12px] font-bold text-[#5c5c5c] hover:bg-slate-200 transition-colors">
+            Restablecer
+          </button>
+          <button id="btn-apply-filters" class="flex-1 rounded-xl bg-[#3f043a] py-2 text-[12px] font-bold text-white hover:bg-[#52074c] transition-colors">
+            Aplicar
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Filter Chips -->
@@ -741,6 +819,88 @@ import Layout from '../layouts/Layout.astro';
     renderList(f);
     if (selectedId && !f.some((m) => m.id === selectedId)) deselect();
   });
+
+  // --- Search Filters Dropdown ---
+  const btnSearchFilters = document.getElementById('btn-search-filters');
+  const searchFiltersDropdown = document.getElementById('search-filters-dropdown');
+  const btnResetFilters = document.getElementById('btn-reset-filters');
+  const btnApplyFilters = document.getElementById('btn-apply-filters');
+
+  if (btnSearchFilters && searchFiltersDropdown) {
+    btnSearchFilters.addEventListener('click', (e) => {
+      e.stopPropagation();
+      searchFiltersDropdown.classList.toggle('hidden');
+    });
+
+    searchFiltersDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    document.addEventListener('click', () => {
+      searchFiltersDropdown.classList.add('hidden');
+    });
+
+    btnResetFilters?.addEventListener('click', () => {
+      const radios = searchFiltersDropdown.querySelectorAll('input[type="radio"]');
+      radios.forEach((r) => {
+        const rad = r as HTMLInputElement;
+        if (rad.value === 'distance' || rad.value === 'all') {
+          rad.checked = true;
+        } else {
+          rad.checked = false;
+        }
+      });
+      const checkboxes = searchFiltersDropdown.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach((c) => {
+        (c as HTMLInputElement).checked = false;
+      });
+
+      const q = (searchInput as HTMLInputElement).value.toLowerCase().trim();
+      const f = MONUMENTS.filter(
+        (m) => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q),
+      );
+      addMarkers(f);
+      renderList(f);
+      searchFiltersDropdown.classList.add('hidden');
+    });
+
+    btnApplyFilters?.addEventListener('click', () => {
+      const sortBy = (searchFiltersDropdown.querySelector('input[name="sort-by"]:checked') as HTMLInputElement)?.value;
+      const visitedFilter = (searchFiltersDropdown.querySelector('input[name="filter-visited"]:checked') as HTMLInputElement)?.value;
+      const onlyAudio = (document.getElementById('filter-audioguide') as HTMLInputElement)?.checked;
+      const onlyFeatured = (document.getElementById('filter-featured') as HTMLInputElement)?.checked;
+
+      const q = (searchInput as HTMLInputElement).value.toLowerCase().trim();
+      let f = MONUMENTS.filter(
+        (m) => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q),
+      );
+
+      const savedVisits = JSON.parse(localStorage.getItem('edificarte_visited') || '{}');
+      if (visitedFilter === 'visited') {
+        f = f.filter((m) => savedVisits[m.id]?.visited);
+      } else if (visitedFilter === 'unvisited') {
+        f = f.filter((m) => !savedVisits[m.id]?.visited);
+      }
+
+      if (onlyAudio) {
+        f = f.filter((m) => m.audioDuration);
+      }
+
+      if (onlyFeatured) {
+        f = f.filter((m) => ['bellas-artes', 'angel', 'chapultepec'].includes(m.id));
+      }
+
+      if (sortBy === 'name') {
+        f.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sortBy === 'distance') {
+        f.sort((a, b) => parseFloat(a.dist) - parseFloat(b.dist));
+      }
+
+      addMarkers(f);
+      renderList(f);
+      searchFiltersDropdown.classList.add('hidden');
+    });
+  }
 
   // --- Filter chips ---
   const chips = document.querySelectorAll('.filter-chip');
