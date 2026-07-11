@@ -655,7 +655,7 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
   <button
     type="button"
     id="btn-cart-toggle"
-    class="fixed bottom-[76px] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg shadow-purple-500/30 backdrop-blur-md transition-all active:scale-90 hover:bg-purple-700 focus:outline-none border border-white/20"
+    class="fixed bottom-[76px] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg shadow-purple-500/30 backdrop-blur-md transition-all active:scale-90 hover:bg-purple-700 focus:outline-none border border-white/20 hidden"
     aria-label="Abrir carrito de compras"
   >
     <span class="material-symbols-outlined text-[24px]">shopping_cart</span>
@@ -1221,11 +1221,15 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
     const totalItems = cart.reduce((acc, item) => acc + item.qty, 0);
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
-    // Actualizar badge del botón flotante
+    // Actualizar badge del botón flotante e integrar visibilidad del botón en sí
     if (cartBadge) {
       cartBadge.textContent = totalItems.toString();
       cartBadge.classList.toggle('hidden', totalItems === 0);
       cartBadge.classList.toggle('flex', totalItems > 0);
+    }
+    if (btnCartToggle) {
+      btnCartToggle.classList.toggle('hidden', totalItems === 0);
+      btnCartToggle.classList.toggle('flex', totalItems > 0);
     }
 
     // Renderizar items del carrito
