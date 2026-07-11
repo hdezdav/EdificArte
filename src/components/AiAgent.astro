@@ -179,6 +179,12 @@ import AiLoader from './ui/AiLoader.astro';
     aiPopover.addEventListener('click', (e) => {
       e.stopPropagation();
     });
+
+    // Cerrar el chatbot automáticamente cuando se traza una ruta en el mapa
+    window.addEventListener('ai-route-generated', () => {
+      aiPopover.classList.add('hidden');
+      stopSpeaking();
+    });
   }
 
   function scrollToBottom() {

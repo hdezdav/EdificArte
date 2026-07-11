@@ -173,8 +173,12 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
   };
 });
 
-// Generar experiencias a partir de los productos de Tianquiztlis Mercado
-const tiendaExperiencias: Experience[] = tianquiztlisProducts.map((p, index) => {
+// Generar experiencias a partir de los productos de Tianquiztlis Mercado (filtrando duplicados por nombre)
+const uniqueTianquiztlisProducts = tianquiztlisProducts.filter(
+  (p, index, self) => self.findIndex((t) => t.name === p.name) === index
+);
+
+const tiendaExperiencias: Experience[] = uniqueTianquiztlisProducts.map((p, index) => {
   return {
     id: `prod-${p.sku || index}`,
     title: p.name,
@@ -542,7 +546,7 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
     class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
-      class="w-full max-w-lg scale-95 transform rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[90vh] overflow-hidden"
+      class="w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100vh-32px)] sm:max-h-[90vh] overflow-hidden"
     >
       <!-- Modal Header -->
       <div class="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-850">
@@ -566,7 +570,7 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
       <!-- Modal Body (Scrollable) -->
       <div class="flex-1 overflow-y-auto py-4 space-y-4 no-scrollbar">
         <!-- Image Banner -->
-        <div class="relative h-44 w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-850">
+        <div class="relative h-36 sm:h-44 w-full overflow-hidden rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-850">
           <img
             id="guide-modal-image"
             src=""
@@ -731,7 +735,7 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
     class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
-      class="w-full max-w-lg scale-95 transform rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[90vh] overflow-hidden"
+      class="w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100vh-32px)] sm:max-h-[90vh] overflow-hidden"
     >
       <!-- Modal Header -->
       <div class="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-850">
@@ -755,7 +759,7 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
       <!-- Modal Body (Scrollable) -->
       <div class="flex-1 overflow-y-auto py-4 space-y-4 no-scrollbar">
         <!-- Image Gallery / Slideshow -->
-        <div class="relative h-60 w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-850">
+        <div class="relative h-44 sm:h-60 w-full overflow-hidden rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-850">
           <img
             id="product-modal-image"
             src=""
