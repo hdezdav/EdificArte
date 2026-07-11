@@ -1,160 +1,185 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { 
+  getUserBySession, 
+  createSession, 
+  deleteSession, 
+  hashPassword,
+  getUserBadges
+} from '../lib/auth';
+
+const env = Astro.locals.runtime.env;
+let user = await getUserBySession(Astro.cookies, env);
+let errorMsg = '';
+let successMsg = '';
+let activeTab = 'login'; // login | register
+
+// Manejo de peticiones POST (acciones de autenticación y perfil)
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const action = formData.get('action');
+
+    if (action === 'register') {
+      activeTab = 'register';
+      const name = formData.get('name')?.toString().trim();
+      const email = formData.get('email')?.toString().trim().toLowerCase();
+      const password = formData.get('password')?.toString();
+
+      if (!name || !email || !password) {
+        errorMsg = 'Completá todos los campos, por favor.';
+      } else {
+        // Verificar si el correo ya existe
+        const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?')
+          .bind(email)
+          .first();
+
+        if (existing) {
+          errorMsg = 'El correo electrónico ya está registrado.';
+        } else {
+          const userId = crypto.randomUUID();
+          const hashedPassword = await hashPassword(password);
+          
+          // Avatar por defecto de viajero (Unsplash)
+          const avatarUrl = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&h=256&q=80';
+          const bio = '¡Hola! Soy un nuevo viajero explorando el patrimonio cultural con EdificARTE.';
+
+          await env.DB.prepare(
+            'INSERT INTO users (id, email, password, name, avatar_url, bio, points, likes, visits) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0)'
+          )
+            .bind(userId, email, hashedPassword, name, avatarUrl, bio)
+            .run();
+
+          // Crear sesión
+          await createSession(Astro.cookies, env, userId);
+          return Astro.redirect('/yo');
+        }
+      }
+    } else if (action === 'login') {
+      activeTab = 'login';
+      const email = formData.get('email')?.toString().trim().toLowerCase();
+      const password = formData.get('password')?.toString();
+
+      if (!email || !password) {
+        errorMsg = 'Ingresá tu correo y contraseña.';
+      } else {
+        const hashedPassword = await hashPassword(password);
+        const { results } = await env.DB.prepare(
+          'SELECT * FROM users WHERE email = ? AND password = ?'
+        )
+          .bind(email, hashedPassword)
+          .all();
+
+        const dbUser = results[0];
+        if (!dbUser) {
+          errorMsg = 'Correo o contraseña incorrectos.';
+        } else {
+          await createSession(Astro.cookies, env, dbUser.id);
+          return Astro.redirect('/yo');
+        }
+      }
+    } else if (action === 'edit_profile') {
+      if (!user) return Astro.redirect('/yo');
+
+      const name = formData.get('name')?.toString().trim();
+      const bio = formData.get('bio')?.toString().trim();
+      const avatarUrl = formData.get('avatar_url')?.toString().trim();
+
+      if (!name) {
+        errorMsg = 'El nombre no puede estar vacío.';
+      } else {
+        await env.DB.prepare(
+          'UPDATE users SET name = ?, bio = ?, avatar_url = ? WHERE id = ?'
+        )
+          .bind(name, bio || '', avatarUrl || '', user.id)
+          .run();
+
+        successMsg = 'Perfil actualizado con éxito.';
+        // Recargar datos del usuario
+        user = await getUserBySession(Astro.cookies, env);
+      }
+    } else if (action === 'logout') {
+      await deleteSession(Astro.cookies, env);
+      return Astro.redirect('/yo');
+    }
+  } catch (err: any) {
+    errorMsg = `Ocurrió un error: ${err.message}`;
+  }
+}
+
+// Cargar insignias del usuario (si está autenticado)
+const unlockedBadges = user ? await getUserBadges(env, user.id) : [];
 
 const badges = [
   {
     id: 1,
     name: 'Explorador Romano',
-    description: 'Completa la audioguía del Coliseo.',
+    description: 'Reproduce la audioguía del Palacio de Bellas Artes.',
     image:
       'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=150&h=150&q=80',
-    unlocked: true,
+    unlocked: unlockedBadges.includes(1),
   },
   {
     id: 2,
     name: 'Alma Gótica',
-    description: 'Completa la audioguía de la Catedral.',
+    description: 'Reproduce la audioguía de la Catedral Metropolitana.',
     image:
       'https://images.unsplash.com/photo-1543872084-c7bd3822856f?auto=format&fit=crop&w=150&h=150&q=80',
-    unlocked: false,
+    unlocked: unlockedBadges.includes(2),
   },
   {
     id: 3,
     name: 'Guardián del Tiempo',
-    description: 'Visita la Torre del Reloj.',
+    description: 'Reproduce la audioguía de la Torre Latinoamericana.',
     image:
       'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=150&h=150&q=80',
-    unlocked: false,
+    unlocked: unlockedBadges.includes(3),
   },
   {
     id: 4,
     name: 'Cazador de Templos',
-    description: 'Visita las Columnas Antiguas.',
+    description: 'Reproduce la audioguía del Templo Mayor.',
     image:
       'https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&w=150&h=150&q=80',
-    unlocked: false,
+    unlocked: unlockedBadges.includes(4),
   },
 ];
 ---
 
 <Layout title="EdificARTE — Yo">
-  <div class="mx-auto grid max-w-screen-md grid-cols-1 gap-8 md:grid-cols-3">
-    <!-- Left Column: Profile Card -->
-    <div class="flex flex-col justify-start md:col-span-1">
-      <div
-        class="relative mx-auto w-full max-w-sm rounded-[2rem] border border-border bg-card shadow-lg"
-      >
-        <!-- Header with background -->
-        <div
-          class="relative h-40 overflow-hidden rounded-t-[2rem] bg-gradient-to-br from-sky-start to-sky-end"
-        >
-          <img
-            src="https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=800&q=80"
-            alt="Background"
-            class="h-full w-full object-cover opacity-60"
-          />
+  {user ? (
+    /* =========================================================================
+       VISTA DEL PANEL DE USUARIO AUTENTICADO
+       ========================================================================= */
+    <div class="mx-auto grid max-w-screen-md grid-cols-1 gap-8 md:grid-cols-3">
+      <!-- Mensajes flotantes de alerta/éxito -->
+      {successMsg && (
+        <div class="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-xl border border-green-200/50 bg-green-50 px-4 py-3 text-sm text-green-800 shadow-lg dark:border-green-850/50 dark:bg-green-950/40 dark:text-green-200">
+          <span class="material-symbols-outlined text-[18px]">check_circle</span>
+          {successMsg}
         </div>
+      )}
+      {errorMsg && (
+        <div class="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-xl border border-rose-200/50 bg-rose-50 px-4 py-3 text-sm text-rose-800 shadow-lg dark:border-rose-850/50 dark:bg-rose-950/40 dark:text-rose-200">
+          <span class="material-symbols-outlined text-[18px]">error</span>
+          {errorMsg}
+        </div>
+      )}
 
-        <!-- Settings button -->
-        <div class="absolute right-4 top-4 z-30">
-          <button
-            id="settings-btn"
-            class="rounded-full border border-white/30 bg-white/20 p-2 text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/30"
-            aria-label="Configuración"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="h-4 w-4"
-            >
-              <circle cx="12" cy="12" r="1"></circle>
-              <circle cx="12" cy="5" r="1"></circle>
-              <circle cx="12" cy="19" r="1"></circle>
-            </svg>
-          </button>
+      <!-- Columna Izquierda: Tarjeta de Perfil -->
+      <div class="flex flex-col justify-start md:col-span-1">
+        <div class="relative mx-auto w-full max-w-sm rounded-[2rem] border border-slate-200/60 bg-white shadow-lg dark:border-slate-800/60 dark:bg-slate-900">
+          <!-- Banner Superior -->
+          <div class="relative h-40 overflow-hidden rounded-t-[2rem] bg-gradient-to-br from-brand-500 to-purple-600">
+            <div class="absolute inset-0 bg-black/10"></div>
+          </div>
 
-          <!-- Settings dropdown -->
-          <div
-            id="settings-dropdown"
-            class="absolute right-0 z-50 mt-2 hidden w-48 rounded-2xl border border-slate-200/50 bg-white/95 p-2 text-slate-800 shadow-xl backdrop-blur-md transition-all duration-200"
-          >
+          <!-- Botón de Opciones -->
+          <div class="absolute right-4 top-4 z-30">
             <button
-              id="edit-profile-btn"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="h-4 w-4 text-brand-500"
-              >
-                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-              <span>Editar Perfil</span>
-            </button>
-            <button
-              id="config-btn"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="h-4 w-4 text-brand-500"
-              >
-                <path
-                  d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-                ></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-              <span>Configuración</span>
-            </button>
-            <button
-              id="help-btn"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="h-4 w-4 text-brand-500"
-              >
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                <line x1="12" x2="12.01" y1="17" y2="17"></line>
-              </svg>
-              <span>Ayuda & Soporte</span>
-            </button>
-            <hr class="my-1 border-slate-200/60" />
-            <button
-              id="logout-btn"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
+              id="settings-btn"
+              class="rounded-full border border-white/30 bg-white/20 p-2 text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/30"
+              aria-label="Configuración"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -168,181 +193,379 @@ const badges = [
                 stroke-linejoin="round"
                 class="h-4 w-4"
               >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" x2="9" y1="12" y2="12"></line>
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="12" cy="5" r="1"></circle>
+                <circle cx="12" cy="19" r="1"></circle>
               </svg>
-              <span>Cerrar Sesión</span>
             </button>
-          </div>
-        </div>
 
-        <!-- Profile content -->
-        <div class="-mt-12 px-6 pb-6">
-          <!-- Avatar -->
-          <div class="relative mb-4 h-24 w-24">
+            <!-- Menú Desplegable -->
             <div
-              class="h-full w-full overflow-hidden rounded-full border-4 border-card bg-card shadow-lg"
+              id="settings-dropdown"
+              class="absolute right-0 z-50 mt-2 hidden w-48 rounded-2xl border border-slate-200/50 bg-white/95 p-2 text-slate-800 shadow-xl backdrop-blur-md transition-all duration-200 dark:border-slate-800/50 dark:bg-slate-900/95 dark:text-white"
             >
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&h=256&q=80"
-                alt="Viajero de EdificARTE"
-                class="h-full w-full object-cover"
-              />
+              <button
+                id="edit-profile-btn"
+                class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <span class="material-symbols-outlined text-[18px] text-brand-500">edit</span>
+                <span>Editar Perfil</span>
+              </button>
+              <hr class="my-1 border-slate-200/60 dark:border-slate-800/60" />
+              <form method="POST" action="/yo" class="w-full">
+                <input type="hidden" name="action" value="logout" />
+                <button
+                  type="submit"
+                  class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/20"
+                >
+                  <span class="material-symbols-outlined text-[18px]">logout</span>
+                  <span>Cerrar Sesión</span>
+                </button>
+              </form>
             </div>
           </div>
 
-          <!-- Experience bar -->
-          <div class="mb-6">
-            <div class="mb-1 flex items-center gap-2">
-              <span class="text-sm font-light text-muted-foreground">exp.</span>
-              <div class="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+          <!-- Contenido del Perfil -->
+          <div class="-mt-12 px-6 pb-6">
+            <!-- Avatar -->
+            <div class="relative mb-4 h-24 w-24">
+              <div class="h-full w-full overflow-hidden rounded-full border-4 border-white bg-white shadow-lg dark:border-slate-900 dark:bg-slate-900">
+                <img
+                  src={user.avatar_url}
+                  alt={user.name}
+                  class="h-full w-full object-cover"
+                />
+              </div>
+            </div>
+
+            <!-- Experiencia (Puntos / Nivel) -->
+            <div class="mb-4">
+              <div class="mb-1 flex items-center justify-between text-xs">
+                <span class="font-bold text-brand-500 uppercase tracking-wider">Nivel {Math.floor(user.points / 500) + 1}</span>
+                <span class="text-slate-400">{user.points % 500} / 500 exp</span>
+              </div>
+              <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
                   id="exp-bar"
-                  class="h-full w-0 bg-gradient-to-r from-purple-500 via-green-500 via-orange-500 via-pink-500 via-yellow-500 to-blue-500 transition-all duration-[1300ms] ease-out"
+                  data-percent={`${((user.points % 500) / 500) * 100}%`}
+                  class="h-full w-0 bg-gradient-to-r from-brand-500 to-purple-600 transition-all duration-[1300ms] ease-out"
                 >
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Name and title -->
-          <h2
-            class="mb-2 text-2xl font-semibold tracking-tight text-card-foreground"
-          >
-            Viajero de EdificARTE
-          </h2>
-          <p
-            class="mb-6 text-sm font-light leading-relaxed text-muted-foreground"
-          >
-            Explorador de monumentos históricos. Apasionado por el arte, la
-            historia y la arquitectura urbana de mi ciudad.
-          </p>
+            <!-- Nombre e Info -->
+            <h2 class="mb-1 text-2xl font-bold text-slate-800 dark:text-white">
+              {user.name}
+            </h2>
+            <p class="mb-4 text-xs font-medium text-slate-400 dark:text-slate-500">
+              Viajero desde {new Date(user.created_at).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
+            </p>
+            <p class="mb-6 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              {user.bio}
+            </p>
 
-          <!-- Stats -->
-          <div class="grid grid-cols-3 gap-4 border-t border-border py-4">
-            <div class="text-center">
-              <div
-                id="counter-likes"
-                class="mb-1 text-2xl font-semibold text-card-foreground"
-              >
-                0
+            <!-- Estadísticas D1 -->
+            <div class="grid grid-cols-3 gap-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+              <div class="text-center">
+                <div class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
+                  {user.likes}
+                </div>
+                <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Me gusta</div>
               </div>
-              <div class="text-xs font-light text-muted-foreground">
-                Me gusta
+              <div class="border-l border-r border-slate-100 text-center dark:border-slate-800">
+                <div class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
+                  {user.visits}
+                </div>
+                <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Visitas</div>
               </div>
-            </div>
-            <div class="border-l border-r border-border text-center">
-              <div
-                id="counter-posts"
-                class="mb-1 text-2xl font-semibold text-card-foreground"
-              >
-                0
+              <div class="text-center">
+                <div class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
+                  {user.points}
+                </div>
+                <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Puntos</div>
               </div>
-              <div class="text-xs font-light text-muted-foreground">
-                Visitas
-              </div>
-            </div>
-            <div class="text-center">
-              <div
-                id="counter-views"
-                class="mb-1 text-2xl font-semibold text-card-foreground"
-              >
-                0
-              </div>
-              <div class="text-xs font-light text-muted-foreground">Puntos</div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Right Column: Badges and Callout -->
-    <div class="space-y-8 md:col-span-2">
-      <!-- Badges Collection Area -->
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">
-            Mis Coleccionables (Badges)
-          </h2>
-          <span
-            class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-          >
-            {badges.filter((b) => b.unlocked).length} Ganados
-          </span>
-        </div>
+      <!-- Columna Derecha: Insignias -->
+      <div class="space-y-8 md:col-span-2">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">
+              Mis Coleccionables (Badges)
+            </h2>
+            <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600 dark:bg-brand-950/40 dark:text-brand-400">
+              {badges.filter((b) => b.unlocked).length} Ganados
+            </span>
+          </div>
 
-        <!-- Grid of Badges with Images -->
-        <div class="grid grid-cols-2 gap-4">
-          {
-            badges.map((badge) => (
-              <div class="group flex flex-col items-center justify-center space-y-3 rounded-2xl border border-slate-200/60 bg-white p-6 text-center shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-slate-700">
-                <div class="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-slate-50 shadow-inner">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {badges.map((badge) => (
+              <div class="group flex flex-col items-center justify-center space-y-3 rounded-2xl border border-slate-200/60 bg-white p-6 text-center shadow-sm transition-all duration-300 hover:border-brand-200/50 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-brand-900">
+                <div class="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-slate-50 shadow-inner dark:border-slate-800">
                   <img
                     src={badge.image}
                     alt={badge.name}
-                    class={`h-full w-full object-cover transition-all duration-500 group-hover:scale-110 ${badge.unlocked ? '' : 'opacity-40 grayscale'}`}
+                    class={`h-full w-full object-cover transition-all duration-500 group-hover:scale-110 ${badge.unlocked ? '' : 'opacity-35 grayscale'}`}
                   />
                   {!badge.unlocked && (
                     <div class="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <svg
-                        class="h-5 w-5 text-white drop-shadow filter"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-                        />
-                      </svg>
+                      <span class="material-symbols-outlined text-[20px] text-white drop-shadow">lock</span>
                     </div>
                   )}
                 </div>
                 <div>
-                  <h3
-                    class={`text-sm font-semibold transition-colors duration-300 ${badge.unlocked ? 'text-slate-800 dark:text-slate-200' : 'dark:text-slate-650 text-slate-400'}`}
-                  >
+                  <h3 class={`text-sm font-bold ${badge.unlocked ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
                     {badge.name}
                   </h3>
                   <p class="mt-1 text-[11px] leading-snug text-slate-400 dark:text-slate-500">
                     {badge.unlocked
-                      ? '¡Completado! Ya tienes esta insignia.'
+                      ? '¡Completado! Ya tienes esta insignia en tu billetera.'
                       : badge.description}
                   </p>
                 </div>
               </div>
-            ))
-          }
+            ))}
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200/50 bg-slate-50 p-6 text-center dark:border-slate-800/50 dark:bg-slate-900/40">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">
+            Billetera Web3 Integrada
+          </h3>
+          <p class="mx-auto mt-2 max-w-md text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Tus logros están sincronizados en tiempo real en la base de datos de Cloudflare. Cada insignia que ganes representa un POAP coleccionable digital on-chain.
+          </p>
         </div>
       </div>
 
-      <!-- Section Info Callout -->
-      <div
-        class="space-y-2 rounded-2xl border border-slate-200/50 bg-slate-100/70 p-6 text-center dark:border-slate-800/50 dark:bg-slate-900/40"
-      >
-        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">
-          Autenticación Opcional y Sincronización
-        </h3>
-        <p class="mx-auto max-w-md text-xs text-slate-500 dark:text-slate-400">
-          Tu colección se guardará en la base de datos local del navegador
-          (IndexedDB) de forma automática. Más adelante implementaremos el
-          inicio de sesión opcional para que puedas sincronizar tus
-          coleccionables en múltiples dispositivos y ver los POAPs reales
-          on-chain.
-        </p>
+      <!-- Modal de Edición de Perfil (Oculto) -->
+      <div id="edit-profile-modal" class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-3xl border border-slate-200/50 bg-white/95 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-800/50 dark:bg-slate-900/95">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white">Editar Perfil</h3>
+            <button id="close-modal-btn" class="rounded-full p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <form method="POST" action="/yo" class="space-y-4">
+            <input type="hidden" name="action" value="edit_profile" />
+            
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Nombre</label>
+              <input
+                type="text"
+                name="name"
+                required
+                value={user.name}
+                class="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Biografía</label>
+              <textarea
+                name="bio"
+                rows="3"
+                class="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 resize-none"
+              >{user.bio}</textarea>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">URL del Avatar</label>
+              <input
+                type="url"
+                name="avatar_url"
+                value={user.avatar_url}
+                class="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800"
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="w-full rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white shadow-md hover:bg-brand-600 transition-all active:scale-95"
+            >
+              Guardar Cambios
+            </button>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
+  ) : (
+    /* =========================================================================
+       VISTA DE INICIO DE SESIÓN / REGISTRO (GUEST)
+       ========================================================================= */
+    <div class="mx-auto max-w-md py-6">
+      <div class="relative overflow-hidden rounded-[2.5rem] border border-white/20 bg-white/80 p-8 shadow-2xl backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/80">
+        <!-- Glowing Ambient Circle -->
+        <div class="absolute -right-20 -top-20 -z-10 h-48 w-48 rounded-full bg-brand-500/10 blur-3xl"></div>
+        <div class="absolute -bottom-20 -left-20 -z-10 h-48 w-48 rounded-full bg-purple-500/10 blur-3xl"></div>
+
+        <!-- Header -->
+        <div class="text-center mb-6">
+          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-500 to-purple-600 text-white shadow-lg mb-4">
+            <span class="material-symbols-outlined text-[30px]">account_balance</span>
+          </div>
+          <h2 class="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">EdificARTE</h2>
+          <p class="mt-1 text-sm text-slate-400 dark:text-slate-500">Colecciona insignias e historia urbana</p>
+        </div>
+
+        <!-- Selector de Pestañas (Tabs) -->
+        <div class="flex rounded-xl bg-slate-100/80 p-1 mb-6 dark:bg-slate-800/80">
+          <button
+            type="button"
+            id="tab-login"
+            class={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+              activeTab === 'login'
+                ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-white'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Iniciar Sesión
+          </button>
+          <button
+            type="button"
+            id="tab-register"
+            class={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+              activeTab === 'register'
+                ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-white'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Registrarse
+          </button>
+        </div>
+
+        <!-- Alertas de Error -->
+        {errorMsg && (
+          <div class="mb-4 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-100 p-3 text-xs font-semibold text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400">
+            <span class="material-symbols-outlined text-[16px]">error</span>
+            {errorMsg}
+          </div>
+        )}
+
+        <!-- Formulario de Iniciar Sesión -->
+        <form
+          id="form-login"
+          method="POST"
+          action="/yo"
+          class={`space-y-4 ${activeTab === 'login' ? '' : 'hidden'}`}
+        >
+          <input type="hidden" name="action" value="login" />
+          
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">mail</span>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="Correo electrónico"
+              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+            />
+          </div>
+
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">lock</span>
+            <input
+              type="password"
+              name="password"
+              required
+              placeholder="Contraseña"
+              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-2xl bg-gradient-to-r from-brand-500 to-brand-600 py-3.5 text-sm font-semibold text-white shadow-lg hover:from-brand-600 hover:to-brand-700 transition-all active:scale-[0.98]"
+          >
+            Entrar
+          </button>
+        </form>
+
+        <!-- Formulario de Registro -->
+        <form
+          id="form-register"
+          method="POST"
+          action="/yo"
+          class={`space-y-4 ${activeTab === 'register' ? '' : 'hidden'}`}
+        >
+          <input type="hidden" name="action" value="register" />
+
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">person</span>
+            <input
+              type="text"
+              name="name"
+              required
+              placeholder="Nombre completo"
+              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+            />
+          </div>
+          
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">mail</span>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="Correo electrónico"
+              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+            />
+          </div>
+
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">lock</span>
+            <input
+              type="password"
+              name="password"
+              required
+              placeholder="Contraseña"
+              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-2xl bg-gradient-to-r from-purple-500 to-purple-600 py-3.5 text-sm font-semibold text-white shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all active:scale-[0.98]"
+          >
+            Registrarse
+          </button>
+        </form>
+      </div>
+    </div>
+  )}
 </Layout>
 
 <script>
-  // Initialize on DOM load
+  // Script que corre únicamente del lado del cliente
   document.addEventListener('DOMContentLoaded', () => {
-    // 2. Settings Menu Toggler
+    // 1. Selector de Pestañas (Guest View)
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const formLogin = document.getElementById('form-login');
+    const formRegister = document.getElementById('form-register');
+
+    if (tabLogin && tabRegister && formLogin && formRegister) {
+      tabLogin.addEventListener('click', () => {
+        tabLogin.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-white';
+        tabRegister.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all text-slate-400 hover:text-slate-600';
+        formLogin.classList.remove('hidden');
+        formRegister.classList.add('hidden');
+      });
+
+      tabRegister.addEventListener('click', () => {
+        tabRegister.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-white';
+        tabLogin.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all text-slate-400 hover:text-slate-600';
+        formRegister.classList.remove('hidden');
+        formLogin.classList.add('hidden');
+      });
+    }
+
+    // 2. Opciones de Configuración (User View)
     const settingsBtn = document.getElementById('settings-btn');
     const settingsDropdown = document.getElementById('settings-dropdown');
 
@@ -352,106 +575,53 @@ const badges = [
         settingsDropdown.classList.toggle('hidden');
       });
 
-      // Close dropdown when clicking outside
       document.addEventListener('click', (e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (
-          settingsDropdown &&
-          !settingsDropdown.contains(target) &&
-          target !== settingsBtn &&
-          !settingsBtn.contains(target)
-        ) {
+        if (!settingsDropdown.contains(target) && target !== settingsBtn && !settingsBtn.contains(target)) {
           settingsDropdown.classList.add('hidden');
         }
       });
     }
 
-    // Dropdown actions
-    const editBtn = document.getElementById('edit-profile-btn');
-    const configBtn = document.getElementById('config-btn');
-    const helpBtn = document.getElementById('help-btn');
-    const logoutBtn = document.getElementById('logout-btn');
+    // 3. Modal de Edición de Perfil (User View)
+    const editProfileBtn = document.getElementById('edit-profile-btn');
+    const editModal = document.getElementById('edit-profile-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
 
-    if (editBtn)
-      editBtn.addEventListener('click', () => {
-        alert('Editar Perfil clicked');
-        settingsDropdown?.classList.add('hidden');
-      });
-    if (configBtn)
-      configBtn.addEventListener('click', () => {
-        alert('Configuración clicked');
-        settingsDropdown?.classList.add('hidden');
-      });
-    if (helpBtn)
-      helpBtn.addEventListener('click', () => {
-        alert('Ayuda clicked');
-        settingsDropdown?.classList.add('hidden');
-      });
-    if (logoutBtn)
-      logoutBtn.addEventListener('click', () => {
-        alert('Cerrar Sesión clicked');
+    if (editProfileBtn && editModal && closeModalBtn) {
+      editProfileBtn.addEventListener('click', () => {
+        editModal.classList.remove('hidden');
         settingsDropdown?.classList.add('hidden');
       });
 
-    // 3. Experience Bar Animation
+      closeModalBtn.addEventListener('click', () => {
+        editModal.classList.add('hidden');
+      });
+
+      // Cerrar al hacer clic fuera del contenido
+      editModal.addEventListener('click', (e) => {
+        if (e.target === editModal) {
+          editModal.classList.add('hidden');
+        }
+      });
+    }
+
+    // 4. Animación de la Barra de Experiencia
     const expBar = document.getElementById('exp-bar');
     if (expBar) {
+      const targetPercent = expBar.getAttribute('data-percent') || '0%';
       setTimeout(() => {
-        expBar.style.width = '65%';
+        expBar.style.width = targetPercent;
       }, 300);
     }
 
-    // 4. Counters Animation
-    const stats = {
-      likes: {
-        el: document.getElementById('counter-likes'),
-        target: 1240,
-        format: true,
-      },
-      posts: {
-        el: document.getElementById('counter-posts'),
-        target: 42,
-        format: false,
-      },
-      views: {
-        el: document.getElementById('counter-views'),
-        target: 8900,
-        format: true,
-      },
-    };
-
-    const duration = 2000;
-    const steps = 60;
-    const stepDuration = duration / steps;
-
-    function formatNumber(num: number) {
-      if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-      if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-      return num.toString();
-    }
-
-    let currentStep = 0;
-    setTimeout(() => {
-      const interval = setInterval(() => {
-        currentStep++;
-
-        Object.values(stats).forEach((stat) => {
-          if (stat.el) {
-            const increment = stat.target / steps;
-            const value = Math.min(
-              Math.floor(increment * currentStep),
-              stat.target
-            );
-            stat.el.innerText = stat.format
-              ? formatNumber(value)
-              : value.toString();
-          }
-        });
-
-        if (currentStep >= steps) {
-          clearInterval(interval);
-        }
-      }, stepDuration);
-    }, 500);
+    // Ocultar notificaciones flotantes de éxito/error después de 3.5 segundos
+    const floatingAlerts = document.querySelectorAll('.fixed.top-6.left-1\\/2');
+    floatingAlerts.forEach((alert) => {
+      setTimeout(() => {
+        alert.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => alert.remove(), 500);
+      }, 3500);
+    });
   });
 </script>

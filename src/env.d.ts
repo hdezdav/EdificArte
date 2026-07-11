@@ -1,9 +1,18 @@
 /// <reference types="astro/client" />
 
-type Runtime = import('@astrojs/cloudflare').Runtime<Env>;
+interface Env {
+  CACHE: import('@cloudflare/workers-types').KVNamespace;
+  SESSION: import('@cloudflare/workers-types').KVNamespace;
+  DB: import('@cloudflare/workers-types').D1Database;
+}
 
 declare namespace App {
   interface Locals {
-    runtime: Runtime;
+    runtime: {
+      env: Env;
+      cf: any;
+      caches: any;
+      ctx: any;
+    };
   }
 }

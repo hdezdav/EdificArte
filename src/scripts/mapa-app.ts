@@ -659,6 +659,61 @@ function updateAudioUI() {
   timeLabel.textContent = `${fmt(sec)} / ${m.audioDuration}`;
 }
 
+const MONUMENT_BADGE_MAP: Record<string, number> = {
+  'bellas-artes': 1,
+  'catedral': 2,
+  'torre-latino': 3,
+  'templo-mayor': 4
+};
+
+function showBadgeNotification(badgeId: number) {
+  const badgeNames: Record<number, string> = {
+    1: 'Explorador Romano (Palacio de Bellas Artes)',
+    2: 'Alma Gótica (Catedral Metropolitana)',
+    3: 'Guardián del Tiempo (Torre Latinoamericana)',
+    4: 'Cazador de Templos (Templo Mayor)'
+  };
+  const badgeImages: Record<number, string> = {
+    1: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=150&h=150&q=80',
+    2: 'https://images.unsplash.com/photo-1543872084-c7bd3822856f?auto=format&fit=crop&w=150&h=150&q=80',
+    3: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=150&h=150&q=80',
+    4: 'https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&w=150&h=150&q=80'
+  };
+
+  const name = badgeNames[badgeId] || 'Nueva Insignia';
+  const img = badgeImages[badgeId];
+
+  // Crear elemento de notificación flotante premium
+  const toast = document.createElement('div');
+  toast.className = 'fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 rounded-2xl border border-white/20 bg-white/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-md transition-all duration-500 scale-90 opacity-0 dark:border-slate-800/50 dark:bg-slate-900/95 text-slate-800 dark:text-white';
+  toast.innerHTML = `
+    <div class="h-10 w-10 overflow-hidden rounded-full border border-slate-200/80 dark:border-slate-800">
+      <img src="${img}" alt="${name}" class="h-full w-full object-cover" />
+    </div>
+    <div class="text-left">
+      <p class="text-[9px] font-bold uppercase tracking-wider text-brand-500 dark:text-brand-400">¡Logro Desbloqueado!</p>
+      <p class="text-[12px] font-semibold">${name}</p>
+    </div>
+  `;
+
+  document.body.appendChild(toast);
+
+  // Animar entrada
+  requestAnimationFrame(() => {
+    toast.classList.remove('scale-90', 'opacity-0');
+    toast.classList.add('scale-100', 'opacity-100');
+  });
+
+  // Animar salida y remover
+  setTimeout(() => {
+    toast.classList.remove('scale-100', 'opacity-100');
+    toast.classList.add('scale-90', 'opacity-0');
+    setTimeout(() => {
+      toast.remove();
+    }, 500);
+  }, 4000);
+}
+
 function startAudio() {
   const m = MONUMENTS.find((x) => x.id === selectedId);
   if (!m) return;
@@ -667,6 +722,29 @@ function startAudio() {
   playerUI?.classList.remove('hidden');
   playing = true;
   if (toggleIcon) toggleIcon.textContent = 'pause';
+
+  // Desbloquear logro al reproducir audioguía si está logueado
+  const badgeId = MONUMENT_BADGE_MAP[m.id];
+  if (badgeId) {
+    fetch('/api/unlock-badge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ badgeId })
+    })
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Not logged in or error');
+      })
+      .then((data: any) => {
+        if (data.success) {
+          showBadgeNotification(badgeId);
+        }
+      })
+      .catch(() => {
+        // Ignoramos silenciosamente si no está autenticado
+      });
+  }
+
   timer = setInterval(() => {
     if (sec < dur) {
       sec++;
