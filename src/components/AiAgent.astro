@@ -2,7 +2,7 @@
 import AiLoader from './ui/AiLoader.astro';
 ---
 
-<div class="fixed bottom-24 right-4 z-40">
+<div class="fixed bottom-[76px] right-4 z-40" id="ai-agent-container">
   <div class="relative">
     <!-- Floating Toggle Button -->
     <button
@@ -63,6 +63,14 @@ import AiLoader from './ui/AiLoader.astro';
 
       <!-- Input Area -->
       <form id="ai-agent-form" class="border-t border-slate-100 dark:border-slate-800 p-2.5 bg-white/50 dark:bg-slate-900/50 flex gap-2 items-center">
+        <button
+          type="button"
+          id="ai-mic-btn"
+          class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-brand-600 transition-all active:scale-95 shadow-sm"
+          title="Dictar mensaje (voz)"
+        >
+          <span class="material-symbols-outlined text-[16px]">mic</span>
+        </button>
         <input
           type="text"
           id="ai-agent-input"
@@ -124,6 +132,17 @@ import AiLoader from './ui/AiLoader.astro';
 
   let history: ChatMessage[] = [];
   let currentUtterance: SpeechSynthesisUtterance | null = null;
+
+  // Ajustar posición si estamos en la página del mapa para evitar superposición
+  const aiContainer = document.getElementById('ai-agent-container');
+  if (aiContainer && aiPopover && window.location.pathname.startsWith('/mapa')) {
+    aiContainer.classList.remove('bottom-[76px]', 'right-4');
+    aiContainer.classList.add('top-[135px]', 'right-3', 'sm:right-4');
+    
+    // Desplegar el popover hacia abajo
+    aiPopover.classList.remove('bottom-16', 'mb-2', 'h-[420px]');
+    aiPopover.classList.add('top-16', 'mt-2', 'h-[360px]');
+  }
 
   // Abrir y cerrar Popover
   if (aiBtn && aiPopover) {
@@ -366,6 +385,73 @@ import AiLoader from './ui/AiLoader.astro';
     }
 
     scrollToBottom();
+  }
+
+  // Speech Recognition (Dictado de voz)
+  const micBtn = document.getElementById('ai-mic-btn') as HTMLButtonElement;
+  let recognition: any = null;
+  let isListening = false;
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'es-MX';
+
+    recognition.onstart = () => {
+      isListening = true;
+      if (micBtn) {
+        micBtn.classList.remove('bg-slate-50', 'text-slate-500', 'dark:bg-slate-800');
+        micBtn.classList.add('bg-red-500', 'text-white', 'animate-pulse');
+        const icon = micBtn.querySelector('.material-symbols-outlined');
+        if (icon) icon.textContent = 'mic_off';
+      }
+      if (aiInput) {
+        aiInput.placeholder = 'Escuchando...';
+      }
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      if (micBtn) {
+        micBtn.classList.add('bg-slate-50', 'text-slate-500', 'dark:bg-slate-800');
+        micBtn.classList.remove('bg-red-500', 'text-white', 'animate-pulse');
+        const icon = micBtn.querySelector('.material-symbols-outlined');
+        if (icon) icon.textContent = 'mic';
+      }
+      if (aiInput) {
+        aiInput.placeholder = '¿Qué ruta querés hacer hoy?...';
+      }
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      if (aiInput && transcript) {
+        aiInput.value = transcript;
+        aiForm.requestSubmit();
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event.error);
+      if (recognition && isListening) {
+        recognition.stop();
+      }
+    };
+
+    micBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (isListening) {
+        recognition.stop();
+      } else {
+        recognition.start();
+      }
+    });
+  } else {
+    if (micBtn) {
+      micBtn.style.display = 'none';
+    }
   }
 
   // Inicializar altavoz del mensaje de bienvenida

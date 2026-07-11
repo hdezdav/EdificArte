@@ -9,8 +9,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
     throw new Error('La variable de entorno GEMINI_API_KEY no está configurada.');
   }
 
+  let messages: any[] = [];
+
   try {
-    const { messages } = await request.json();
+    const body = await request.json();
+    messages = body.messages;
+    
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'Faltan los mensajes o el formato es incorrecto.' }), {
         status: 400,
@@ -23,16 +27,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
       `- ID: "${m.id}", Nombre: "${m.name}", Categoría: "${m.category}", Tipo: "${m.type}", Descripción: "${m.desc}", Coordenadas: [${m.lat}, ${m.lng}]`
     ).join('\n');
 
-    const systemInstruction = `Eres el Asistente AI de EdificARTE, una audioguía y guía turística inteligente para la Ciudad de México (CDMX). Tu personalidad es entusiasta, culta y muy amigable. Respondés en español Rioplatense natural (usá voseo: "querés", "vení", "mirá", "tumbas", "tenés", etc.), pero con conocimiento local de la CDMX.
+    const systemInstruction = `Eres el Asistente AI de EdificARTE, una audioguía y guía turística inteligente para la Ciudad de México (CDMX). Tu personalidad es entusiasta, culta y muy amigable. Respondés en español Rioplatense natural (usá voseo: "querés", "vení", "mirá", "tenés", etc.), pero con conocimiento local de la CDMX.
 Tenés acceso a los siguientes monumentos registrados en el sistema:
 ${monumentsContext}
 
-Tu objetivo es responder las dudas del usuario. Si el usuario te pide una ruta, recomendación de paseo, o itinerario, elegí los monumentos más adecuados de la lista anterior y devolvé sus IDs ordenados en el campo 'route'.
-Ejemplos de IDs válidos que podés incluir en 'route': ${MONUMENTS.map(m => `"${m.id}"`).join(', ')}.
-Si la pregunta del usuario es casual o no requiere trazar una ruta geográfica en el mapa, el campo 'route' debe ser un array vacío [].
+Tu objetivo es responder las dudas del usuario. 
+Si el usuario te pide una ruta, recomendación de paseo, o itinerario, seleccioná entre 2 y 5 monumentos adecuados de la lista anterior, ordénalos en una secuencia lógica de visita, y poné sus IDs exactos en el campo 'route' del JSON de salida.
+Si el usuario te pregunta por un solo monumento específico (ej: "¿Me contás de Bellas Artes?"), podés incluir su ID como único elemento en el array 'route' (ej: ["bellas-artes"]).
+Ejemplos de IDs válidos que podés incluir en 'route': ${MONUMENTS.map(m => `"${m.id}"`).join(', ')}. Nunca inventes IDs que no estén en esta lista.
+Si la pregunta del usuario es casual, un saludo, o no requiere trazar una ruta geográfica en el mapa, el campo 'route' debe ser un array vacío [].
 SIEMPRE debés responder en formato JSON que cumpla exactamente con este esquema:
 {
-  "reply": "Tu respuesta conversacional con tips históricos y detalles de la ruta si aplica.",
+  "reply": "Tu respuesta conversacional con tips históricos y detalles de la ruta o monumento si aplica.",
   "route": ["id1", "id2", ...]
 }`;
 
@@ -43,9 +49,9 @@ SIEMPRE debés responder en formato JSON que cumpla exactamente con este esquema
       parts: [{ text: msg.content }]
     }));
 
-    // Hacer la petición a la API de Gemini 1.5 Flash
+    // Hacer la petición a la API de Gemini 2.5 Flash
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
