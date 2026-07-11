@@ -826,6 +826,8 @@ const setGeo = (state: GeoState, msg: string) => {
   geoText.textContent = msg;
 };
 
+let firstLocationFetched = false;
+
 const onPos = (pos: GeolocationPosition) => {
   const { latitude: lat, longitude: lng, accuracy } = pos.coords;
   if (userMarker) {
@@ -848,6 +850,12 @@ const onPos = (pos: GeolocationPosition) => {
     }).addTo(map);
   }
   setGeo('ok', 'Ubicación activa');
+
+  // Centrar el mapa en la ubicación del usuario al recibirla por primera vez
+  if (!firstLocationFetched) {
+    map.setView([lat, lng], 17, { animate: true });
+    firstLocationFetched = true;
+  }
 
   if (selectedId) {
     const m = MONUMENTS.find((x) => x.id === selectedId);
@@ -917,27 +925,27 @@ function triggerLocationPrompt() {
   );
 }
 
-startWatching();
-
-geoStatusEl?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  requestLocationPermission();
-});
-
-$('btn-locate')?.addEventListener('click', () => {
-  if (userMarker) map.setView(userMarker.getLatLng(), 18, { animate: true });
-  else requestLocationPermission();
-});
-
-// ---------------------------------------------------------------------------
-// Language modal
-// ---------------------------------------------------------------------------
-
+const welcomeModal = $('welcome-modal');
+const btnWelcomeStart = $('btn-welcome-start');
 const langModal = $('lang-modal');
 const langButtons = document.querySelectorAll<HTMLElement>('.lang-btn');
 
+function showWelcomeModal() {
+  if (welcomeModal) {
+    welcomeModal.classList.remove('hidden');
+    // Forzamos un reflow para que funcione la transición de opacidad
+    void welcomeModal.offsetHeight;
+    welcomeModal.classList.remove('opacity-0');
+  }
+}
+
+// Lógica de inicio y comprobación de modales
 if (localStorage.getItem('edificarte_lang')) {
-  langModal?.classList.add('hidden');
+  if (!localStorage.getItem('edificarte_welcome_shown')) {
+    showWelcomeModal();
+  } else {
+    startWatching();
+  }
 } else {
   langModal?.classList.remove('hidden');
 }
@@ -948,8 +956,34 @@ langButtons.forEach((btn) => {
     if (!selectedLang) return;
     localStorage.setItem('edificarte_lang', selectedLang);
     langModal?.classList.add('opacity-0');
-    setTimeout(() => langModal?.classList.add('hidden'), 300);
+    setTimeout(() => {
+      langModal?.classList.add('hidden');
+      if (!localStorage.getItem('edificarte_welcome_shown')) {
+        showWelcomeModal();
+      } else {
+        startWatching();
+      }
+    }, 300);
   });
+});
+
+btnWelcomeStart?.addEventListener('click', () => {
+  localStorage.setItem('edificarte_welcome_shown', 'true');
+  welcomeModal?.classList.add('opacity-0');
+  setTimeout(() => welcomeModal?.classList.add('hidden'), 300);
+
+  // Solicitar permiso de GPS y centrar el mapa al hacer clic
+  triggerLocationPrompt();
+});
+
+geoStatusEl?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  requestLocationPermission();
+});
+
+$('btn-locate')?.addEventListener('click', () => {
+  if (userMarker) map.setView(userMarker.getLatLng(), 18, { animate: true });
+  else requestLocationPermission();
 });
 
 setTimeout(() => map.invalidateSize(), 200);

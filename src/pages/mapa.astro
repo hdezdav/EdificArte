@@ -587,6 +587,36 @@ import Layout from '../layouts/Layout.astro';
       </div>
     </div>
   </div>
+
+  <!-- Welcome & Location Modal (Overlay) -->
+  <div
+    id="welcome-modal"
+    class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
+  >
+    <div
+      class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/40 bg-white/80 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300 dark:border-slate-800/60 dark:bg-slate-900/80"
+    >
+      <div
+        class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a] shadow-inner dark:bg-slate-800 dark:text-[#a78bfa]"
+      >
+        <span class="material-symbols-outlined text-[28px]">explore</span>
+      </div>
+      <h2 class="text-xl font-bold text-slate-800 dark:text-white">¡Bienvenido a EdificARTE!</h2>
+      <p class="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+        Descubrí monumentos históricos de la CDMX, escuchá sus audioguías interactivas y coleccioná insignias exclusivas. Activá tu GPS para ubicarte en el mapa.
+      </p>
+
+      <div class="mt-6 flex flex-col gap-2.5">
+        <button
+          id="btn-welcome-start"
+          class="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#3f043a] py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#3f043a]/90 active:scale-[0.98]"
+        >
+          <span class="material-symbols-outlined text-[18px]">near_me</span>
+          <span>Activar GPS y Comenzar</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </Layout>
 
 <style>

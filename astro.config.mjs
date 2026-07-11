@@ -2,8 +2,6 @@ import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import tailwind from '@astrojs/tailwind';
 
-import react from '@astrojs/react';
-
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
@@ -13,5 +11,5 @@ export default defineConfig({
     // optimización de <Image /> cuando se agregue.
     imageService: 'compile',
   }),
-  integrations: [tailwind(), react()],
+  integrations: [tailwind()],
 });
