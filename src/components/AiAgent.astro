@@ -152,21 +152,52 @@ import AiLoader from './ui/AiLoader.astro';
   }
 
   // Ajustar posición del popover cuando aparece el teclado en iOS
+  const bottomNav = document.querySelector('nav.glassmorphism') as HTMLElement | null;
   if (aiContainer && 'visualViewport' in window) {
     const handleViewportResize = () => {
       const vv = window.visualViewport;
       if (!vv) return;
       // Si el viewport visible es mucho menor que el de la ventana, el teclado está abierto
       const keyboardOpen = vv.height < window.innerHeight - 100;
-      if (keyboardOpen) {
-        // Subir el popover para que quede sobre el bottom nav (h-16 = 64px)
-        aiContainer.style.bottom = `${Math.max(0, window.innerHeight - vv.height - 8)}px`;
+      if (keyboardOpen && !aiPopover?.classList.contains('hidden')) {
+        // Teclado abierto + popover abierto → posicionar arriba del teclado.
+        // Forzar bottom inline; esto anula el `top-[135px]` del mapa.
+        const keyboardHeight = window.innerHeight - vv.height;
+        aiContainer.style.top = 'auto';
+        aiContainer.style.bottom = `${keyboardHeight + 8}px`;
+        aiContainer.style.right = '12px';
+        // Esconder el bottom nav mientras el teclado esté abierto
+        if (bottomNav) bottomNav.style.transform = 'translateY(100%)';
+        // Achicar el popover para que entre arriba del teclado
+        if (aiPopover) {
+          aiPopover.style.height = `${Math.max(220, vv.height - keyboardHeight - 16)}px`;
+        }
       } else {
+        aiContainer.style.top = '';
         aiContainer.style.bottom = '';
+        aiContainer.style.right = '';
+        aiContainer.style.height = '';
+        if (aiPopover) aiPopover.style.height = '';
+        if (bottomNav) bottomNav.style.transform = '';
       }
     };
     window.visualViewport?.addEventListener('resize', handleViewportResize);
     window.visualViewport?.addEventListener('scroll', handleViewportResize);
+
+    // Fallback: en iOS a veces resize se dispara tarde; usar focusin para re-evaluar
+    document.addEventListener('focusin', (e) => {
+      if (e.target === aiInput) {
+        // Esperar un frame para que iOS termine de animar el teclado
+        requestAnimationFrame(() => handleViewportResize());
+        // Y otro por las dudas
+        setTimeout(handleViewportResize, 250);
+      }
+    });
+    document.addEventListener('focusout', (e) => {
+      if (e.target === aiInput) {
+        setTimeout(handleViewportResize, 250);
+      }
+    });
   }
 
   // Abrir y cerrar Popover
