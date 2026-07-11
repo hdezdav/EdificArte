@@ -4,57 +4,76 @@ import Layout from '../layouts/Layout.astro';
 const badges = [
   {
     id: 1,
-    name: "Explorador Romano",
-    description: "Completa la audioguía del Coliseo.",
-    image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=150&h=150&q=80",
-    unlocked: true
+    name: 'Explorador Romano',
+    description: 'Completa la audioguía del Coliseo.',
+    image:
+      'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=150&h=150&q=80',
+    unlocked: true,
   },
   {
     id: 2,
-    name: "Alma Gótica",
-    description: "Completa la audioguía de la Catedral.",
-    image: "https://images.unsplash.com/photo-1543872084-c7bd3822856f?auto=format&fit=crop&w=150&h=150&q=80",
-    unlocked: false
+    name: 'Alma Gótica',
+    description: 'Completa la audioguía de la Catedral.',
+    image:
+      'https://images.unsplash.com/photo-1543872084-c7bd3822856f?auto=format&fit=crop&w=150&h=150&q=80',
+    unlocked: false,
   },
   {
     id: 3,
-    name: "Guardián del Tiempo",
-    description: "Visita la Torre del Reloj.",
-    image: "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=150&h=150&q=80",
-    unlocked: false
+    name: 'Guardián del Tiempo',
+    description: 'Visita la Torre del Reloj.',
+    image:
+      'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=150&h=150&q=80',
+    unlocked: false,
   },
   {
     id: 4,
-    name: "Cazador de Templos",
-    description: "Visita las Columnas Antiguas.",
-    image: "https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&w=150&h=150&q=80",
-    unlocked: false
-  }
+    name: 'Cazador de Templos',
+    description: 'Visita las Columnas Antiguas.',
+    image:
+      'https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&w=150&h=150&q=80',
+    unlocked: false,
+  },
 ];
 ---
 
 <Layout title="EdificARTE — Yo">
-  <div class="grid grid-cols-1 gap-8 md:grid-cols-3 max-w-screen-md mx-auto">
+  <div class="mx-auto grid max-w-screen-md grid-cols-1 gap-8 md:grid-cols-3">
     <!-- Left Column: Profile Card -->
-    <div class="md:col-span-1 flex flex-col justify-start">
-      <div class="relative bg-card rounded-[2rem] shadow-lg border border-border w-full max-w-sm mx-auto">
+    <div class="flex flex-col justify-start md:col-span-1">
+      <div
+        class="relative mx-auto w-full max-w-sm rounded-[2rem] border border-border bg-card shadow-lg"
+      >
         <!-- Header with background -->
-        <div class="relative h-40 bg-gradient-to-br from-sky-start to-sky-end rounded-t-[2rem] overflow-hidden">
+        <div
+          class="relative h-40 overflow-hidden rounded-t-[2rem] bg-gradient-to-br from-sky-start to-sky-end"
+        >
           <img
             src="https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=800&q=80"
             alt="Background"
-            class="w-full h-full object-cover opacity-60"
+            class="h-full w-full object-cover opacity-60"
           />
         </div>
 
         <!-- Settings button -->
-        <div class="absolute top-4 right-4 z-30">
+        <div class="absolute right-4 top-4 z-30">
           <button
             id="settings-btn"
-            class="p-2 bg-white/20 text-white backdrop-blur-md rounded-full border border-white/30 hover:bg-white/30 transition-all shadow-sm"
+            class="rounded-full border border-white/30 bg-white/20 p-2 text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/30"
             aria-label="Configuración"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="h-4 w-4"
+            >
               <circle cx="12" cy="12" r="1"></circle>
               <circle cx="12" cy="5" r="1"></circle>
               <circle cx="12" cy="19" r="1"></circle>
@@ -64,13 +83,24 @@ const badges = [
           <!-- Settings dropdown -->
           <div
             id="settings-dropdown"
-            class="hidden absolute right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/50 p-2 shadow-xl z-50 text-slate-800 transition-all duration-200"
+            class="absolute right-0 z-50 mt-2 hidden w-48 rounded-2xl border border-slate-200/50 bg-white/95 p-2 text-slate-800 shadow-xl backdrop-blur-md transition-all duration-200"
           >
             <button
               id="edit-profile-btn"
-              class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors text-left"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="h-4 w-4 text-brand-500"
+              >
                 <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
@@ -78,19 +108,43 @@ const badges = [
             </button>
             <button
               id="config-btn"
-              class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors text-left"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-500">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="h-4 w-4 text-brand-500"
+              >
+                <path
+                  d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                ></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
               <span>Configuración</span>
             </button>
             <button
               id="help-btn"
-              class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors text-left"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="h-4 w-4 text-brand-500"
+              >
                 <circle cx="12" cy="12" r="10"></circle>
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                 <line x1="12" x2="12.01" y1="17" y2="17"></line>
@@ -100,9 +154,20 @@ const badges = [
             <hr class="my-1 border-slate-200/60" />
             <button
               id="logout-btn"
-              class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-red-50 text-red-600 transition-colors text-left"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="h-4 w-4"
+              >
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                 <polyline points="16 17 21 12 16 7"></polyline>
                 <line x1="21" x2="9" y1="12" y2="12"></line>
@@ -113,50 +178,79 @@ const badges = [
         </div>
 
         <!-- Profile content -->
-        <div class="px-6 pb-6 -mt-12">
+        <div class="-mt-12 px-6 pb-6">
           <!-- Avatar -->
-          <div class="relative w-24 h-24 mb-4">
-            <div class="w-full h-full rounded-full border-4 border-card overflow-hidden bg-card shadow-lg">
+          <div class="relative mb-4 h-24 w-24">
+            <div
+              class="h-full w-full overflow-hidden rounded-full border-4 border-card bg-card shadow-lg"
+            >
               <img
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&h=256&q=80"
                 alt="Viajero de EdificARTE"
-                class="w-full h-full object-cover"
+                class="h-full w-full object-cover"
               />
             </div>
           </div>
 
           <!-- Experience bar -->
           <div class="mb-6">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-sm text-muted-foreground font-light">exp.</span>
-              <div class="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+            <div class="mb-1 flex items-center gap-2">
+              <span class="text-sm font-light text-muted-foreground">exp.</span>
+              <div class="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
                 <div
                   id="exp-bar"
-                  class="h-full bg-gradient-to-r from-purple-500 via-pink-500 via-orange-500 via-yellow-500 via-green-500 to-blue-500 w-0 transition-all duration-[1300ms] ease-out"
-                ></div>
+                  class="h-full w-0 bg-gradient-to-r from-purple-500 via-green-500 via-orange-500 via-pink-500 via-yellow-500 to-blue-500 transition-all duration-[1300ms] ease-out"
+                >
+                </div>
               </div>
             </div>
           </div>
 
           <!-- Name and title -->
-          <h2 class="text-2xl font-semibold text-card-foreground mb-2 tracking-tight">Viajero de EdificARTE</h2>
-          <p class="text-muted-foreground text-sm leading-relaxed mb-6 font-light">
-            Explorador de monumentos históricos. Apasionado por el arte, la historia y la arquitectura urbana de mi ciudad.
+          <h2
+            class="mb-2 text-2xl font-semibold tracking-tight text-card-foreground"
+          >
+            Viajero de EdificARTE
+          </h2>
+          <p
+            class="mb-6 text-sm font-light leading-relaxed text-muted-foreground"
+          >
+            Explorador de monumentos históricos. Apasionado por el arte, la
+            historia y la arquitectura urbana de mi ciudad.
           </p>
 
           <!-- Stats -->
-          <div class="grid grid-cols-3 gap-4 py-4 border-t border-border">
+          <div class="grid grid-cols-3 gap-4 border-t border-border py-4">
             <div class="text-center">
-              <div id="counter-likes" class="text-2xl font-semibold text-card-foreground mb-1">0</div>
-              <div class="text-xs text-muted-foreground font-light">Me gusta</div>
+              <div
+                id="counter-likes"
+                class="mb-1 text-2xl font-semibold text-card-foreground"
+              >
+                0
+              </div>
+              <div class="text-xs font-light text-muted-foreground">
+                Me gusta
+              </div>
             </div>
-            <div class="text-center border-l border-r border-border">
-              <div id="counter-posts" class="text-2xl font-semibold text-card-foreground mb-1">0</div>
-              <div class="text-xs text-muted-foreground font-light">Visitas</div>
+            <div class="border-l border-r border-border text-center">
+              <div
+                id="counter-posts"
+                class="mb-1 text-2xl font-semibold text-card-foreground"
+              >
+                0
+              </div>
+              <div class="text-xs font-light text-muted-foreground">
+                Visitas
+              </div>
             </div>
             <div class="text-center">
-              <div id="counter-views" class="text-2xl font-semibold text-card-foreground mb-1">0</div>
-              <div class="text-xs text-muted-foreground font-light">Puntos</div>
+              <div
+                id="counter-views"
+                class="mb-1 text-2xl font-semibold text-card-foreground"
+              >
+                0
+              </div>
+              <div class="text-xs font-light text-muted-foreground">Puntos</div>
             </div>
           </div>
         </div>
@@ -164,7 +258,7 @@ const badges = [
     </div>
 
     <!-- Right Column: Badges and Callout -->
-    <div class="md:col-span-2 space-y-8">
+    <div class="space-y-8 md:col-span-2">
       <!-- Badges Collection Area -->
       <div class="space-y-4">
         <div class="flex items-center justify-between">
@@ -174,7 +268,7 @@ const badges = [
           <span
             class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400"
           >
-            {badges.filter(b => b.unlocked).length} Ganados
+            {badges.filter((b) => b.unlocked).length} Ganados
           </span>
         </div>
 
@@ -183,39 +277,41 @@ const badges = [
           {
             badges.map((badge) => (
               <div class="group flex flex-col items-center justify-center space-y-3 rounded-2xl border border-slate-200/60 bg-white p-6 text-center shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-slate-700">
-                <div class="relative flex h-16 w-16 items-center justify-center rounded-full overflow-hidden border border-slate-200/80 bg-slate-50 shadow-inner">
+                <div class="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-slate-50 shadow-inner">
                   <img
                     src={badge.image}
                     alt={badge.name}
-                    class={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${badge.unlocked ? '' : 'grayscale opacity-40'}`}
+                    class={`h-full w-full object-cover transition-all duration-500 group-hover:scale-110 ${badge.unlocked ? '' : 'opacity-40 grayscale'}`}
                   />
-                  {
-                    !badge.unlocked && (
-                      <div class="absolute inset-0 flex items-center justify-center bg-black/20">
-                        <svg
-                          class="h-5 w-5 text-white filter drop-shadow"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-                          />
-                        </svg>
-                      </div>
-                    )
-                  }
+                  {!badge.unlocked && (
+                    <div class="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <svg
+                        class="h-5 w-5 text-white drop-shadow filter"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                        />
+                      </svg>
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <h3 class={`text-sm font-semibold transition-colors duration-300 ${badge.unlocked ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-650'}`}>
+                  <h3
+                    class={`text-sm font-semibold transition-colors duration-300 ${badge.unlocked ? 'text-slate-800 dark:text-slate-200' : 'dark:text-slate-650 text-slate-400'}`}
+                  >
                     {badge.name}
                   </h3>
-                  <p class="text-slate-400 dark:text-slate-500 mt-1 text-[11px] leading-snug">
-                    {badge.unlocked ? '¡Completado! Ya tienes esta insignia.' : badge.description}
+                  <p class="mt-1 text-[11px] leading-snug text-slate-400 dark:text-slate-500">
+                    {badge.unlocked
+                      ? '¡Completado! Ya tienes esta insignia.'
+                      : badge.description}
                   </p>
                 </div>
               </div>
@@ -233,9 +329,10 @@ const badges = [
         </h3>
         <p class="mx-auto max-w-md text-xs text-slate-500 dark:text-slate-400">
           Tu colección se guardará en la base de datos local del navegador
-          (IndexedDB) de forma automática. Más adelante implementaremos el inicio
-          de sesión opcional para que puedas sincronizar tus coleccionables en
-          múltiples dispositivos y ver los POAPs reales on-chain.
+          (IndexedDB) de forma automática. Más adelante implementaremos el
+          inicio de sesión opcional para que puedas sincronizar tus
+          coleccionables en múltiples dispositivos y ver los POAPs reales
+          on-chain.
         </p>
       </div>
     </div>
@@ -245,8 +342,6 @@ const badges = [
 <script>
   // Initialize on DOM load
   document.addEventListener('DOMContentLoaded', () => {
-
-
     // 2. Settings Menu Toggler
     const settingsBtn = document.getElementById('settings-btn');
     const settingsDropdown = document.getElementById('settings-dropdown');
@@ -260,7 +355,12 @@ const badges = [
       // Close dropdown when clicking outside
       document.addEventListener('click', (e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (settingsDropdown && !settingsDropdown.contains(target) && target !== settingsBtn && !settingsBtn.contains(target)) {
+        if (
+          settingsDropdown &&
+          !settingsDropdown.contains(target) &&
+          target !== settingsBtn &&
+          !settingsBtn.contains(target)
+        ) {
           settingsDropdown.classList.add('hidden');
         }
       });
@@ -272,10 +372,26 @@ const badges = [
     const helpBtn = document.getElementById('help-btn');
     const logoutBtn = document.getElementById('logout-btn');
 
-    if (editBtn) editBtn.addEventListener('click', () => { alert('Editar Perfil clicked'); settingsDropdown?.classList.add('hidden'); });
-    if (configBtn) configBtn.addEventListener('click', () => { alert('Configuración clicked'); settingsDropdown?.classList.add('hidden'); });
-    if (helpBtn) helpBtn.addEventListener('click', () => { alert('Ayuda clicked'); settingsDropdown?.classList.add('hidden'); });
-    if (logoutBtn) logoutBtn.addEventListener('click', () => { alert('Cerrar Sesión clicked'); settingsDropdown?.classList.add('hidden'); });
+    if (editBtn)
+      editBtn.addEventListener('click', () => {
+        alert('Editar Perfil clicked');
+        settingsDropdown?.classList.add('hidden');
+      });
+    if (configBtn)
+      configBtn.addEventListener('click', () => {
+        alert('Configuración clicked');
+        settingsDropdown?.classList.add('hidden');
+      });
+    if (helpBtn)
+      helpBtn.addEventListener('click', () => {
+        alert('Ayuda clicked');
+        settingsDropdown?.classList.add('hidden');
+      });
+    if (logoutBtn)
+      logoutBtn.addEventListener('click', () => {
+        alert('Cerrar Sesión clicked');
+        settingsDropdown?.classList.add('hidden');
+      });
 
     // 3. Experience Bar Animation
     const expBar = document.getElementById('exp-bar');
@@ -287,9 +403,21 @@ const badges = [
 
     // 4. Counters Animation
     const stats = {
-      likes: { el: document.getElementById('counter-likes'), target: 1240, format: true },
-      posts: { el: document.getElementById('counter-posts'), target: 42, format: false },
-      views: { el: document.getElementById('counter-views'), target: 8900, format: true }
+      likes: {
+        el: document.getElementById('counter-likes'),
+        target: 1240,
+        format: true,
+      },
+      posts: {
+        el: document.getElementById('counter-posts'),
+        target: 42,
+        format: false,
+      },
+      views: {
+        el: document.getElementById('counter-views'),
+        target: 8900,
+        format: true,
+      },
     };
 
     const duration = 2000;
@@ -306,12 +434,17 @@ const badges = [
     setTimeout(() => {
       const interval = setInterval(() => {
         currentStep++;
-        
-        Object.values(stats).forEach(stat => {
+
+        Object.values(stats).forEach((stat) => {
           if (stat.el) {
             const increment = stat.target / steps;
-            const value = Math.min(Math.floor(increment * currentStep), stat.target);
-            stat.el.innerText = stat.format ? formatNumber(value) : value.toString();
+            const value = Math.min(
+              Math.floor(increment * currentStep),
+              stat.target
+            );
+            stat.el.innerText = stat.format
+              ? formatNumber(value)
+              : value.toString();
           }
         });
 

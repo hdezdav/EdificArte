@@ -5,10 +5,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "./dist/_worker.js/index.js",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
   },
   "build": {
-    "command": "pnpm build"
+    "command": "pnpm build",
   },
   "d1_databases": [
     {
@@ -20,6 +20,14 @@
   "kv_namespaces": [
     {
       "binding": "CACHE",
+      "id": "513879ce14e346a9a370f2514977eb1c",
+    },
+    {
+      // KV namespace required by @astrojs/cloudflare for server-side sessions.
+      // Apunta al mismo namespace ediKV para evitar crear otro. TODO Slice 2+:
+      // migrar a un namespace dedicado (`pnpm wrangler kv:namespace create SESSION`)
+      // para separar TTL/policies de sesiones del cache de aplicación.
+      "binding": "SESSION",
       "id": "513879ce14e346a9a370f2514977eb1c",
     },
   ],
