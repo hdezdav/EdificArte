@@ -76,7 +76,7 @@ import AiLoader from './ui/AiLoader.astro';
           id="ai-agent-input"
           placeholder="¿Qué ruta quieres hacer hoy?..."
           autocomplete="off"
-          class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border-none rounded-full px-3.5 py-2 text-[16px] sm:text-[12px] text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-1 focus:ring-brand-500"
+          class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border-none rounded-full px-3.5 py-2 text-[16px] sm:text-[16px] text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-1 focus:ring-brand-500"
         />
         <button
           type="submit"
@@ -145,10 +145,28 @@ import AiLoader from './ui/AiLoader.astro';
   if (aiContainer && aiPopover && window.location.pathname.startsWith('/mapa')) {
     aiContainer.classList.remove('bottom-[76px]', 'right-4');
     aiContainer.classList.add('top-[135px]', 'right-3', 'sm:right-4');
-    
+
     // Desplegar el popover hacia abajo
     aiPopover.classList.remove('bottom-16', 'mb-2', 'h-[420px]');
     aiPopover.classList.add('top-16', 'mt-2', 'h-[360px]');
+  }
+
+  // Ajustar posición del popover cuando aparece el teclado en iOS
+  if (aiContainer && 'visualViewport' in window) {
+    const handleViewportResize = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      // Si el viewport visible es mucho menor que el de la ventana, el teclado está abierto
+      const keyboardOpen = vv.height < window.innerHeight - 100;
+      if (keyboardOpen) {
+        // Subir el popover para que quede sobre el bottom nav (h-16 = 64px)
+        aiContainer.style.bottom = `${Math.max(0, window.innerHeight - vv.height - 8)}px`;
+      } else {
+        aiContainer.style.bottom = '';
+      }
+    };
+    window.visualViewport?.addEventListener('resize', handleViewportResize);
+    window.visualViewport?.addEventListener('scroll', handleViewportResize);
   }
 
   // Abrir y cerrar Popover

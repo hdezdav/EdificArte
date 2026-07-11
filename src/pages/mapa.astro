@@ -20,7 +20,8 @@ import Layout from '../layouts/Layout.astro';
           type="text"
           id="search-input"
           placeholder="Buscar monumentos o audioguías..."
-          class="w-full min-w-0 flex-grow border-none bg-transparent p-0 text-[16px] sm:text-[13px] font-medium text-[#1b1c1c] placeholder-[#999] outline-none focus:ring-0"
+          aria-label="Buscar monumentos o audioguías"
+          class="w-full min-w-0 flex-grow border-none bg-transparent p-0 text-[16px] sm:text-[16px] font-medium text-[#1b1c1c] placeholder-[#999] outline-none focus:ring-0"
         />
         <button
           id="btn-search-filters"
@@ -216,16 +217,13 @@ import Layout from '../layouts/Layout.astro';
         🗼 Miradores
       </button>
     </div>
-  </div>
 
-  <!-- Fullscreen Map -->
-  <div id="map" class="absolute inset-0 z-0 h-full w-full"></div>
+    </div>
 
-  <!-- Floating Controls -->
+  <!-- Floating Controls (vertically centered on screen) -->
   <div
     id="map-floating-controls"
-    class="absolute right-3 z-20 flex flex-col items-end gap-2 sm:right-4 transition-all duration-300 ease-in-out"
-    style="bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));"
+    class="pointer-events-auto fixed right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col items-end gap-2 transition-all duration-300 ease-in-out sm:right-4"
   >
     <button
       id="btn-clear-route"
@@ -256,6 +254,9 @@ import Layout from '../layouts/Layout.astro';
       >
     </button>
   </div>
+
+  <!-- Fullscreen Map -->
+  <div id="map" class="absolute inset-0 z-0 h-full w-full"></div>
 
   <!-- Bottom Sheet -->
   <div
@@ -727,6 +728,17 @@ import Layout from '../layouts/Layout.astro';
 <!-- Modal logic runs inline, independent of Leaflet/mapa-app to prevent breakage -->
 <script is:inline>
   (function() {
+    // Memory fallback para navegadores con localStorage bloqueado (Safari/Firefox ITP)
+    var memoryStore = {};
+    function safeGet(key) {
+      try { return localStorage.getItem(key); }
+      catch (e) { return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null; }
+    }
+    function safeSet(key, value) {
+      try { localStorage.setItem(key, value); }
+      catch (e) { memoryStore[key] = String(value); }
+    }
+
     var langModal = document.getElementById('lang-modal');
     var welcomeModal = document.getElementById('welcome-modal');
     var langButtons = document.querySelectorAll('.lang-btn');
@@ -754,8 +766,8 @@ import Layout from '../layouts/Layout.astro';
     }
 
     // Entry logic — decide which modal to show
-    var hasLang = localStorage.getItem('edificarte_lang');
-    var hasWelcome = localStorage.getItem('edificarte_welcome_shown');
+    var hasLang = safeGet('edificarte_lang');
+    var hasWelcome = safeGet('edificarte_welcome_shown');
 
     if (!hasLang) {
       // No language chosen yet — show lang picker
@@ -771,9 +783,9 @@ import Layout from '../layouts/Layout.astro';
       btn.addEventListener('click', function() {
         var selectedLang = btn.getAttribute('data-lang');
         if (!selectedLang) return;
-        localStorage.setItem('edificarte_lang', selectedLang);
+        safeSet('edificarte_lang', selectedLang);
         hideModal(langModal, function() {
-          if (!localStorage.getItem('edificarte_welcome_shown')) {
+          if (!safeGet('edificarte_welcome_shown')) {
             showWelcomeModal();
           }
           // Signal to mapa-app that modals are done
@@ -785,7 +797,7 @@ import Layout from '../layouts/Layout.astro';
     // Welcome start button
     if (btnWelcomeStart) {
       btnWelcomeStart.addEventListener('click', function() {
-        localStorage.setItem('edificarte_welcome_shown', 'true');
+        safeSet('edificarte_welcome_shown', 'true');
         hideModal(welcomeModal, function() {
           // Signal to mapa-app to start geolocation
           window.dispatchEvent(new CustomEvent('edificarte-modals-done'));

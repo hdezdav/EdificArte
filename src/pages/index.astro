@@ -308,7 +308,8 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
             type="text"
             id="explore-search-input"
             placeholder="Buscar experiencias, patrimonio, cultura..."
-            class="w-full min-w-0 border-none bg-transparent p-0 text-[16px] sm:text-sm font-medium text-white placeholder-white/60 outline-none focus:ring-0"
+            aria-label="Buscar experiencias, patrimonio, cultura"
+            class="w-full min-w-0 border-none bg-transparent p-0 text-[16px] sm:text-[16px] font-medium text-white placeholder-white/60 outline-none focus:ring-0"
           />
         </div>
       </div>
@@ -1246,33 +1247,67 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
         cart.forEach((item) => {
           const row = document.createElement('div');
           row.className = 'cart-item-row flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800/40';
-          
-          row.innerHTML = `
-            <img src="${item.image}" alt="${item.name}" class="h-16 w-16 rounded-xl object-cover bg-slate-100 dark:bg-slate-800 flex-none" />
-            <div class="flex-1 min-w-0">
-              <h4 class="text-xs font-bold text-slate-800 dark:text-white truncate">${item.name}</h4>
-              <p class="text-[11px] font-extrabold text-purple-600 dark:text-purple-400 mt-0.5">$${item.price.toFixed(2)} MXN</p>
-              <div class="flex items-center justify-between mt-2">
-                <!-- Qty controls -->
-                <div class="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-0.5 bg-white dark:bg-slate-900">
-                  <button type="button" class="btn-cart-minus p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 active:scale-90" data-sku="${item.sku}">
-                    <span class="material-symbols-outlined text-[12px] font-bold">remove</span>
-                  </button>
-                  <span class="px-2 text-[11px] font-bold text-slate-700 dark:text-slate-200">${item.qty}</span>
-                  <button type="button" class="btn-cart-plus p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 active:scale-90" data-sku="${item.sku}">
-                    <span class="material-symbols-outlined text-[12px] font-bold">add</span>
-                  </button>
-                </div>
-                <!-- Remove btn -->
-                <button type="button" class="btn-cart-remove text-rose-500 hover:text-rose-600 p-1 rounded-full hover:bg-rose-50 dark:hover:bg-rose-950/20 active:scale-90 transition-all" data-sku="${item.sku}" title="Eliminar artículo">
-                  <span class="material-symbols-outlined text-[16px]">delete</span>
-                </button>
-              </div>
-            </div>
-          `;
+
+          // Helper local para construir elementos sin innerHTML (XSS hardening)
+          const el = (tag: string, className: string, text?: string): HTMLElement => {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text !== undefined) node.textContent = text;
+            return node;
+          };
+
+          const img = document.createElement('img');
+          img.src = item.image;
+          img.alt = item.name;
+          img.className = 'h-16 w-16 rounded-xl object-cover bg-slate-100 dark:bg-slate-800 flex-none';
+          row.appendChild(img);
+
+          const info = el('div', 'flex-1 min-w-0');
+          const title = el('h4', 'text-xs font-bold text-slate-800 dark:text-white truncate', item.name);
+          info.appendChild(title);
+
+          const price = el('p', 'text-[11px] font-extrabold text-purple-600 dark:text-purple-400 mt-0.5', `$${item.price.toFixed(2)} MXN`);
+          info.appendChild(price);
+
+          const controlsRow = el('div', 'flex items-center justify-between mt-2');
+
+          const qtyBox = el('div', 'flex items-center border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-0.5 bg-white dark:bg-slate-900');
+
+          const btnMinus = document.createElement('button');
+          btnMinus.type = 'button';
+          btnMinus.className = 'btn-cart-minus p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 active:scale-90';
+          btnMinus.setAttribute('data-sku', item.sku);
+          const minusIcon = el('span', 'material-symbols-outlined text-[12px] font-bold', 'remove');
+          btnMinus.appendChild(minusIcon);
+          qtyBox.appendChild(btnMinus);
+
+          const qtyLabel = el('span', 'px-2 text-[11px] font-bold text-slate-700 dark:text-slate-200', String(item.qty));
+          qtyBox.appendChild(qtyLabel);
+
+          const btnPlus = document.createElement('button');
+          btnPlus.type = 'button';
+          btnPlus.className = 'btn-cart-plus p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 active:scale-90';
+          btnPlus.setAttribute('data-sku', item.sku);
+          const plusIcon = el('span', 'material-symbols-outlined text-[12px] font-bold', 'add');
+          btnPlus.appendChild(plusIcon);
+          qtyBox.appendChild(btnPlus);
+
+          controlsRow.appendChild(qtyBox);
+
+          const btnRemove = document.createElement('button');
+          btnRemove.type = 'button';
+          btnRemove.className = 'btn-cart-remove text-rose-500 hover:text-rose-600 p-1 rounded-full hover:bg-rose-50 dark:hover:bg-rose-950/20 active:scale-90 transition-all';
+          btnRemove.setAttribute('data-sku', item.sku);
+          btnRemove.title = 'Eliminar artículo';
+          const removeIcon = el('span', 'material-symbols-outlined text-[16px]', 'delete');
+          btnRemove.appendChild(removeIcon);
+
+          controlsRow.appendChild(btnRemove);
+          info.appendChild(controlsRow);
+          row.appendChild(info);
 
           // Bindear eventos
-          row.querySelector('.btn-cart-minus')?.addEventListener('click', () => {
+          btnMinus.addEventListener('click', () => {
             if (item.qty > 1) {
               updateItemQty(item.sku, item.qty - 1);
             } else {
@@ -1280,11 +1315,11 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
             }
           });
 
-          row.querySelector('.btn-cart-plus')?.addEventListener('click', () => {
+          btnPlus.addEventListener('click', () => {
             updateItemQty(item.sku, item.qty + 1);
           });
 
-          row.querySelector('.btn-cart-remove')?.addEventListener('click', () => {
+          btnRemove.addEventListener('click', () => {
             removeItem(item.sku);
           });
 

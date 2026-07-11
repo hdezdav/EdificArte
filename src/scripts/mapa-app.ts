@@ -65,6 +65,29 @@ let playing = false;
 let userMarker: LMarker | null = null;
 let userCircle: LCircle | null = null;
 let watchId: number | null = null;
+let routeAbortController: AbortController | null = null;
+
+// ---------------------------------------------------------------------------
+// Storage helpers — Safari/Firefox ITP protection (in-memory fallback)
+// ---------------------------------------------------------------------------
+
+const memoryStore: Map<string, string> = new Map();
+
+function safeGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return memoryStore.has(key) ? (memoryStore.get(key) as string) : null;
+  }
+}
+
+function safeSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    memoryStore.set(key, value);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers de UI
@@ -184,23 +207,55 @@ function renderList(list: Monument[]) {
   if (!listContainer) return;
   listContainer.innerHTML = '';
   if (!list.length) {
-    listContainer.innerHTML =
-      '<p class="py-6 text-center text-[12px] text-[#a0a0a0]">No se encontraron monumentos.</p>';
+    const empty = document.createElement('p');
+    empty.className = 'py-6 text-center text-[12px] text-[#a0a0a0]';
+    empty.textContent = 'No se encontraron monumentos.';
+    listContainer.appendChild(empty);
     return;
   }
   list.forEach((m) => {
     const el = document.createElement('div');
     el.className =
       'flex items-center gap-3 rounded-2xl border border-black/[0.04] bg-white/60 p-2.5 backdrop-blur-md transition-all hover:bg-white/90 cursor-pointer active:scale-[0.98]';
-    el.innerHTML = `
-      <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#f5f3ff] text-xl">${m.emoji}</span>
-      <div class="min-w-0 flex-1">
-        <p class="truncate text-[13px] font-bold text-[#1b1c1c]">${m.name}</p>
-        <p class="text-[11px] font-medium text-[#5c5c5c]">${m.category} · <span class="font-semibold">${m.dist}</span></p>
-      </div>
-      <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a]">
-        <span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
-      </span>`;
+
+    const emojiWrap = document.createElement('span');
+    emojiWrap.className =
+      'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#f5f3ff] text-xl';
+    emojiWrap.textContent = m.emoji;
+    el.appendChild(emojiWrap);
+
+    const textWrap = document.createElement('div');
+    textWrap.className = 'min-w-0 flex-1';
+
+    const nameEl = document.createElement('p');
+    nameEl.className = 'truncate text-[13px] font-bold text-[#1b1c1c]';
+    nameEl.textContent = m.name;
+    textWrap.appendChild(nameEl);
+
+    const catEl = document.createElement('p');
+    catEl.className = 'text-[11px] font-medium text-[#5c5c5c]';
+    catEl.textContent = `${m.category} · `;
+
+    const distEl = document.createElement('span');
+    distEl.className = 'font-semibold';
+    distEl.textContent = m.dist;
+    catEl.appendChild(distEl);
+    textWrap.appendChild(catEl);
+
+    el.appendChild(textWrap);
+
+    const playWrap = document.createElement('span');
+    playWrap.className =
+      'flex h-7 w-7 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a]';
+
+    const playIcon = document.createElement('span');
+    playIcon.className = 'material-symbols-outlined text-[16px]';
+    playIcon.style.fontVariationSettings = "'FILL' 1";
+    playIcon.textContent = 'play_arrow';
+    playWrap.appendChild(playIcon);
+
+    el.appendChild(playWrap);
+
     el.addEventListener('click', () => selectMonument(m.id));
     listContainer.appendChild(el);
   });
@@ -220,7 +275,7 @@ function resetStarsUI() {
 
 function loadVisits(): Record<string, VisitRecord> {
   try {
-    return JSON.parse(localStorage.getItem('edificarte_visited') || '{}');
+    return JSON.parse(safeGet('edificarte_visited') || '{}');
   } catch {
     return {};
   }
@@ -386,7 +441,7 @@ $('btn-save-review')?.addEventListener('click', () => {
     review: reviewText,
     date: new Date().toISOString(),
   };
-  localStorage.setItem('edificarte_visited', JSON.stringify(saved));
+  safeSet('edificarte_visited', JSON.stringify(saved));
 
   const m = MONUMENTS.find((x) => x.id === selectedId);
   if (m) updateVisitSection(m);
@@ -405,12 +460,16 @@ function filterByQuery(list: Monument[], q: string): Monument[] {
   );
 }
 
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 searchInput?.addEventListener('input', (e) => {
-  const q = (e.target as HTMLInputElement).value.toLowerCase().trim();
-  const f = filterByQuery(MONUMENTS, q);
-  addMarkers(f);
-  renderList(f);
-  if (selectedId && !f.some((m) => m.id === selectedId)) deselect();
+  if (searchDebounce) clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    const q = (e.target as HTMLInputElement).value.toLowerCase().trim();
+    const f = filterByQuery(MONUMENTS, q);
+    addMarkers(f);
+    renderList(f);
+    if (selectedId && !f.some((m) => m.id === selectedId)) deselect();
+  }, 200);
 });
 
 // ---------------------------------------------------------------------------
@@ -622,16 +681,16 @@ function startAudio() {
           showBadgeNotification(badgeId);
           if (data.isGuest) {
             try {
-              const guestBadges = JSON.parse(localStorage.getItem('edificarte_guest_badges') || '[]');
+              const guestBadges = JSON.parse(safeGet('edificarte_guest_badges') || '[]');
               if (!guestBadges.includes(badgeId)) {
                 guestBadges.push(badgeId);
-                localStorage.setItem('edificarte_guest_badges', JSON.stringify(guestBadges));
-                
+                safeSet('edificarte_guest_badges', JSON.stringify(guestBadges));
+
                 // Sumar 100 puntos y +1 visita al invitado de forma local
-                const guestPoints = Number(localStorage.getItem('edificarte_guest_points') || '0') + 100;
-                const guestVisits = Number(localStorage.getItem('edificarte_guest_visits') || '0') + 1;
-                localStorage.setItem('edificarte_guest_points', String(guestPoints));
-                localStorage.setItem('edificarte_guest_visits', String(guestVisits));
+                const guestPoints = Number(safeGet('edificarte_guest_points') || '0') + 100;
+                const guestVisits = Number(safeGet('edificarte_guest_visits') || '0') + 1;
+                safeSet('edificarte_guest_points', String(guestPoints));
+                safeSet('edificarte_guest_visits', String(guestVisits));
               }
             } catch (e) {
               console.error('Error saving guest progress:', e);
@@ -731,8 +790,8 @@ const onPos = (pos: GeolocationPosition) => {
   const { latitude: lat, longitude: lng, accuracy } = pos.coords;
   
   // Guardar ubicación en localStorage para que la use el chat de IA
-  localStorage.setItem('edificarte_user_lat', lat.toString());
-  localStorage.setItem('edificarte_user_lng', lng.toString());
+  safeSet('edificarte_user_lat', lat.toString());
+  safeSet('edificarte_user_lng', lng.toString());
 
   if (userMarker) {
     userMarker.setLatLng([lat, lng]);
@@ -833,7 +892,7 @@ function triggerLocationPrompt() {
 // mapa-app.ts only listens for custom events to start geolocation.
 
 // If modals are already done (user has lang + welcome), start geolocation immediately
-if (localStorage.getItem('edificarte_lang') && localStorage.getItem('edificarte_welcome_shown')) {
+if (safeGet('edificarte_lang') && safeGet('edificarte_welcome_shown')) {
   startWatching();
 }
 
@@ -842,7 +901,7 @@ window.addEventListener('edificarte-request-gps', () => {
   triggerLocationPrompt();
 });
 window.addEventListener('edificarte-modals-done', () => {
-  if (localStorage.getItem('edificarte_welcome_shown')) {
+  if (safeGet('edificarte_welcome_shown')) {
     startWatching();
   }
 });
@@ -913,13 +972,28 @@ async function drawRoute(ids: string[]) {
       osrmCoords = found.map(m => `${m.lng},${m.lat}`).join(';');
     }
 
-    const response = await fetch(`https://router.project-osrm.org/route/v1/foot/${osrmCoords}?overview=full&geometries=geojson`);
-    
+    // Cancelar fetch previo (si el usuario dispara varias rutas seguidas) y armar timeout 8s
+    if (routeAbortController) routeAbortController.abort();
+    const localAbort = new AbortController();
+    routeAbortController = localAbort;
+    const timeoutId = setTimeout(() => localAbort.abort(), 8000);
+
+    let response: Response;
+    try {
+      response = await fetch(`https://router.project-osrm.org/route/v1/foot/${osrmCoords}?overview=full&geometries=geojson`, {
+        signal: localAbort.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+      // Solo limpiar el controller global si sigue siendo el nuestro
+      if (routeAbortController === localAbort) routeAbortController = null;
+    }
+
     if (response.ok) {
       const data = await response.json();
       if (data.routes && data.routes[0]) {
         const routeCoords = data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]] as [number, number]);
-        
+
         activeRouteLine = L.polyline(routeCoords, {
           color: '#8b5cf6', // Púrpura premium
           weight: 5,
@@ -941,6 +1015,13 @@ async function drawRoute(ids: string[]) {
       }
     }
   } catch (err) {
+    // Si fue abortado (timeout o nueva búsqueda), NO actualizar el mapa: dejamos que el caller más reciente mande.
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return;
+    }
+    if ((err as any)?.name === 'AbortError') {
+      return;
+    }
     console.error('Error al obtener ruta peatonal real de OSRM, usando fallback rectilíneo:', err);
   }
 
