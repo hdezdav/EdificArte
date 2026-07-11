@@ -224,6 +224,16 @@ import Layout from '../layouts/Layout.astro';
   <!-- Floating Controls -->
   <div class="absolute bottom-56 right-3 z-20 flex flex-col gap-2 sm:right-4">
     <button
+      id="btn-clear-route"
+      class="hidden flex h-10 w-10 items-center justify-center rounded-full bg-rose-600 text-white shadow-lg transition-all hover:bg-rose-700 active:scale-90 sm:h-11 sm:w-11"
+      aria-label="Limpiar ruta"
+      title="Limpiar ruta de mapa"
+    >
+      <span class="material-symbols-outlined text-[18px] sm:text-[20px]"
+        >route_off</span
+      >
+    </button>
+    <button
       id="btn-locate"
       class="flex h-10 w-10 items-center justify-center rounded-full bg-[#3f043a] text-white shadow-lg transition-all active:scale-90 sm:h-11 sm:w-11"
       aria-label="Centrar ubicación"
@@ -538,51 +548,52 @@ import Layout from '../layouts/Layout.astro';
   <!-- Language Selection Modal (Overlay) -->
   <div
     id="lang-modal"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300"
+    class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
-      class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/40 bg-white/80 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300"
+      class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/20 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300"
     >
       <div
-        class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a] shadow-inner"
+        class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3f043a] to-[#7c1d6f] text-white shadow-lg shadow-[#3f043a]/25"
       >
-        <span class="material-symbols-outlined text-[28px]">translate</span>
+        <span class="material-symbols-outlined text-[30px]">translate</span>
       </div>
-      <h2 class="text-xl font-bold text-slate-800">Bienvenido a EdificARTE</h2>
-      <p class="mt-2 text-xs leading-relaxed text-slate-500">
-        Selecciona tu idioma para comenzar a explorar la historia y arquitectura
+      <h2 class="text-xl font-extrabold text-slate-900">Bienvenido a EdificARTE</h2>
+      <p class="mt-2 text-[13px] leading-relaxed text-slate-500">
+        Selecciona tu idioma para explorar la historia y arquitectura
         de la CDMX.
       </p>
 
       <div class="mt-6 flex flex-col gap-2.5">
         <button
           data-lang="es"
-          class="lang-btn flex w-full items-center justify-between rounded-2xl border border-black/5 bg-white px-5 py-3 text-[13px] font-semibold text-slate-800 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+          class="lang-btn group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-[14px] font-semibold text-slate-800 shadow-sm transition-all hover:border-[#3f043a]/30 hover:shadow-md active:scale-[0.98]"
         >
-          <span class="flex items-center gap-2.5"><span>🇪🇸</span> Español</span>
-          <span class="material-symbols-outlined text-[16px] text-[#3f043a]"
-            >arrow_forward</span
-          >
+          <span class="flex items-center gap-3">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-lg">🇲🇽</span>
+            Español
+          </span>
+          <span class="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-[#3f043a] transition-colors">arrow_forward</span>
         </button>
         <button
           data-lang="en"
-          class="lang-btn flex w-full items-center justify-between rounded-2xl border border-black/5 bg-white px-5 py-3 text-[13px] font-semibold text-slate-800 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+          class="lang-btn group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-[14px] font-semibold text-slate-800 shadow-sm transition-all hover:border-[#3f043a]/30 hover:shadow-md active:scale-[0.98]"
         >
-          <span class="flex items-center gap-2.5"><span>🇺🇸</span> English</span>
-          <span class="material-symbols-outlined text-[16px] text-[#3f043a]"
-            >arrow_forward</span
-          >
+          <span class="flex items-center gap-3">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-lg">🇺🇸</span>
+            English
+          </span>
+          <span class="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-[#3f043a] transition-colors">arrow_forward</span>
         </button>
         <button
           data-lang="señas"
-          class="lang-btn flex w-full items-center justify-between rounded-2xl border border-black/5 bg-white px-5 py-3 text-[13px] font-semibold text-slate-800 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+          class="lang-btn group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-[14px] font-semibold text-slate-800 shadow-sm transition-all hover:border-[#3f043a]/30 hover:shadow-md active:scale-[0.98]"
         >
-          <span class="flex items-center gap-2.5"
-            ><span>🤟</span> Lengua de Señas</span
-          >
-          <span class="material-symbols-outlined text-[16px] text-[#3f043a]"
-            >arrow_forward</span
-          >
+          <span class="flex items-center gap-3">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-lg">🤟</span>
+            Lengua de Señas
+          </span>
+          <span class="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-[#3f043a] transition-colors">arrow_forward</span>
         </button>
       </div>
     </div>
@@ -594,22 +605,22 @@ import Layout from '../layouts/Layout.astro';
     class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
-      class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/40 bg-white/80 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300 dark:border-slate-800/60 dark:bg-slate-900/80"
+      class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/20 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300"
     >
       <div
-        class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a] shadow-inner dark:bg-slate-800 dark:text-[#a78bfa]"
+        class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3f043a] to-[#7c1d6f] text-white shadow-lg shadow-[#3f043a]/25"
       >
-        <span class="material-symbols-outlined text-[28px]">explore</span>
+        <span class="material-symbols-outlined text-[30px]">explore</span>
       </div>
-      <h2 class="text-xl font-bold text-slate-800 dark:text-white">¡Bienvenido a EdificARTE!</h2>
-      <p class="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-        Descubrí monumentos históricos de la CDMX, escuchá sus audioguías interactivas y coleccioná insignias exclusivas. Activá tu GPS para ubicarte en el mapa.
+      <h2 class="text-xl font-extrabold text-slate-900">¡Bienvenido a EdificARTE!</h2>
+      <p class="mt-2 text-[13px] leading-relaxed text-slate-500">
+        Descubre monumentos históricos de la CDMX, escucha sus audioguías interactivas y colecciona insignias exclusivas. Activa tu GPS para ubicarte en el mapa.
       </p>
 
       <div class="mt-6 flex flex-col gap-2.5">
         <button
           id="btn-welcome-start"
-          class="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#3f043a] py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#3f043a]/90 active:scale-[0.98]"
+          class="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3f043a] to-[#7c1d6f] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#3f043a]/25 transition-all hover:shadow-xl active:scale-[0.98]"
         >
           <span class="material-symbols-outlined text-[18px]">near_me</span>
           <span>Activar GPS y Comenzar</span>
@@ -708,6 +719,78 @@ import Layout from '../layouts/Layout.astro';
     }
   }
 </style>
+
+<!-- Modal logic runs inline, independent of Leaflet/mapa-app to prevent breakage -->
+<script is:inline>
+  (function() {
+    var langModal = document.getElementById('lang-modal');
+    var welcomeModal = document.getElementById('welcome-modal');
+    var langButtons = document.querySelectorAll('.lang-btn');
+    var btnWelcomeStart = document.getElementById('btn-welcome-start');
+
+    function showModal(modal) {
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      // Force reflow for transition
+      void modal.offsetHeight;
+      modal.classList.remove('opacity-0');
+    }
+
+    function hideModal(modal, cb) {
+      if (!modal) return;
+      modal.classList.add('opacity-0');
+      setTimeout(function() {
+        modal.classList.add('hidden');
+        if (cb) cb();
+      }, 300);
+    }
+
+    function showWelcomeModal() {
+      showModal(welcomeModal);
+    }
+
+    // Entry logic — decide which modal to show
+    var hasLang = localStorage.getItem('edificarte_lang');
+    var hasWelcome = localStorage.getItem('edificarte_welcome_shown');
+
+    if (!hasLang) {
+      // No language chosen yet — show lang picker
+      showModal(langModal);
+    } else if (!hasWelcome) {
+      // Language chosen but never welcomed — show welcome
+      showWelcomeModal();
+    }
+    // else: both done, go straight to map
+
+    // Language button clicks
+    langButtons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var selectedLang = btn.getAttribute('data-lang');
+        if (!selectedLang) return;
+        localStorage.setItem('edificarte_lang', selectedLang);
+        hideModal(langModal, function() {
+          if (!localStorage.getItem('edificarte_welcome_shown')) {
+            showWelcomeModal();
+          }
+          // Signal to mapa-app that modals are done
+          window.dispatchEvent(new CustomEvent('edificarte-modals-done'));
+        });
+      });
+    });
+
+    // Welcome start button
+    if (btnWelcomeStart) {
+      btnWelcomeStart.addEventListener('click', function() {
+        localStorage.setItem('edificarte_welcome_shown', 'true');
+        hideModal(welcomeModal, function() {
+          // Signal to mapa-app to start geolocation
+          window.dispatchEvent(new CustomEvent('edificarte-modals-done'));
+          window.dispatchEvent(new CustomEvent('edificarte-request-gps'));
+        });
+      });
+    }
+  })();
+</script>
 
 <script>
   import '../scripts/mapa-app.ts';

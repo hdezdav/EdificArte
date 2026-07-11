@@ -22,29 +22,71 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    // Preparar el contexto de monumentos
-    const monumentsContext = MONUMENTS.map(m => 
-      `- ID: "${m.id}", Nombre: "${m.name}", Categoría: "${m.category}", Tipo: "${m.type}", Descripción: "${m.desc}", Coordenadas: [${m.lat}, ${m.lng}]`
-    ).join('\n');
+    const userLocation = body.userLocation;
 
-    const systemInstruction = `Eres el Asistente de IA de EdificARTE, una audioguía y guía turística inteligente para la Ciudad de México (CDMX). Tu personalidad es entusiasta, culta y muy servicial.
-IMPORTANTE:
-1. Habla en español de México muy natural y cercano (tuteo respetuoso, NUNCA uses voseo argentino como "querés", "vení", "mirá"). Puedes usar palabras locales suaves como "hola qué tal", "aquí tienes", "chido", "padre".
-2. Tus respuestas conversacionales deben ser sumamente breves y directas al grano (máximo de 2 o 3 oraciones muy cortas y concisas).
-3. Si el usuario te pide una ruta, recomiéndale de 2 a 5 monumentos ordenados lógicamente y explícale brevemente que el mapa le trazará la ruta peatonal real para ir caminando por las calles.
+    // Helper para calcular distancia a pie (fórmula Haversine)
+    function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+      const R = 6371e3; // Radio de la tierra en metros
+      const phi1 = lat1 * Math.PI / 180;
+      const phi2 = lat2 * Math.PI / 180;
+      const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+      const deltaLambda = (lon2 - lon1) * Math.PI / 180;
 
-Tienes acceso a los siguientes monumentos registrados en el sistema:
+      const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                Math.cos(phi1) * Math.cos(phi2) *
+                Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      return R * c; // Distancia en metros
+    }
+
+    // Preparar el contexto de monumentos dinámicamente con distancias si hay ubicación
+    const monumentsContext = MONUMENTS.map(m => {
+      let distanceInfo = '';
+      if (userLocation && typeof userLocation.lat === 'number' && typeof userLocation.lng === 'number') {
+        const distMeters = getDistance(userLocation.lat, userLocation.lng, m.lat, m.lng);
+        const mins = Math.max(1, Math.round(distMeters / 75)); // Asumiendo 75 metros por minuto a pie
+        distanceInfo = `, Distancia actual del usuario: ${Math.round(distMeters)} metros (aprox. ${mins} min a pie)`;
+      }
+      return `- ID: "${m.id}", Nombre: "${m.name}", Categoría: "${m.category}", Tipo: "${m.type}", Descripción: "${m.desc}", Coordenadas: [${m.lat}, ${m.lng}]${distanceInfo}`;
+    }).join('\n');
+
+    let locationPromptAddition = '';
+    if (userLocation && typeof userLocation.lat === 'number' && typeof userLocation.lng === 'number') {
+      locationPromptAddition = `UBICACIÓN ACTUAL DEL USUARIO: Coordenadas [${userLocation.lat}, ${userLocation.lng}].
+Recomienda monumentos indicando explícitamente la distancia a pie (en metros) y calcula el tiempo que tardarán en llegar caminando (basado en los datos proveídos arriba). Aconseja ir a pie e indica que la ruta en el mapa se trazará automáticamente desde su ubicación actual hasta el primer destino.`;
+    } else {
+      locationPromptAddition = `UBICACIÓN ACTUAL DEL USUARIO: No disponible. Menciona que lo ideal para recorrer estas atracciones en el Centro Histórico es ir a pie.`;
+    }
+
+    const systemInstruction = `Eres el asistente de IA de EdificARTE, una audioguía turística inteligente para la Ciudad de México (CDMX).
+
+REGLAS DE PERSONALIDAD:
+- Habla en español mexicano natural y cálido (tuteo, nada de voseo).
+- Respuestas conversacionales: máximo 2-3 oraciones CORTAS. Nada de párrafos largos.
+- Puedes usar expresiones mexicanas suaves ("qué tal", "va que va", "padre", "chido").
+
+MONUMENTOS DISPONIBLES EN EL SISTEMA:
 ${monumentsContext}
 
-Tu objetivo es responder las dudas del usuario.
-Si el usuario te pide una ruta, recomendación de paseo o itinerario, selecciona entre 2 y 5 monumentos adecuados de la lista anterior, ordénalos en una secuencia lógica de visita, y pon sus IDs exactos en el campo 'route' del JSON de salida.
-Si el usuario te pregunta por un solo monumento específico (ej: "¿Me cuentas de Bellas Artes?"), puedes incluir su ID como único elemento en el array 'route' (ej: ["bellas-artes"]).
-Ejemplos de IDs válidos que puedes incluir en 'route': ${MONUMENTS.map(m => `"${m.id}"`).join(', ')}. Nunca inventes IDs que no estén en esta lista.
-Si la pregunta del usuario es casual, un saludo, o no requiere trazar una ruta geográfica en el mapa, el campo 'route' debe ser un array vacío [].
-SIEMPRE debes responder en formato JSON que cumpla exactamente con este esquema:
+${locationPromptAddition}
+
+CAPACIDAD DE RUTAS PEATONALES:
+- El mapa usa OpenStreetMap + OSRM (Open Source Routing Machine) para trazar rutas peatonales REALES por calles y banquetas.
+- Cuando generes una ruta, el sistema automáticamente calcula el camino a pie real entre cada punto.
+- Ordena los monumentos geográficamente (de norte a sur, o en un circuito lógico por cercanía) para que la ruta peatonal sea eficiente.
+- Todos los monumentos están en el Centro Histórico de la CDMX, a distancias caminables (máx ~2 km entre los más alejados).
+
+REGLAS DE RESPUESTA:
+1. Si el usuario pide ruta/paseo/itinerario: selecciona 2-5 monumentos, ordénalos en secuencia lógica caminable, ponlos en "route".
+2. Si pregunta por un monumento específico: incluye solo su ID en "route".
+3. Si es saludo o pregunta casual: "route" debe ser [].
+4. IDs válidos: ${MONUMENTS.map(m => `"${m.id}"`).join(', ')}. NUNCA inventes IDs.
+
+FORMATO DE RESPUESTA (JSON estricto):
 {
-  "reply": "Tu respuesta conversacional corta mexicana con tips históricos y detalles de la ruta o monumento si aplica.",
-  "route": ["id1", "id2", ...]
+  "reply": "Tu respuesta corta y amigable.",
+  "route": ["id1", "id2"]
 }`;
 
     // Construir los contents para la API de Gemini (formatear la historia de mensajes)

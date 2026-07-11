@@ -341,11 +341,6 @@ function deselect() {
   viewList?.classList.remove('hidden');
   isCollapsed = true;
   updateSheetUI();
-
-  if (activeRouteLine) {
-    map.removeLayer(activeRouteLine);
-    activeRouteLine = null;
-  }
 }
 
 
@@ -727,6 +722,11 @@ let firstLocationFetched = false;
 
 const onPos = (pos: GeolocationPosition) => {
   const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  
+  // Guardar ubicación en localStorage para que la use el chat de IA
+  localStorage.setItem('edificarte_user_lat', lat.toString());
+  localStorage.setItem('edificarte_user_lng', lng.toString());
+
   if (userMarker) {
     userMarker.setLatLng([lat, lng]);
     userCircle?.setLatLng([lat, lng]).setRadius(accuracy);
@@ -822,55 +822,22 @@ function triggerLocationPrompt() {
   );
 }
 
-const welcomeModal = $('welcome-modal');
-const btnWelcomeStart = $('btn-welcome-start');
-const langModal = $('lang-modal');
-const langButtons = document.querySelectorAll<HTMLElement>('.lang-btn');
+// Modal logic is handled by an inline script in mapa.astro (independent of Leaflet).
+// mapa-app.ts only listens for custom events to start geolocation.
 
-function showWelcomeModal() {
-  if (welcomeModal) {
-    welcomeModal.classList.remove('hidden');
-    // Forzamos un reflow para que funcione la transición de opacidad
-    void welcomeModal.offsetHeight;
-    welcomeModal.classList.remove('opacity-0');
-  }
+// If modals are already done (user has lang + welcome), start geolocation immediately
+if (localStorage.getItem('edificarte_lang') && localStorage.getItem('edificarte_welcome_shown')) {
+  startWatching();
 }
 
-// Lógica de inicio y comprobación de modales
-if (localStorage.getItem('edificarte_lang')) {
-  if (!localStorage.getItem('edificarte_welcome_shown')) {
-    showWelcomeModal();
-  } else {
+// Listen for the inline modal script to signal modals are done
+window.addEventListener('edificarte-request-gps', () => {
+  triggerLocationPrompt();
+});
+window.addEventListener('edificarte-modals-done', () => {
+  if (localStorage.getItem('edificarte_welcome_shown')) {
     startWatching();
   }
-} else {
-  langModal?.classList.remove('hidden');
-}
-
-langButtons.forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const selectedLang = btn.getAttribute('data-lang');
-    if (!selectedLang) return;
-    localStorage.setItem('edificarte_lang', selectedLang);
-    langModal?.classList.add('opacity-0');
-    setTimeout(() => {
-      langModal?.classList.add('hidden');
-      if (!localStorage.getItem('edificarte_welcome_shown')) {
-        showWelcomeModal();
-      } else {
-        startWatching();
-      }
-    }, 300);
-  });
-});
-
-btnWelcomeStart?.addEventListener('click', () => {
-  localStorage.setItem('edificarte_welcome_shown', 'true');
-  welcomeModal?.classList.add('opacity-0');
-  setTimeout(() => welcomeModal?.classList.add('hidden'), 300);
-
-  // Solicitar permiso de GPS y centrar el mapa al hacer clic
-  triggerLocationPrompt();
 });
 
 geoStatusEl?.addEventListener('click', (e) => {
@@ -900,6 +867,21 @@ async function drawRoute(ids: string[]) {
   const coords: [number, number][] = [];
   const found: Monument[] = [];
 
+  // Agregar la ubicación actual del usuario como origen si está activa y es caminable (< 3km)
+  let userLatLng: L.LatLng | null = null;
+  if (userMarker) {
+    const latLng = userMarker.getLatLng();
+    const firstMon = MONUMENTS.find((x) => x.id === ids[0]);
+    if (firstMon) {
+      const monLatLng = L.latLng(firstMon.lat, firstMon.lng);
+      const distMeters = latLng.distanceTo(monLatLng);
+      if (distMeters < 3000) { // Si está a menos de 3 km
+        userLatLng = latLng;
+        coords.push([userLatLng.lat, userLatLng.lng]);
+      }
+    }
+  }
+
   ids.forEach((id) => {
     const m = MONUMENTS.find((x) => x.id === id);
     if (m) {
@@ -917,7 +899,13 @@ async function drawRoute(ids: string[]) {
 
   // Intentar obtener la ruta peatonal real de OSRM (OpenStreetMap routing)
   try {
-    const osrmCoords = found.map(m => `${m.lng},${m.lat}`).join(';');
+    let osrmCoords = '';
+    if (userLatLng) {
+      osrmCoords = `${userLatLng.lng},${userLatLng.lat};` + found.map(m => `${m.lng},${m.lat}`).join(';');
+    } else {
+      osrmCoords = found.map(m => `${m.lng},${m.lat}`).join(';');
+    }
+
     const response = await fetch(`https://router.project-osrm.org/route/v1/foot/${osrmCoords}?overview=full&geometries=geojson`);
     
     if (response.ok) {
@@ -940,9 +928,8 @@ async function drawRoute(ids: string[]) {
           duration: 1.2,
         });
 
-        if (found[0]) {
-          selectMonument(found[0].id);
-        }
+        // Mostrar botón de limpiar ruta
+        $('btn-clear-route')?.classList.remove('hidden');
         return;
       }
     }
@@ -967,11 +954,18 @@ async function drawRoute(ids: string[]) {
     duration: 1.2,
   });
 
-  // Autoseleccionar el primer monumento para iniciar la experiencia
-  if (found[0]) {
-    selectMonument(found[0].id);
-  }
+  // Mostrar botón de limpiar ruta
+  $('btn-clear-route')?.classList.remove('hidden');
 }
+
+// Handler para limpiar la ruta del mapa
+$('btn-clear-route')?.addEventListener('click', () => {
+  if (activeRouteLine) {
+    map.removeLayer(activeRouteLine);
+    activeRouteLine = null;
+  }
+  $('btn-clear-route')?.classList.add('hidden');
+});
 
 // Escuchar evento personalizado para trazar ruta
 window.addEventListener('ai-route-generated', (e: any) => {

@@ -1,8 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import AiLoader from '../components/ui/AiLoader.astro';
+import { MONUMENTS } from '../data/monuments';
 
-type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia';
+type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo';
 
 interface Experience {
   id: string;
@@ -10,12 +11,17 @@ interface Experience {
   description: string;
   image: string;
   category: Exclude<Category, 'todos'>;
-  tagColor: 'emerald' | 'brand' | 'amber' | 'rose';
+  tagColor: 'emerald' | 'brand' | 'amber' | 'rose' | 'indigo';
   url: string;
   cta: string;
   rating?: number;
   reviewCount?: number;
   price?: string;
+  translations?: {
+    es: { name: string; desc: string; category: string; cta: string; guide: string };
+    en: { name: string; desc: string; category: string; cta: string; guide: string };
+    señas: { name: string; desc: string; category: string; cta: string; guide: string; videoUrl: string };
+  };
 }
 
 const experiencias: Experience[] = [
@@ -111,6 +117,61 @@ const experiencias: Experience[] = [
   },
 ];
 
+// Generar experiencias a partir de los museos de Monuments
+const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'museo').map((m) => {
+  const ratings: Record<string, { rating: number; reviewCount: number; price: string }> = {
+    'bellas-artes': { rating: 4.97, reviewCount: 382, price: '$85 MXN' },
+    'palacio-nacional': { rating: 4.89, reviewCount: 145, price: 'Gratis' },
+    'revolucion': { rating: 4.92, reviewCount: 204, price: '$120 MXN' },
+    'angel': { rating: 4.96, reviewCount: 412, price: 'Gratis' },
+    'chapultepec': { rating: 4.98, reviewCount: 520, price: '$90 MXN' },
+  };
+
+  const translations = {
+    es: {
+      name: m.name,
+      desc: m.desc,
+      category: m.category,
+      cta: 'Ver guía',
+      guide: `¡Bienvenido al ${m.name}! Este emblemático espacio es parte fundamental del patrimonio histórico de la Ciudad de México. Aquí podrás contemplar una arquitectura imponente y aprender sobre su evolución artística, social e histórica a través del tiempo. Disfrutá del recorrido detallado por sus salas principales y descubrí los secretos que sus paredes guardan.`,
+    },
+    en: {
+      name: m.name === 'Palacio de Bellas Artes' ? 'Palace of Fine Arts' : (m.name === 'Palacio Nacional' ? 'National Palace' : (m.name === 'Castillo de Chapultepec' ? 'Chapultepec Castle' : (m.name === 'Ángel de la Independencia' ? 'Angel of Independence' : 'Monument to the Revolution'))),
+      desc: m.name === 'Palacio de Bellas Artes' ? 'One of the world\'s most famous opera houses, known for its Art Nouveau exterior and Art Deco interior.' : m.desc,
+      category: m.category === 'Museo / Teatro' ? 'Museum / Theater' : (m.category === 'Museo / Castillo' ? 'Museum / Castle' : 'Historical Monument'),
+      cta: 'View guide',
+      guide: `Welcome to the ${m.name}! This emblematic site is a key piece of Mexico City's historical heritage. Here, you can contemplate stunning architecture and learn about its artistic, social, and historical evolution through time. Enjoy the detailed self-guided tour through its main halls and uncover the secrets written in its walls.`,
+    },
+    señas: {
+      name: `${m.name} (LSM)`,
+      desc: 'Guía adaptada en Lengua de Señas Mexicana (LSM) con subtítulos y videos de alta visibilidad.',
+      category: 'Accesibilidad / LSM',
+      cta: 'Ver LSM',
+      guide: `Esta es la guía accesible en Lengua de Señas Mexicana (LSM) para el ${m.name}. Explicamos la historia, el contexto y los murales o detalles artísticos más representativos para garantizar el acceso pleno a la cultura para la comunidad con discapacidad auditiva.`,
+      videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', // Video educativo genérico como demo
+    },
+  };
+
+  const rData = ratings[m.id] || { rating: 4.8, reviewCount: 15, price: 'Gratis' };
+
+  return {
+    id: m.id,
+    title: m.name,
+    description: m.desc,
+    image: m.image,
+    category: 'museo',
+    tagColor: 'indigo',
+    url: '#',
+    cta: 'Ver guía',
+    rating: rData.rating,
+    reviewCount: rData.reviewCount,
+    price: rData.price,
+    translations,
+  };
+});
+
+const todasLasExperiencias: Experience[] = [...experiencias, ...museosExperiencias];
+
 const tagStyles: Record<
   Experience['tagColor'],
   { badge: string; pill: string }
@@ -135,6 +196,11 @@ const tagStyles: Record<
       'border-rose-200/50 bg-rose-50 text-rose-700 dark:border-rose-800/50 dark:bg-rose-950/40 dark:text-rose-400',
     pill: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400',
   },
+  indigo: {
+    badge:
+      'border-indigo-200/50 bg-indigo-50 text-indigo-700 dark:border-indigo-800/50 dark:bg-indigo-950/40 dark:text-indigo-400',
+    pill: 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400',
+  },
 };
 
 const categoryLabel: Record<Category, string> = {
@@ -143,9 +209,10 @@ const categoryLabel: Record<Category, string> = {
   patrimonio: 'Patrimonio',
   cultura: 'Cultura',
   gastronomia: 'Gastronomía',
+  museo: 'Museos',
 };
 
-const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cultura', 'gastronomia'];
+const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cultura', 'gastronomia', 'museo'];
 ---
 
 <Layout title="EdificARTE — Explorar">
@@ -243,7 +310,7 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
     <div id="experiences-sections-container" class="space-y-6">
       {
         categories.map((cat) => {
-          const catExp = experiencias.filter(exp => exp.category === cat);
+          const catExp = todasLasExperiencias.filter(exp => exp.category === cat);
           if (catExp.length === 0) return null;
           
           return (
@@ -281,7 +348,11 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                   catExp.map((exp) => (
                     <article
                       data-category={exp.category}
-                      class="exp-card group relative flex h-[350px] w-[250px] sm:w-[270px] flex-none snap-start flex-col overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md"
+                      data-translations={exp.translations ? JSON.stringify(exp.translations) : undefined}
+                      data-rating={exp.rating}
+                      data-image={exp.image}
+                      data-id={exp.id}
+                      class={`exp-card group relative flex h-[350px] w-[250px] sm:w-[270px] flex-none snap-start flex-col overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md ${exp.translations ? 'cursor-pointer' : ''}`}
                     >
                       {/* Image */}
                       <div class="relative h-44 w-full overflow-hidden rounded-t-2xl bg-slate-100 dark:bg-slate-850">
@@ -340,15 +411,27 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                             </span>
                           )}
 
-                          <a
-                            href={exp.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
-                          >
-                            {exp.cta}
-                            <span class="material-symbols-outlined text-[12px] transition-transform duration-200 group-hover:translate-x-0.5">arrow_forward</span>
-                          </a>
+                          {
+                            exp.translations ? (
+                              <button
+                                type="button"
+                                class="guide-trigger-btn ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+                              >
+                                {exp.cta}
+                                <span class="material-symbols-outlined text-[12px] transition-transform duration-200 group-hover:translate-x-0.5">arrow_forward</span>
+                              </button>
+                            ) : (
+                              <a
+                                href={exp.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+                              >
+                                {exp.cta}
+                                <span class="material-symbols-outlined text-[12px] transition-transform duration-200 group-hover:translate-x-0.5">arrow_forward</span>
+                              </a>
+                            )
+                          }
                         </div>
                       </div>
                     </article>
@@ -416,6 +499,115 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
         ></span>
         En construcción
       </span>
+    </div>
+  <!-- Museum/Guide Details Modal (Overlay) -->
+  <div
+    id="guide-modal"
+    class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
+  >
+    <div
+      class="w-full max-w-lg scale-95 transform rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[90vh] overflow-hidden"
+    >
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-850">
+        <div>
+          <span id="guide-modal-badge" class="inline-flex items-center rounded-full bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+            Museo
+          </span>
+          <h2 id="guide-modal-title" class="text-lg font-bold text-slate-800 dark:text-white mt-1">
+            Cargando...
+          </h2>
+        </div>
+        <button
+          type="button"
+          id="btn-close-guide"
+          class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors"
+        >
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="flex-1 overflow-y-auto py-4 space-y-4 no-scrollbar">
+        <!-- Image Banner -->
+        <div class="relative h-44 w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-850">
+          <img
+            id="guide-modal-image"
+            src=""
+            alt=""
+            class="h-full w-full object-cover"
+          />
+        </div>
+
+        <!-- Language Selector Tabs -->
+        <div class="flex gap-2 p-1 bg-slate-150 dark:bg-slate-800 rounded-xl">
+          <button
+            type="button"
+            data-guide-lang="es"
+            class="guide-lang-tab flex-1 py-2 text-[11px] font-bold rounded-lg transition-all text-brand-700 dark:text-brand-300 bg-white dark:bg-slate-700 shadow-sm"
+          >
+            🇪🇸 ES
+          </button>
+          <button
+            type="button"
+            data-guide-lang="en"
+            class="guide-lang-tab flex-1 py-2 text-[11px] font-bold rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-350"
+          >
+            🇺🇸 EN
+          </button>
+          <button
+            type="button"
+            data-guide-lang="señas"
+            class="guide-lang-tab flex-1 py-2 text-[11px] font-bold rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-350"
+          >
+            🤟 LSM
+          </button>
+        </div>
+
+        <!-- Translated Content -->
+        <div class="space-y-2">
+          <h3 id="guide-modal-subtitle" class="font-bold text-[12px] text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+            Guía de Audio e Información
+          </h3>
+          <p id="guide-modal-text" class="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+            Cargando...
+          </p>
+        </div>
+
+        <!-- LSM Video Container -->
+        <div id="guide-modal-video-container" class="hidden space-y-2">
+          <h4 class="font-bold text-[11px] text-slate-700 dark:text-slate-300">
+            Intérprete en Lengua de Señas Mexicana (LSM)
+          </h4>
+          <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-slate-200 dark:border-slate-800">
+            <iframe
+              id="guide-modal-video"
+              class="absolute inset-0 w-full h-full"
+              src=""
+              title="LSM Guide Video"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+        <div class="flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px] text-amber-500" style="font-variation-settings:'FILL' 1">star</span>
+          <span id="guide-modal-rating" class="text-xs font-bold text-slate-800 dark:text-slate-200">4.97</span>
+        </div>
+        <button
+          type="button"
+          id="btn-go-to-map-route"
+          class="inline-flex items-center gap-1.5 rounded-xl bg-[#3f043a] hover:bg-[#3f043a]/90 text-white font-bold px-4 py-2 text-xs shadow-sm transition-all active:scale-[0.97]"
+        >
+          <span class="material-symbols-outlined text-[16px]">map</span>
+          <span>Ver ruta en el mapa</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -552,5 +744,147 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
         }
       }
     });
+  });
+
+  // Lógica del modal de guías y traducciones
+  const guideModal = document.getElementById('guide-modal');
+  const btnCloseGuide = document.getElementById('btn-close-guide');
+  const btnGoToMapRoute = document.getElementById('btn-go-to-map-route');
+  
+  const guideTitle = document.getElementById('guide-modal-title');
+  const guideBadge = document.getElementById('guide-modal-badge');
+  const guideImage = document.getElementById('guide-modal-image') as HTMLImageElement;
+  const guideText = document.getElementById('guide-modal-text');
+  const guideRating = document.getElementById('guide-modal-rating');
+  const guideVideoContainer = document.getElementById('guide-modal-video-container');
+  const guideVideo = document.getElementById('guide-modal-video') as HTMLIFrameElement;
+  
+  const langTabs = document.querySelectorAll<HTMLButtonElement>('.guide-lang-tab');
+
+  let currentTranslations: any = null;
+  let activeGuideLang = 'es';
+  let currentMuseumId = '';
+
+  function openGuideModal(card: HTMLElement) {
+    const rawTranslations = card.getAttribute('data-translations');
+    if (!rawTranslations) return;
+
+    try {
+      currentTranslations = JSON.parse(rawTranslations);
+    } catch (e) {
+      console.error('Error parsing translations JSON:', e);
+      return;
+    }
+
+    currentMuseumId = card.getAttribute('data-id') || '';
+    const rating = card.getAttribute('data-rating') || '4.8';
+    const imageSrc = card.getAttribute('data-image') || '';
+
+    if (guideTitle) guideTitle.textContent = currentTranslations.es.name;
+    if (guideImage) {
+      guideImage.src = imageSrc;
+      guideImage.alt = currentTranslations.es.name;
+    }
+    if (guideRating) guideRating.textContent = parseFloat(rating).toFixed(2);
+    
+    // Default a español
+    setGuideLanguage('es');
+
+    if (guideModal) {
+      guideModal.classList.remove('hidden');
+      // Forzar reflow
+      void guideModal.offsetHeight;
+      guideModal.classList.remove('opacity-0');
+      const innerContent = guideModal.querySelector('div');
+      if (innerContent) {
+        innerContent.classList.remove('scale-95');
+        innerContent.classList.add('scale-100');
+      }
+    }
+  }
+
+  function closeGuideModal() {
+    if (guideModal) {
+      guideModal.classList.add('opacity-0');
+      const innerContent = guideModal.querySelector('div');
+      if (innerContent) {
+        innerContent.classList.remove('scale-100');
+        innerContent.classList.add('scale-95');
+      }
+      setTimeout(() => {
+        guideModal.classList.add('hidden');
+        if (guideVideo) guideVideo.src = ''; // Detener video si se está reproduciendo
+      }, 300);
+    }
+  }
+
+  function setGuideLanguage(lang: string) {
+    activeGuideLang = lang;
+    if (!currentTranslations || !currentTranslations[lang]) return;
+
+    const data = currentTranslations[lang];
+
+    if (guideTitle) guideTitle.textContent = data.name;
+    if (guideBadge) guideBadge.textContent = data.category;
+    if (guideText) guideText.textContent = data.guide;
+
+    // Actualizar tabs activas visualmente
+    langTabs.forEach((tab) => {
+      const isSelected = tab.getAttribute('data-guide-lang') === lang;
+      tab.classList.toggle('bg-white', isSelected);
+      tab.classList.toggle('dark:bg-slate-700', isSelected);
+      tab.classList.toggle('shadow-sm', isSelected);
+      tab.classList.toggle('text-brand-700', isSelected);
+      tab.classList.toggle('dark:text-brand-300', isSelected);
+      
+      tab.classList.toggle('text-slate-500', !isSelected);
+      tab.classList.toggle('dark:text-slate-400', !isSelected);
+      tab.classList.toggle('hover:text-slate-700', !isSelected);
+      tab.classList.toggle('dark:hover:text-slate-350', !isSelected);
+    });
+
+    // Manejar video de LSM
+    if (lang === 'señas' && data.videoUrl) {
+      if (guideVideoContainer) guideVideoContainer.classList.remove('hidden');
+      if (guideVideo) guideVideo.src = data.videoUrl;
+    } else {
+      if (guideVideoContainer) guideVideoContainer.classList.add('hidden');
+      if (guideVideo) guideVideo.src = '';
+    }
+  }
+
+  // Escuchar clics en tarjetas de museos
+  document.querySelectorAll<HTMLElement>('.exp-card[data-translations]').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      // Ignorar si pulsó el botón de favoritos
+      const target = e.target as HTMLElement;
+      if (target.closest('.favorite-btn')) return;
+
+      openGuideModal(card);
+    });
+  });
+
+  // Escuchar clics en los tabs de idioma
+  langTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const lang = tab.getAttribute('data-guide-lang');
+      if (lang) setGuideLanguage(lang);
+    });
+  });
+
+  btnCloseGuide?.addEventListener('click', closeGuideModal);
+  
+  // Cerrar haciendo clic afuera del modal
+  guideModal?.addEventListener('click', (e) => {
+    if (e.target === guideModal) {
+      closeGuideModal();
+    }
+  });
+
+  // Redirigir al mapa con la ruta activa
+  btnGoToMapRoute?.addEventListener('click', () => {
+    if (currentMuseumId) {
+      window.location.href = `/mapa?route=${currentMuseumId}&play=true`;
+    }
   });
 </script>

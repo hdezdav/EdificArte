@@ -49,7 +49,7 @@ import AiLoader from './ui/AiLoader.astro';
           <div class="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none px-3.5 py-2 text-[12px] shadow-sm leading-relaxed relative group pr-8 break-words">
             <div class="pr-2">
               ¡Hola! Soy tu asistente de <strong>EdificARTE</strong>. 🗺️<br/><br/>
-              ¿Querés que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Preguntame lo que quieras!
+              ¿Quieres que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Pregúntame lo que quieras!
             </div>
             <button 
               class="ai-speak-btn absolute top-2 right-2 text-slate-400 hover:text-brand-600 transition-colors p-0.5"
@@ -74,7 +74,7 @@ import AiLoader from './ui/AiLoader.astro';
         <input
           type="text"
           id="ai-agent-input"
-          placeholder="¿Qué ruta querés hacer hoy?..."
+          placeholder="¿Qué ruta quieres hacer hoy?..."
           autocomplete="off"
           class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border-none rounded-full px-3.5 py-2 text-[12px] text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-1 focus:ring-brand-500"
         />
@@ -464,7 +464,7 @@ import AiLoader from './ui/AiLoader.astro';
   // Inicializar altavoz del mensaje de bienvenida
   const welcomeSpeakBtn = document.querySelector('#ai-agent-messages .ai-speak-btn') as HTMLButtonElement;
   if (welcomeSpeakBtn) {
-    const welcomeText = '¡Hola! Soy tu asistente de EdificARTE. ¿Querés que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Preguntame lo que quieras!';
+    const welcomeText = '¡Hola! Soy tu asistente de EdificARTE. ¿Quieres que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Pregúntame lo que quieras!';
     welcomeSpeakBtn.addEventListener('click', () => {
       speakText(welcomeText, welcomeSpeakBtn);
     });
@@ -482,11 +482,22 @@ import AiLoader from './ui/AiLoader.astro';
 
     const loaderId = appendAssistantLoader();
 
+    // Obtener coordenadas de localStorage si están disponibles
+    const userLat = localStorage.getItem('edificarte_user_lat');
+    const userLng = localStorage.getItem('edificarte_user_lng');
+    const userLocation = userLat && userLng ? { 
+      lat: parseFloat(userLat), 
+      lng: parseFloat(userLng) 
+    } : null;
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ 
+          messages: history,
+          userLocation: userLocation
+        }),
       });
 
       if (!response.ok) {
@@ -494,7 +505,7 @@ import AiLoader from './ui/AiLoader.astro';
       }
 
       const data = await response.json();
-      const botReply = data.reply || 'Che, disculpame pero se me complicó procesar la respuesta.';
+      const botReply = data.reply || 'Disculpa, se me complicó procesar la respuesta en este momento.';
       const botRoute = data.route || [];
 
       history.push({ role: 'assistant', content: botReply });
@@ -507,7 +518,7 @@ import AiLoader from './ui/AiLoader.astro';
 
     } catch (err) {
       console.error(err);
-      updateAssistantMessage(loaderId, '¡Che! Perdón, pero se cayó la conexión con el servidor. Intentá de nuevo en un ratito.');
+      updateAssistantMessage(loaderId, '¡Hola! Perdón, pero se perdió la conexión con el servidor. ¿Podrías intentar de nuevo en un momento?');
     }
   });
 </script>
