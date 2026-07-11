@@ -106,6 +106,7 @@ let tileLayer = L.tileLayer(TILES[TILE_ORDER[tileIdx]], {
 }).addTo(map);
 
 const markers: { id: string; emoji: string; inst: LMarker }[] = [];
+let activeRouteLine: L.Polyline | null = null;
 
 function addMarkers(list: Monument[]) {
   markers.forEach((m) => map.removeLayer(m.inst));
@@ -340,7 +341,13 @@ function deselect() {
   viewList?.classList.remove('hidden');
   isCollapsed = true;
   updateSheetUI();
+
+  if (activeRouteLine) {
+    map.removeLayer(activeRouteLine);
+    activeRouteLine = null;
+  }
 }
+
 
 $('btn-close-detail')?.addEventListener('click', deselect);
 
@@ -877,3 +884,93 @@ $('btn-locate')?.addEventListener('click', () => {
 });
 
 setTimeout(() => map.invalidateSize(), 200);
+
+// ---------------------------------------------------------------------------
+// Rutas de la IA (L.polyline)
+// ---------------------------------------------------------------------------
+
+function drawRoute(ids: string[]) {
+  if (activeRouteLine) {
+    map.removeLayer(activeRouteLine);
+    activeRouteLine = null;
+  }
+
+  if (!ids || ids.length === 0) return;
+
+  const coords: [number, number][] = [];
+  const found: Monument[] = [];
+
+  ids.forEach((id) => {
+    const m = MONUMENTS.find((x) => x.id === id);
+    if (m) {
+      coords.push([m.lat, m.lng]);
+      found.push(m);
+    }
+  });
+
+  if (coords.length < 2) {
+    if (found[0]) {
+      selectMonument(found[0].id);
+    }
+    return;
+  }
+
+  // Trazar línea de ruta
+  activeRouteLine = L.polyline(coords, {
+    color: '#8b5cf6', // Púrpura premium
+    weight: 4,
+    opacity: 0.8,
+    dashArray: '6, 8', // Estilo discontinuo
+    lineCap: 'round',
+    lineJoin: 'round',
+  }).addTo(map);
+
+  // Encuadrar la vista del mapa en la ruta entera
+  map.fitBounds(activeRouteLine.getBounds(), {
+    padding: [60, 60],
+    animate: true,
+    duration: 1.2,
+  });
+
+  // Autoseleccionar el primer monumento para iniciar la experiencia
+  if (found[0]) {
+    selectMonument(found[0].id);
+  }
+}
+
+// Escuchar evento personalizado para trazar ruta
+window.addEventListener('ai-route-generated', (e: any) => {
+  const route = e.detail?.route;
+  if (Array.isArray(route)) {
+    drawRoute(route);
+  }
+});
+
+// Escuchar evento personalizado para reproducir audioguía
+window.addEventListener('ai-play-audio', (e: any) => {
+  const monumentId = e.detail?.monumentId;
+  if (monumentId) {
+    selectMonument(monumentId);
+    setTimeout(() => {
+      startAudio();
+    }, 400);
+  }
+});
+
+// Comprobar parámetros de URL al cargar para dibujar la ruta e iniciar audio si se solicita
+const urlParams = new URLSearchParams(window.location.search);
+const urlRoute = urlParams.get('route');
+const urlPlay = urlParams.get('play') === 'true';
+
+if (urlRoute) {
+  const ids = urlRoute.split(',');
+  setTimeout(() => {
+    drawRoute(ids);
+    if (urlPlay && ids.length === 1) {
+      setTimeout(() => {
+        startAudio();
+      }, 500);
+    }
+  }, 600);
+}
+

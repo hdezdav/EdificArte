@@ -327,46 +327,7 @@ const categoryLabel: Record<Category, string> = {
     </div>
   </div>
 
-  <!-- Floating AI Agent Button (Simulated) -->
-  <div class="fixed bottom-24 right-4 z-40">
-    <div class="relative">
-      <button
-        id="ai-agent-btn"
-        class="group flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-brand-600 to-purple-600 text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 animate-bounce-slow"
-        aria-label="Asistente de IA"
-      >
-        <!-- Glowing background ring -->
-        <span class="absolute inset-0 -z-10 animate-ping rounded-full bg-purple-500/30 opacity-75"></span>
-        <!-- Icon -->
-        <span class="material-symbols-outlined text-[26px] transition-transform duration-300 group-hover:rotate-12">smart_toy</span>
-      </button>
-
-      <!-- AI Popover -->
-      <div
-        id="ai-agent-popover"
-        class="hidden absolute bottom-16 right-0 mb-2 w-72 rounded-3xl border border-slate-200/50 bg-white/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-xl transition-all duration-300 text-slate-800 dark:border-slate-800/50 dark:bg-slate-900/95 dark:text-white"
-      >
-        <!-- Loading State View -->
-        <div id="ai-agent-loading-view" class="flex flex-col items-center justify-center py-4">
-          <AiLoader />
-        </div>
-
-        <!-- Content State View (hidden initially) -->
-        <div id="ai-agent-content-view" class="hidden flex items-start gap-3">
-          <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-brand-600 to-purple-600 text-white text-base">
-            <span class="material-symbols-outlined text-[18px]">smart_toy</span>
-          </span>
-          <div>
-            <h4 class="text-[13px] font-bold text-slate-900 dark:text-white">Asistente AI de EdificARTE</h4>
-            <p class="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
-              ¡Hola! Próximamente estaré listo para responder tus preguntas sobre el patrimonio histórico, recomendarte rutas a pie y contarte las leyendas de la CDMX.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</Layout>
+  </Layout>
 
 <style>
   .no-scrollbar::-webkit-scrollbar {
@@ -448,48 +409,4 @@ const categoryLabel: Record<Category, string> = {
     searchQuery = (e.target as HTMLInputElement).value.toLowerCase().trim();
     updateList();
   });
-
-  // Toggle del Popover del Asistente IA con simulación de carga
-  const aiBtn = document.getElementById('ai-agent-btn');
-  const aiPopover = document.getElementById('ai-agent-popover');
-  const aiLoadingView = document.getElementById('ai-agent-loading-view');
-  const aiContentView = document.getElementById('ai-agent-content-view');
-  let aiTimeout: number | null = null;
-
-  if (aiBtn && aiPopover) {
-    aiBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isHidden = aiPopover.classList.contains('hidden');
-
-      if (isHidden) {
-        aiPopover.classList.remove('hidden');
-        aiLoadingView?.classList.remove('hidden');
-        aiContentView?.classList.add('hidden');
-
-        if (aiTimeout) clearTimeout(aiTimeout);
-        aiTimeout = window.setTimeout(() => {
-          aiLoadingView?.classList.add('hidden');
-          aiContentView?.classList.remove('hidden');
-        }, 2200);
-      } else {
-        aiPopover.classList.add('hidden');
-        if (aiTimeout) {
-          clearTimeout(aiTimeout);
-          aiTimeout = null;
-        }
-      }
-    });
-
-    document.addEventListener('click', () => {
-      aiPopover.classList.add('hidden');
-      if (aiTimeout) {
-        clearTimeout(aiTimeout);
-        aiTimeout = null;
-      }
-    });
-
-    aiPopover.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-  }
 </script>

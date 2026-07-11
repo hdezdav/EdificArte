@@ -1,0 +1,420 @@
+---
+import AiLoader from './ui/AiLoader.astro';
+---
+
+<div class="fixed bottom-24 right-4 z-40">
+  <div class="relative">
+    <!-- Floating Toggle Button -->
+    <button
+      id="ai-agent-btn"
+      class="group flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-brand-600 to-purple-600 text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 animate-bounce-slow"
+      aria-label="Asistente de IA"
+    >
+      <!-- Glowing background ring -->
+      <span class="absolute inset-0 -z-10 animate-ping rounded-full bg-purple-500/30 opacity-75"></span>
+      <!-- Icon -->
+      <span class="material-symbols-outlined text-[26px] transition-transform duration-300 group-hover:rotate-12">smart_toy</span>
+    </button>
+
+    <!-- AI Chat Popover -->
+    <div
+      id="ai-agent-popover"
+      class="hidden absolute bottom-16 right-0 mb-2 w-80 h-[420px] rounded-3xl border border-slate-200/50 bg-white/95 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-xl transition-all duration-300 text-slate-800 dark:border-slate-800/50 dark:bg-slate-900/95 dark:text-white flex-col overflow-hidden"
+    >
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-brand-600 to-purple-600 text-white p-3.5 flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-2">
+          <span class="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white">
+            <span class="material-symbols-outlined text-[16px]">smart_toy</span>
+          </span>
+          <div class="text-left">
+            <h4 class="text-[12px] font-bold leading-none">Asistente EdificARTE</h4>
+            <span class="text-[9px] text-emerald-300 flex items-center gap-1 font-medium mt-0.5">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Activo ahora
+            </span>
+          </div>
+        </div>
+        <button id="ai-agent-close" class="text-white/80 hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- Messages Area -->
+      <div id="ai-agent-messages" class="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin text-left">
+        <!-- Initial Message -->
+        <div class="flex items-start gap-2 max-w-[85%]">
+          <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[12px]">
+            <span class="material-symbols-outlined text-[14px]">smart_toy</span>
+          </span>
+          <div class="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none px-3.5 py-2 text-[12px] shadow-sm leading-relaxed relative group pr-8">
+            <div class="pr-2">
+              ¡Hola! Soy tu asistente de <strong>EdificARTE</strong>. 🗺️<br/><br/>
+              ¿Querés que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Preguntame lo que quieras!
+            </div>
+            <button 
+              class="ai-speak-btn absolute top-2 right-2 text-slate-400 hover:text-brand-600 transition-colors p-0.5"
+              title="Escuchar respuesta"
+            >
+              <span class="material-symbols-outlined text-[16px]">volume_up</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <form id="ai-agent-form" class="border-t border-slate-100 dark:border-slate-800 p-2.5 bg-white/50 dark:bg-slate-900/50 flex gap-2 items-center">
+        <input
+          type="text"
+          id="ai-agent-input"
+          placeholder="¿Qué ruta querés hacer hoy?..."
+          autocomplete="off"
+          class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border-none rounded-full px-3.5 py-2 text-[12px] text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-1 focus:ring-brand-500"
+        />
+        <button
+          type="submit"
+          class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-white hover:bg-brand-700 active:scale-95 transition-all shadow-sm"
+        >
+          <span class="material-symbols-outlined text-[16px]">send</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+  }
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  @keyframes bounce-slow {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  .animate-bounce-slow {
+    animation: bounce-slow 4s infinite ease-in-out;
+  }
+</style>
+
+<script>
+  interface ChatMessage {
+    role: 'user' | 'assistant';
+    content: string;
+  }
+
+  const aiBtn = document.getElementById('ai-agent-btn');
+  const aiPopover = document.getElementById('ai-agent-popover');
+  const aiClose = document.getElementById('ai-agent-close');
+  const aiForm = document.getElementById('ai-agent-form') as HTMLFormElement;
+  const aiInput = document.getElementById('ai-agent-input') as HTMLInputElement;
+  const messagesContainer = document.getElementById('ai-agent-messages');
+
+  let history: ChatMessage[] = [];
+  let currentUtterance: SpeechSynthesisUtterance | null = null;
+
+  // Abrir y cerrar Popover
+  if (aiBtn && aiPopover) {
+    aiBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      aiPopover.classList.toggle('hidden');
+      if (!aiPopover.classList.contains('hidden')) {
+        setTimeout(() => aiInput?.focus(), 100);
+        scrollToBottom();
+      }
+    });
+
+    aiClose?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      aiPopover.classList.add('hidden');
+      stopSpeaking();
+    });
+
+    // Cerrar al hacer clic afuera
+    document.addEventListener('click', (e) => {
+      if (!aiPopover.contains(e.target as Node) && !aiBtn.contains(e.target as Node)) {
+        aiPopover.classList.add('hidden');
+        stopSpeaking();
+      }
+    });
+
+    aiPopover.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  }
+
+  function scrollToBottom() {
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  }
+
+  function escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function stopSpeaking() {
+    if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
+    document.querySelectorAll('.ai-speak-btn .material-symbols-outlined').forEach(icon => {
+      icon.textContent = 'volume_up';
+    });
+  }
+
+  function speakText(text: string, button: HTMLButtonElement) {
+    if ('speechSynthesis' in window) {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        if (currentUtterance && currentUtterance.text === text) {
+          button.querySelector('.material-symbols-outlined')!.textContent = 'volume_up';
+          return;
+        }
+      }
+
+      // Resetear todos los íconos de volumen en los botones
+      document.querySelectorAll('.ai-speak-btn .material-symbols-outlined').forEach(icon => {
+        icon.textContent = 'volume_up';
+      });
+
+      // Limpiar etiquetas HTML para la lectura por voz
+      const cleanText = text.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'es-MX'; // Español de México / Latino
+      
+      utterance.onstart = () => {
+        button.querySelector('.material-symbols-outlined')!.textContent = 'volume_off';
+      };
+      
+      utterance.onend = () => {
+        button.querySelector('.material-symbols-outlined')!.textContent = 'volume_up';
+      };
+
+      utterance.onerror = () => {
+        button.querySelector('.material-symbols-outlined')!.textContent = 'volume_up';
+      };
+
+      currentUtterance = utterance;
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert('Tu navegador no soporta síntesis de voz.');
+    }
+  }
+
+  function appendUserMessage(text: string) {
+    if (!messagesContainer) return;
+    const msgHtml = `
+      <div class="flex justify-end w-full">
+        <div class="bg-brand-500 text-white rounded-2xl rounded-tr-none px-3.5 py-2 text-[12px] max-w-[85%] shadow-sm leading-relaxed">
+          ${escapeHtml(text)}
+        </div>
+      </div>
+    `;
+    messagesContainer.insertAdjacentHTML('beforeend', msgHtml);
+    scrollToBottom();
+  }
+
+  function appendAssistantLoader(): string {
+    if (!messagesContainer) return '';
+    const id = 'loader-' + Date.now();
+    const msgHtml = `
+      <div id="${id}" class="flex items-start gap-2 max-w-[85%]">
+        <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[12px]">
+          <span class="material-symbols-outlined text-[14px]">smart_toy</span>
+        </span>
+        <div class="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none px-3.5 py-2 text-[12px] shadow-sm leading-relaxed flex items-center min-h-[32px]">
+          <div class="loader-wrapper !h-6 !scale-75 origin-left">
+            <span class="loader-letter" style="--i: 0">P</span>
+            <span class="loader-letter" style="--i: 1">e</span>
+            <span class="loader-letter" style="--i: 2">n</span>
+            <span class="loader-letter" style="--i: 3">s</span>
+            <span class="loader-letter" style="--i: 4">a</span>
+            <span class="loader-letter" style="--i: 5">n</span>
+            <span class="loader-letter" style="--i: 6">d</span>
+            <span class="loader-letter" style="--i: 7">o</span>
+            <span class="loader-letter" style="--i: 8">.</span>
+            <span class="loader-letter" style="--i: 9">.</span>
+            <div class="loader !w-6 !h-6"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    messagesContainer.insertAdjacentHTML('beforeend', msgHtml);
+    scrollToBottom();
+    return id;
+  }
+
+  function updateAssistantMessage(id: string, text: string, route: string[] = []) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    let formattedText = escapeHtml(text).replace(/\n/g, '<br/>');
+
+    // Botones de acción si tiene ruta o monumentos
+    let actionsHtml = '';
+    if (route && route.length > 0) {
+      const isMapPage = window.location.pathname.startsWith('/mapa');
+      const routeStr = route.join(',');
+      
+      actionsHtml += '<div class="flex flex-wrap gap-2 mt-3">';
+
+      if (isMapPage) {
+        actionsHtml += `
+          <button 
+            class="ai-route-trigger flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+            data-route="${routeStr}"
+          >
+            <span class="material-symbols-outlined text-[14px]">map</span>
+            Trazar ruta
+          </button>
+        `;
+
+        // Si es exactamente un monumento, agregar la opción de reproducir audioguía
+        if (route.length === 1) {
+          actionsHtml += `
+            <button 
+              class="ai-audio-trigger flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+              data-monument="${route[0]}"
+            >
+              <span class="material-symbols-outlined text-[14px]">headphones</span>
+              Escuchar audioguía
+            </button>
+          `;
+        }
+      } else {
+        actionsHtml += `
+          <a 
+            href="/mapa?route=${routeStr}"
+            class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+          >
+            <span class="material-symbols-outlined text-[14px]">explore</span>
+            Ver ruta en el mapa
+          </a>
+        `;
+        
+        if (route.length === 1) {
+          actionsHtml += `
+            <a 
+              href="/mapa?route=${route[0]}&play=true"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+            >
+              <span class="material-symbols-outlined text-[14px]">headphones</span>
+              Escuchar audioguía
+            </a>
+          `;
+        }
+      }
+
+      actionsHtml += '</div>';
+    }
+
+    const bubbleEl = el.querySelector('.bg-slate-100');
+    if (bubbleEl) {
+      bubbleEl.innerHTML = `
+        <div class="relative pr-6">
+          <div>
+            ${formattedText}
+          </div>
+          <button 
+            class="ai-speak-btn absolute top-0 right-0 text-slate-400 hover:text-brand-600 transition-colors p-0.5"
+            title="Escuchar respuesta"
+          >
+            <span class="material-symbols-outlined text-[16px]">volume_up</span>
+          </button>
+          ${actionsHtml}
+        </div>
+      `;
+    }
+
+    // Agregar event listener para volumen (TTS)
+    const speakBtn = el.querySelector('.ai-speak-btn') as HTMLButtonElement;
+    if (speakBtn) {
+      speakBtn.addEventListener('click', () => {
+        speakText(text, speakBtn);
+      });
+    }
+
+    // Agregar event listeners para acciones de mapa/audio
+    if (route && route.length > 0 && window.location.pathname.startsWith('/mapa')) {
+      const routeBtn = el.querySelector('.ai-route-trigger');
+      routeBtn?.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route } }));
+      });
+
+      const audioBtn = el.querySelector('.ai-audio-trigger');
+      audioBtn?.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('ai-play-audio', { detail: { monumentId: route[0] } }));
+      });
+    }
+
+    scrollToBottom();
+  }
+
+  // Inicializar altavoz del mensaje de bienvenida
+  const welcomeSpeakBtn = document.querySelector('#ai-agent-messages .ai-speak-btn') as HTMLButtonElement;
+  if (welcomeSpeakBtn) {
+    const welcomeText = '¡Hola! Soy tu asistente de EdificARTE. ¿Querés que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Preguntame lo que quieras!';
+    welcomeSpeakBtn.addEventListener('click', () => {
+      speakText(welcomeText, welcomeSpeakBtn);
+    });
+  }
+
+  // Submit Handler
+  aiForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = aiInput.value.trim();
+    if (!text) return;
+
+    aiInput.value = '';
+    appendUserMessage(text);
+    history.push({ role: 'user', content: text });
+
+    const loaderId = appendAssistantLoader();
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: history }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Response error');
+      }
+
+      const data = await response.json();
+      const botReply = data.reply || 'Che, disculpame pero se me complicó procesar la respuesta.';
+      const botRoute = data.route || [];
+
+      history.push({ role: 'assistant', content: botReply });
+      updateAssistantMessage(loaderId, botReply, botRoute);
+
+      // Si estamos en la página del mapa, trazar la ruta automáticamente al recibirla
+      if (botRoute.length > 0 && window.location.pathname.startsWith('/mapa')) {
+        window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route: botRoute } }));
+      }
+
+    } catch (err) {
+      console.error(err);
+      updateAssistantMessage(loaderId, '¡Che! Perdón, pero se cayó la conexión con el servidor. Intentá de nuevo en un ratito.');
+    }
+  });
+</script>

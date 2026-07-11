@@ -1,5 +1,6 @@
 ---
 import BottomNav from '../components/BottomNav.astro';
+import AiAgent from '../components/AiAgent.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -69,6 +70,8 @@ const {
       <slot />
     </main>
 
+    <AiAgent />
     <BottomNav />
   </body>
 </html>
+
