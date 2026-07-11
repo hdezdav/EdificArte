@@ -27,18 +27,23 @@ export const POST: APIRoute = async ({ request, locals }) => {
       `- ID: "${m.id}", Nombre: "${m.name}", Categoría: "${m.category}", Tipo: "${m.type}", Descripción: "${m.desc}", Coordenadas: [${m.lat}, ${m.lng}]`
     ).join('\n');
 
-    const systemInstruction = `Eres el Asistente AI de EdificARTE, una audioguía y guía turística inteligente para la Ciudad de México (CDMX). Tu personalidad es entusiasta, culta y muy amigable. Respondés en español Rioplatense natural (usá voseo: "querés", "vení", "mirá", "tenés", etc.), pero con conocimiento local de la CDMX.
-Tenés acceso a los siguientes monumentos registrados en el sistema:
+    const systemInstruction = `Eres el Asistente de IA de EdificARTE, una audioguía y guía turística inteligente para la Ciudad de México (CDMX). Tu personalidad es entusiasta, culta y muy servicial.
+IMPORTANTE:
+1. Habla en español de México muy natural y cercano (tuteo respetuoso, NUNCA uses voseo argentino como "querés", "vení", "mirá"). Puedes usar palabras locales suaves como "hola qué tal", "aquí tienes", "chido", "padre".
+2. Tus respuestas conversacionales deben ser sumamente breves y directas al grano (máximo de 2 o 3 oraciones muy cortas y concisas).
+3. Si el usuario te pide una ruta, recomiéndale de 2 a 5 monumentos ordenados lógicamente y explícale brevemente que el mapa le trazará la ruta peatonal real para ir caminando por las calles.
+
+Tienes acceso a los siguientes monumentos registrados en el sistema:
 ${monumentsContext}
 
-Tu objetivo es responder las dudas del usuario. 
-Si el usuario te pide una ruta, recomendación de paseo, o itinerario, seleccioná entre 2 y 5 monumentos adecuados de la lista anterior, ordénalos en una secuencia lógica de visita, y poné sus IDs exactos en el campo 'route' del JSON de salida.
-Si el usuario te pregunta por un solo monumento específico (ej: "¿Me contás de Bellas Artes?"), podés incluir su ID como único elemento en el array 'route' (ej: ["bellas-artes"]).
-Ejemplos de IDs válidos que podés incluir en 'route': ${MONUMENTS.map(m => `"${m.id}"`).join(', ')}. Nunca inventes IDs que no estén en esta lista.
+Tu objetivo es responder las dudas del usuario.
+Si el usuario te pide una ruta, recomendación de paseo o itinerario, selecciona entre 2 y 5 monumentos adecuados de la lista anterior, ordénalos en una secuencia lógica de visita, y pon sus IDs exactos en el campo 'route' del JSON de salida.
+Si el usuario te pregunta por un solo monumento específico (ej: "¿Me cuentas de Bellas Artes?"), puedes incluir su ID como único elemento en el array 'route' (ej: ["bellas-artes"]).
+Ejemplos de IDs válidos que puedes incluir en 'route': ${MONUMENTS.map(m => `"${m.id}"`).join(', ')}. Nunca inventes IDs que no estén en esta lista.
 Si la pregunta del usuario es casual, un saludo, o no requiere trazar una ruta geográfica en el mapa, el campo 'route' debe ser un array vacío [].
-SIEMPRE debés responder en formato JSON que cumpla exactamente con este esquema:
+SIEMPRE debes responder en formato JSON que cumpla exactamente con este esquema:
 {
-  "reply": "Tu respuesta conversacional con tips históricos y detalles de la ruta o monumento si aplica.",
+  "reply": "Tu respuesta conversacional corta mexicana con tips históricos y detalles de la ruta o monumento si aplica.",
   "route": ["id1", "id2", ...]
 }`;
 
@@ -105,7 +110,7 @@ SIEMPRE debés responder en formato JSON que cumpla exactamente con este esquema
     console.error('Error en /api/chat:', err);
     
     // Fallback amigable si la API falla o la key no es válida
-    let fallbackReply = '¡Hola! Che, disculpame pero ando con algunos problemas de conexión en mi cerebro digital. ¿Te puedo ayudar con otra cosa?';
+    let fallbackReply = '¡Hola! Qué tal. Ando con algunos problemas de conexión en mi cerebro digital. ¿Te puedo ayudar con otra cosa?';
     
     // Si el usuario pidió una ruta, podemos hacer un fallback manual para simular el funcionamiento
     const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
@@ -113,7 +118,7 @@ SIEMPRE debés responder en formato JSON que cumpla exactamente con este esquema
     
     if (lastMessage.includes('ruta') || lastMessage.includes('itinerario') || lastMessage.includes('paseo') || lastMessage.includes('museo')) {
       fallbackRoute = ['bellas-artes', 'catedral', 'templo-mayor'];
-      fallbackReply = '¡Mirá! Como ando con un problemita de conexión, te armé una ruta de fallback rápida que arranca en el Palacio de Bellas Artes, pasa por la Catedral Metropolitana y termina en el Templo Mayor. ¡Disfrutá del recorrido!';
+      fallbackReply = '¡Hola! Como ando con un problemita de conexión, te armé una ruta rápida que arranca en el Palacio de Bellas Artes, pasa por la Catedral Metropolitana y termina en el Templo Mayor. ¡Disfruta el recorrido!';
     }
 
     return new Response(

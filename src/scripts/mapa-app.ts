@@ -889,7 +889,7 @@ setTimeout(() => map.invalidateSize(), 200);
 // Rutas de la IA (L.polyline)
 // ---------------------------------------------------------------------------
 
-function drawRoute(ids: string[]) {
+async function drawRoute(ids: string[]) {
   if (activeRouteLine) {
     map.removeLayer(activeRouteLine);
     activeRouteLine = null;
@@ -915,7 +915,42 @@ function drawRoute(ids: string[]) {
     return;
   }
 
-  // Trazar línea de ruta
+  // Intentar obtener la ruta peatonal real de OSRM (OpenStreetMap routing)
+  try {
+    const osrmCoords = found.map(m => `${m.lng},${m.lat}`).join(';');
+    const response = await fetch(`https://router.project-osrm.org/route/v1/foot/${osrmCoords}?overview=full&geometries=geojson`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.routes && data.routes[0]) {
+        const routeCoords = data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]] as [number, number]);
+        
+        activeRouteLine = L.polyline(routeCoords, {
+          color: '#8b5cf6', // Púrpura premium
+          weight: 5,
+          opacity: 0.85,
+          dashArray: '6, 8', // Estilo discontinuo
+          lineCap: 'round',
+          lineJoin: 'round',
+        }).addTo(map);
+
+        map.fitBounds(activeRouteLine.getBounds(), {
+          padding: [60, 60],
+          animate: true,
+          duration: 1.2,
+        });
+
+        if (found[0]) {
+          selectMonument(found[0].id);
+        }
+        return;
+      }
+    }
+  } catch (err) {
+    console.error('Error al obtener ruta peatonal real de OSRM, usando fallback rectilíneo:', err);
+  }
+
+  // Fallback: Trazar línea de ruta recta si OSRM falla
   activeRouteLine = L.polyline(coords, {
     color: '#8b5cf6', // Púrpura premium
     weight: 4,

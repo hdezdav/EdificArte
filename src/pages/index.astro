@@ -13,6 +13,9 @@ interface Experience {
   tagColor: 'emerald' | 'brand' | 'amber' | 'rose';
   url: string;
   cta: string;
+  rating?: number;
+  reviewCount?: number;
+  price?: string;
 }
 
 const experiencias: Experience[] = [
@@ -27,6 +30,9 @@ const experiencias: Experience[] = [
     tagColor: 'emerald',
     url: 'https://turismoregenerativomexico.com',
     cta: 'Conoce más',
+    rating: 4.95,
+    reviewCount: 124,
+    price: '$250 MXN',
   },
   {
     id: 'fundacion-edificate',
@@ -39,6 +45,9 @@ const experiencias: Experience[] = [
     tagColor: 'brand',
     url: 'https://www.fundacionedificate.org/',
     cta: 'Visitar sitio',
+    rating: 4.9,
+    reviewCount: 98,
+    price: 'Gratis',
   },
   {
     id: 'casa-lamm',
@@ -51,6 +60,9 @@ const experiencias: Experience[] = [
     tagColor: 'amber',
     url: 'https://casalamm.com.mx/',
     cta: 'Ver agenda',
+    rating: 4.88,
+    reviewCount: 156,
+    price: 'Varios',
   },
   {
     id: 'mercado-san-juan',
@@ -63,6 +75,9 @@ const experiencias: Experience[] = [
     tagColor: 'rose',
     url: 'https://www.mercadodesanjuan.com.mx/',
     cta: 'Visitar mercado',
+    rating: 4.92,
+    reviewCount: 342,
+    price: 'Gratis',
   },
   {
     id: 'cdmx-walks',
@@ -75,6 +90,9 @@ const experiencias: Experience[] = [
     tagColor: 'emerald',
     url: 'https://cdmxheritage.com/',
     cta: 'Reservar tour',
+    rating: 4.97,
+    reviewCount: 88,
+    price: '$180 MXN',
   },
   {
     id: 'museo-anahuacalli',
@@ -87,6 +105,9 @@ const experiencias: Experience[] = [
     tagColor: 'brand',
     url: 'https://www.museoanahuacalli.org.mx/',
     cta: 'Conoce más',
+    rating: 4.96,
+    reviewCount: 210,
+    price: '$80 MXN',
   },
 ];
 
@@ -123,14 +144,21 @@ const categoryLabel: Record<Category, string> = {
   cultura: 'Cultura',
   gastronomia: 'Gastronomía',
 };
+
+const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cultura', 'gastronomia'];
 ---
 
 <Layout title="EdificARTE — Explorar">
-  <!--
-    El modal de selección de idioma vive en /mapa. Si el usuario llega aquí
-    sin idioma elegido, mostramos un CTA suave en lugar de un redirect
-    automático (que generaba loop y rompía el SEO).
-  -->
+  <script is:inline>
+    // Distinguir entre la primera carga del sitio (inicio de sesión) y navegación interna
+    if (!sessionStorage.getItem('edificarte_session_active')) {
+      sessionStorage.setItem('edificarte_session_active', 'true');
+      if (localStorage.getItem('edificarte_welcome_shown') === 'true') {
+        window.location.href = '/mapa';
+      }
+    }
+  </script>
+
   <script>
     const lang = localStorage.getItem('edificarte_lang');
     const banner = document.getElementById('lang-soft-cta');
@@ -211,67 +239,131 @@ const categoryLabel: Record<Category, string> = {
       }
     </div>
 
-    <!-- Experience Grid -->
-    <div id="experiences-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <!-- Experience Sections (Horizontal Carousels) -->
+    <div id="experiences-sections-container" class="space-y-6">
       {
-        experiencias.map((exp) => (
-          <article
-            data-category={exp.category}
-            class="exp-card group flex flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900"
-          >
-            {/* Image */}
-            <div class="relative h-44 overflow-hidden bg-slate-100">
-              <img
-                src={exp.image}
-                alt={exp.title}
-                loading="lazy"
-                class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <span
-                class={`absolute right-3 top-3 inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md ${tagStyles[exp.tagColor].badge}`}
-              >
-                {categoryLabel[exp.category]}
-              </span>
-            </div>
+        categories.map((cat) => {
+          const catExp = experiencias.filter(exp => exp.category === cat);
+          if (catExp.length === 0) return null;
+          
+          return (
+            <section
+              data-category={cat}
+              class="category-section w-full py-2 border-b border-slate-100/60 dark:border-slate-800/60 last:border-0"
+            >
+              <div class="mb-3 flex items-center justify-between">
+                <h2 class="font-bold text-base md:text-lg tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                  <span class="h-2 w-2 rounded-full bg-brand-500"></span>
+                  {categoryLabel[cat]}
+                </h2>
+                <div class="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    class="scroll-left-btn h-7 w-7 rounded-full border border-slate-200 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-all active:scale-90"
+                    title="Deslizar izquierda"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="scroll-right-btn h-7 w-7 rounded-full border border-slate-200 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-all active:scale-90"
+                    title="Deslizar derecha"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                  </button>
+                </div>
+              </div>
 
-            {/* Body */}
-            <div class="flex flex-1 flex-col gap-3 p-5">
-              <h2 class="text-base font-bold leading-tight text-slate-800 dark:text-slate-100">
-                {exp.title}
-              </h2>
-              <p class="line-clamp-3 text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
-                {exp.description}
-              </p>
-              <a
-                href={exp.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="mt-auto inline-flex items-center gap-1.5 text-[12px] font-semibold text-brand-600 transition-colors hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
+              <div
+                class="scroll-container no-scrollbar -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-3 scroll-smooth"
               >
-                {exp.cta}
-                <svg
-                  class="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
-                  />
-                </svg>
-              </a>
-            </div>
-          </article>
-        ))
+                {
+                  catExp.map((exp) => (
+                    <article
+                      data-category={exp.category}
+                      class="exp-card group relative flex h-[350px] w-[250px] sm:w-[270px] flex-none snap-start flex-col overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md"
+                    >
+                      {/* Image */}
+                      <div class="relative h-44 w-full overflow-hidden rounded-t-2xl bg-slate-100 dark:bg-slate-850">
+                        <img
+                          src={exp.image}
+                          alt={exp.title}
+                          loading="lazy"
+                          class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <button
+                          type="button"
+                          class="favorite-btn absolute top-3 right-3 z-10 rounded-full bg-white/80 dark:bg-slate-900/80 text-neutral-700 dark:text-neutral-300 backdrop-blur-sm hover:bg-white/90 dark:hover:bg-slate-900 hover:text-rose-500 dark:hover:text-rose-400 p-1.5 transition-all shadow-sm active:scale-90"
+                          title="Añadir a favoritos"
+                        >
+                          <svg class="h-4 w-4 fill-none stroke-current stroke-[2px]" viewBox="0 0 24 24">
+                            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                          </svg>
+                        </button>
+                        <span
+                          class={`absolute top-3 left-3 rounded-lg px-2 py-0.5 font-bold text-[10px] uppercase tracking-wider backdrop-blur-md border ${tagStyles[exp.tagColor].badge}`}
+                        >
+                          {categoryLabel[exp.category]}
+                        </span>
+                      </div>
+
+                      {/* Body */}
+                      <div class="flex flex-1 flex-col justify-between p-4 bg-white dark:bg-slate-900">
+                        <div>
+                          <p class="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                            México / Ciudad de México
+                          </p>
+                          <h2 class="text-sm font-bold tracking-tight text-slate-800 dark:text-slate-100 mt-1 line-clamp-1 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                            {exp.title}
+                          </h2>
+                          <p class="text-slate-500 dark:text-slate-400 text-xs tracking-tight mt-1.5 line-clamp-2 leading-relaxed">
+                            {exp.description}
+                          </p>
+                        </div>
+
+                        {/* Footer */}
+                        <div class="mt-auto pt-3 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/60">
+                          {exp.rating && (
+                            <span class="flex items-center gap-0.5 text-amber-500">
+                              <span class="material-symbols-outlined text-[14px] !font-bold">star</span>
+                              <span class="text-slate-800 dark:text-slate-200">{exp.rating.toFixed(2)}</span>
+                            </span>
+                          )}
+                          {exp.reviewCount && (
+                            <span class="text-slate-400 dark:text-slate-500 font-normal">
+                              ({exp.reviewCount})
+                            </span>
+                          )}
+                          {exp.price && (
+                            <span class="text-slate-400 dark:text-slate-500 font-normal ml-0.5">
+                              · {exp.price}
+                            </span>
+                          )}
+
+                          <a
+                            href={exp.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+                          >
+                            {exp.cta}
+                            <span class="material-symbols-outlined text-[12px] transition-transform duration-200 group-hover:translate-x-0.5">arrow_forward</span>
+                          </a>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                }
+              </div>
+            </section>
+          );
+        })
       }
 
       <!-- Empty state (shown by JS when no matches) -->
       <div
         id="empty-state"
-        class="hidden flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300/60 bg-white/60 p-10 text-center dark:border-slate-700/60 dark:bg-slate-900/40 md:col-span-2"
+        class="hidden flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300/60 bg-white/60 p-10 text-center dark:border-slate-700/60 dark:bg-slate-900/40"
       >
         <span class="material-symbols-outlined text-3xl text-slate-400"
           >search_off</span
@@ -345,7 +437,10 @@ const categoryLabel: Record<Category, string> = {
   }
 
   .exp-card.hidden-card {
-    display: none;
+    display: none !important;
+  }
+  .category-section.hidden-section {
+    display: none !important;
   }
 
   @keyframes bounce-slow {
@@ -362,9 +457,9 @@ const categoryLabel: Record<Category, string> = {
 </style>
 
 <script>
-  // Filtrado y búsqueda client-side de experiencias.
+  // Filtrado y búsqueda client-side de experiencias con secciones horizontales.
   const chips = document.querySelectorAll<HTMLButtonElement>('.filter-chip');
-  const cards = document.querySelectorAll<HTMLElement>('.exp-card');
+  const sections = document.querySelectorAll<HTMLElement>('.category-section');
   const emptyState = document.getElementById('empty-state');
   const searchInput = document.getElementById('explore-search-input') as HTMLInputElement;
 
@@ -372,23 +467,37 @@ const categoryLabel: Record<Category, string> = {
   let searchQuery = '';
 
   function updateList() {
-    let visibleCount = 0;
-    cards.forEach((card) => {
-      const title = card.querySelector('h2')?.textContent?.toLowerCase() || '';
-      const desc = card.querySelector('p')?.textContent?.toLowerCase() || '';
-      const category = card.dataset.category || '';
+    let totalVisibleCount = 0;
 
-      const matchesCategory = activeCategory === 'todos' || category === activeCategory;
-      const matchesSearch = title.includes(searchQuery) || desc.includes(searchQuery);
+    sections.forEach((section) => {
+      const sectionCategory = section.dataset.category || '';
+      const cards = section.querySelectorAll<HTMLElement>('.exp-card');
+      let visibleCardsInSection = 0;
 
-      const isVisible = matchesCategory && matchesSearch;
-      card.classList.toggle('hidden-card', !isVisible);
-      if (isVisible) visibleCount++;
+      cards.forEach((card) => {
+        const title = card.querySelector('h2')?.textContent?.toLowerCase() || '';
+        const desc = card.querySelector('p')?.textContent?.toLowerCase() || '';
+
+        const matchesCategory = activeCategory === 'todos' || sectionCategory === activeCategory;
+        const matchesSearch = title.includes(searchQuery) || desc.includes(searchQuery);
+
+        const isVisible = matchesCategory && matchesSearch;
+        card.classList.toggle('hidden-card', !isVisible);
+        if (isVisible) {
+          visibleCardsInSection++;
+        }
+      });
+
+      // Si la categoría de la sección no coincide con la activa, o si no hay cartas visibles en ella, ocultamos toda la sección
+      const isSectionVisible = (activeCategory === 'todos' || sectionCategory === activeCategory) && (visibleCardsInSection > 0);
+      section.classList.toggle('hidden-section', !isSectionVisible);
+      
+      totalVisibleCount += visibleCardsInSection;
     });
 
     if (emptyState) {
-      emptyState.classList.toggle('hidden', visibleCount > 0);
-      emptyState.classList.toggle('flex', visibleCount === 0);
+      emptyState.classList.toggle('hidden', totalVisibleCount > 0);
+      emptyState.classList.toggle('flex', totalVisibleCount === 0);
     }
   }
 
@@ -408,5 +517,40 @@ const categoryLabel: Record<Category, string> = {
   searchInput?.addEventListener('input', (e) => {
     searchQuery = (e.target as HTMLInputElement).value.toLowerCase().trim();
     updateList();
+  });
+
+  // Manejar el scroll horizontal con los botones chevron
+  document.querySelectorAll('.category-section').forEach((section) => {
+    const container = section.querySelector('.scroll-container');
+    const leftBtn = section.querySelector('.scroll-left-btn');
+    const rightBtn = section.querySelector('.scroll-right-btn');
+
+    if (container) {
+      leftBtn?.addEventListener('click', () => {
+        container.scrollBy({ left: -280, behavior: 'smooth' });
+      });
+      rightBtn?.addEventListener('click', () => {
+        container.scrollBy({ left: 280, behavior: 'smooth' });
+      });
+    }
+  });
+
+  // Hacer interactivos los botones de favoritos (corazón)
+  document.querySelectorAll('.favorite-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const svg = btn.querySelector('svg');
+      if (svg) {
+        const isFavorited = svg.classList.contains('fill-rose-500');
+        if (isFavorited) {
+          svg.classList.remove('fill-rose-500', 'text-rose-500');
+          svg.classList.add('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
+        } else {
+          svg.classList.remove('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
+          svg.classList.add('fill-rose-500', 'text-rose-500');
+        }
+      }
+    });
   });
 </script>
