@@ -259,7 +259,7 @@ import AiLoader from './ui/AiLoader.astro';
         <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[12px]">
           <span class="material-symbols-outlined text-[14px]">smart_toy</span>
         </span>
-        <div class="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none px-3.5 py-2 text-[12px] shadow-sm leading-relaxed flex items-center min-h-[32px]">
+        <div class="ai-bubble-content bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none px-3.5 py-2 text-[12px] shadow-sm leading-relaxed flex items-center min-h-[32px]">
           <div class="loader-wrapper !h-6 !scale-75 origin-left">
             <span class="loader-letter" style="--i: 0">P</span>
             <span class="loader-letter" style="--i: 1">e</span>
@@ -345,7 +345,7 @@ import AiLoader from './ui/AiLoader.astro';
       actionsHtml += '</div>';
     }
 
-    const bubbleEl = el.querySelector('.bg-slate-100');
+    const bubbleEl = el.querySelector('.ai-bubble-content');
     if (bubbleEl) {
       bubbleEl.classList.remove('flex', 'items-center', 'min-h-[32px]');
       bubbleEl.classList.add('block', 'break-words');
