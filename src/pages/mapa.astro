@@ -2,67 +2,492 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="EdificARTE — Mapa">
-  <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-extrabold tracking-tight">Mapa de Monumentos</h1>
+<Layout title="EdificARTE — Mapa" fullScreen={true}>
+  <!-- Floating Search Bar -->
+  <div class="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col items-center gap-2 px-5 pt-[env(safe-area-inset-top,12px)]">
+    <div class="pointer-events-auto flex w-full max-w-lg items-center rounded-full border border-black/[0.06] bg-white/90 px-4 py-3 shadow-[0_2px_16px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all">
+      <span class="material-symbols-outlined mr-2.5 text-[20px] text-[#3f043a]">search</span>
+      <input
+        type="text"
+        id="search-input"
+        placeholder="Buscar monumentos o audioguías..."
+        class="w-full min-w-0 flex-grow border-none bg-transparent p-0 text-[13px] font-medium text-[#1b1c1c] placeholder-[#999] outline-none focus:ring-0"
+      />
+      <button class="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#3f043a] text-white transition-all active:scale-90">
+        <span class="material-symbols-outlined text-[16px]">tune</span>
+      </button>
     </div>
 
-    {/* Map Mock Placeholder */}
-    <div
-      class="relative flex h-96 flex-col items-center justify-center overflow-hidden rounded-2xl border border-slate-200/60 bg-slate-100 p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900"
+    <!-- Filter Chips -->
+    <div class="no-scrollbar pointer-events-auto flex w-full max-w-lg gap-2 overflow-x-auto px-0.5 pb-1">
+      <button data-filter="all" class="filter-chip active flex-shrink-0 rounded-full bg-[#3f043a] px-4 py-[7px] text-[11px] font-semibold text-white shadow-sm transition-all active:scale-95">
+        Todos
+      </button>
+      <button data-filter="museo" class="filter-chip flex-shrink-0 rounded-full border border-white/50 bg-white/75 px-4 py-[7px] text-[11px] font-semibold text-[#1b1c1c] shadow-sm backdrop-blur-lg transition-all active:scale-95">
+        🏛️ Museos
+      </button>
+      <button data-filter="templo" class="filter-chip flex-shrink-0 rounded-full border border-white/50 bg-white/75 px-4 py-[7px] text-[11px] font-semibold text-[#1b1c1c] shadow-sm backdrop-blur-lg transition-all active:scale-95">
+        ⛪ Templos
+      </button>
+      <button data-filter="arqueologia" class="filter-chip flex-shrink-0 rounded-full border border-white/50 bg-white/75 px-4 py-[7px] text-[11px] font-semibold text-[#1b1c1c] shadow-sm backdrop-blur-lg transition-all active:scale-95">
+        🏺 Arqueología
+      </button>
+      <button data-filter="rascacielos" class="filter-chip flex-shrink-0 rounded-full border border-white/50 bg-white/75 px-4 py-[7px] text-[11px] font-semibold text-[#1b1c1c] shadow-sm backdrop-blur-lg transition-all active:scale-95">
+        🗼 Miradores
+      </button>
+    </div>
+  </div>
+
+  <!-- Fullscreen Map -->
+  <div id="map" class="absolute inset-0 z-0 h-full w-full"></div>
+
+  <!-- Floating Controls -->
+  <div class="absolute bottom-56 right-3 z-20 flex flex-col gap-2 sm:right-4">
+    <button
+      id="btn-locate"
+      class="flex h-10 w-10 items-center justify-center rounded-full bg-[#3f043a] text-white shadow-lg transition-all active:scale-90 sm:h-11 sm:w-11"
+      aria-label="Centrar ubicación"
     >
-      {/* Decorative Grid Background to mock a map */}
-      <div
-        class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-40 dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)]"
-      >
+      <span class="material-symbols-outlined text-[18px] sm:text-[20px]" id="locate-icon">my_location</span>
+    </button>
+    <button
+      id="btn-style-toggle"
+      class="flex h-10 w-10 items-center justify-center rounded-full bg-[#3f043a] text-white shadow-lg transition-all active:scale-90 sm:h-11 sm:w-11"
+      aria-label="Cambiar estilo"
+    >
+      <span class="material-symbols-outlined text-[18px] sm:text-[20px]">layers</span>
+    </button>
+  </div>
+
+  <!-- Bottom Sheet -->
+  <div
+    id="bottom-sheet"
+    class="absolute bottom-20 left-3 right-3 z-20 mx-auto max-w-lg overflow-hidden rounded-3xl border border-white/50 bg-white/85 shadow-[0_-8px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl transition-all duration-300"
+  >
+    <!-- Drag Handle -->
+    <div class="flex w-full justify-center pb-1 pt-3">
+      <div class="h-[5px] w-10 rounded-full bg-black/15"></div>
+    </div>
+
+    <!-- Content -->
+    <div class="max-h-[38vh] overflow-y-auto px-4 pb-5" id="sheet-body">
+      <!-- List View -->
+      <div id="view-list">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-[15px] font-bold text-[#1b1c1c]">Monumentos Cercanos</h2>
+          <span id="geo-status" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#5c5c5c]">
+            <span id="geo-dot" class="h-2 w-2 rounded-full bg-[#c0c0c0]"></span>
+            <span id="geo-text">Inactivo</span>
+          </span>
+        </div>
+        <div class="no-scrollbar flex flex-col gap-2" id="monuments-list-container"></div>
       </div>
 
-      {/* Mock Map pin at the center */}
-      <div
-        class="relative z-10 mb-6 animate-bounce rounded-full bg-brand-500 p-4 text-white shadow-lg shadow-brand-500/30"
-      >
-        <svg
-          class="h-8 w-8"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"></path>
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25gC4.5 6.358 7.858 3 12 3c4.142 0 7.5 3.358 7.5 7.5z"
-          ></path>
-        </svg>
-        <span
-          class="absolute -inset-1 animate-ping rounded-full bg-brand-500 opacity-25"
-        ></span>
-      </div>
+      <!-- Detail View -->
+      <div id="view-detail" class="hidden">
+        <div class="mb-3 flex items-start justify-between">
+          <div class="flex gap-3">
+            <span id="detail-emoji" class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-[#f5f3ff] text-2xl">🏛️</span>
+            <div>
+              <h3 id="detail-name" class="text-[15px] font-bold leading-tight text-[#1b1c1c]">Palacio de Bellas Artes</h3>
+              <p id="detail-category" class="mt-0.5 text-[12px] font-medium text-[#5c5c5c]">
+                Museo / Teatro · <span id="detail-dist" class="font-semibold text-[#1b1c1c]">0.3 km</span>
+              </p>
+            </div>
+          </div>
+          <button id="btn-close-detail" class="rounded-full p-1.5 text-[#a0a0a0] transition-colors hover:bg-black/5">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
 
-      <div class="z-10 max-w-sm space-y-2 text-center">
-        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-200">
-          Mapa Interactivo Geolocalizado
-        </h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-          Aquí verás el mapa interactivo con lugares históricos de la CDMX. La
-          app detectará cuando ingreses a un área de interés para activar las
-          audioguías y darte badges.
+        <p id="detail-desc" class="mb-3 text-[12px] leading-relaxed text-[#5c5c5c]">
+          Una de las casas de ópera más famosas del mundo.
         </p>
-      </div>
 
-      <div class="z-10 pt-4">
-        <span
-          class="inline-flex items-center gap-1.5 rounded-full border border-brand-200/50 bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-600 dark:border-brand-800/50 dark:bg-brand-950/40 dark:text-brand-400"
-        >
-          Próximamente en Slice 2+
-        </span>
+        <!-- Audio Player -->
+        <div class="rounded-2xl border border-black/5 bg-[#f8f7f7] p-3.5">
+          <button
+            id="btn-play-audio"
+            class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#3f043a] px-4 py-2.5 font-semibold text-white shadow-md shadow-[#3f043a]/20 transition-all active:scale-[0.97]"
+          >
+            <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
+            <span class="text-[12px]">Escuchar Audioguía (<span id="detail-duration">4:15</span>)</span>
+          </button>
+
+          <div id="audio-player" class="hidden space-y-3 pt-3">
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-[11px] font-bold text-[#3f043a]">
+                <span class="relative flex h-2 w-2">
+                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#3f043a] opacity-60"></span>
+                  <span class="relative inline-flex h-2 w-2 rounded-full bg-[#3f043a]"></span>
+                </span>
+                Reproduciendo...
+              </span>
+              <span id="player-time" class="font-mono text-[10px] font-semibold text-[#5c5c5c]">0:00 / 4:15</span>
+            </div>
+            <div class="h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-black/8" id="progress-bar-container">
+              <div id="progress-bar-fill" class="h-full w-0 rounded-full bg-[#3f043a] transition-all duration-100"></div>
+            </div>
+            <div class="flex items-center justify-center gap-6">
+              <button id="btn-player-rw" class="text-[#5c5c5c] active:scale-90"><span class="material-symbols-outlined text-[20px]">replay_10</span></button>
+              <button id="btn-player-toggle" class="flex h-10 w-10 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a] transition-all active:scale-90">
+                <span class="material-symbols-outlined text-[22px]" id="player-toggle-icon">pause</span>
+              </button>
+              <button id="btn-player-ff" class="text-[#5c5c5c] active:scale-90"><span class="material-symbols-outlined text-[20px]">forward_10</span></button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </Layout>
+
+<style>
+  :global(.leaflet-container) {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+  :global(.leaflet-control-zoom),
+  :global(.leaflet-control-attribution) {
+    display: none !important;
+  }
+  :global(.leaflet-popup-content-wrapper) {
+    border-radius: 1rem !important;
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1) !important;
+    padding: 0 !important;
+  }
+  :global(.leaflet-popup-content) {
+    margin: 12px 16px !important;
+  }
+  :global(.leaflet-popup-tip) {
+    background: white !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .filter-chip.active {
+    background-color: #3f043a !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  :global(.monument-pin) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 2.5px solid #e0d0ff;
+    border-radius: 50%;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: pointer;
+  }
+  :global(.monument-pin:hover) {
+    transform: scale(1.12);
+  }
+  :global(.monument-pin.selected) {
+    border-color: #3f043a;
+    box-shadow: 0 0 0 4px rgba(63, 4, 58, 0.18), 0 4px 16px rgba(0, 0, 0, 0.15);
+    transform: scale(1.2) translateY(-3px);
+    z-index: 1000 !important;
+  }
+
+  :global(.user-dot) {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    background: #3f043a;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+  }
+  :global(.user-dot::after) {
+    content: '';
+    position: absolute;
+    inset: -7px;
+    border-radius: 50%;
+    background: rgba(63, 4, 58, 0.25);
+    animation: loc-pulse 2s ease-out infinite;
+  }
+  @keyframes loc-pulse {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+  }
+</style>
+
+<script>
+  import 'leaflet/dist/leaflet.css';
+  import L from 'leaflet';
+
+  const MONUMENTS = [
+    { id: 'bellas-artes', name: 'Palacio de Bellas Artes', category: 'Museo / Teatro', dist: '0.3 km', lat: 19.4352, lng: -99.1412, emoji: '🏛️', desc: 'Una de las casas de ópera más famosas del mundo, conocida por su arquitectura Art Nouveau exterior y Art Déco interior.', audioDuration: '4:15', type: 'museo' },
+    { id: 'catedral', name: 'Catedral Metropolitana', category: 'Iglesia / Templo', dist: '0.5 km', lat: 19.4326, lng: -99.1332, emoji: '⛪', desc: 'La catedral más antigua de América Latina, sede de la Arquidiócesis Primada de México.', audioDuration: '5:30', type: 'templo' },
+    { id: 'templo-mayor', name: 'Templo Mayor', category: 'Zona Arqueológica', dist: '0.6 km', lat: 19.4345, lng: -99.1317, emoji: '🏺', desc: 'El centro neurálgico del imperio mexica, dedicado a Huitzilopochtli y Tláloc.', audioDuration: '6:45', type: 'arqueologia' },
+    { id: 'palacio-nacional', name: 'Palacio Nacional', category: 'Edificio Histórico', dist: '0.7 km', lat: 19.4320, lng: -99.1312, emoji: '🏰', desc: 'Sede del Poder Ejecutivo Federal de México, albergando increíbles murales de Diego Rivera.', audioDuration: '3:50', type: 'museo' },
+    { id: 'torre-latino', name: 'Torre Latinoamericana', category: 'Mirador / Rascacielos', dist: '0.9 km', lat: 19.4338, lng: -99.1404, emoji: '🗼', desc: 'Rascacielos histórico de 44 pisos, famoso por resistir los terremotos más fuertes sin sufrir daños.', audioDuration: '4:10', type: 'rascacielos' },
+  ];
+
+  const CDMX = [19.4326, -99.1332];
+
+  const TILES = {
+    osm: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    sat: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  };
+  const TILE_ORDER = ['osm', 'light', 'dark', 'sat'];
+
+  let tileIdx = 0;
+  const map = L.map('map', { center: CDMX, zoom: 15, zoomControl: false, attributionControl: false });
+  let tileLayer = L.tileLayer(TILES[TILE_ORDER[tileIdx]], { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+
+  // --- Pin helpers ---
+  const pinIcon = (emoji, selected = false) =>
+    L.divIcon({
+      html: `<div class="monument-pin ${selected ? 'selected' : ''}"><span style="font-size:20px;line-height:1">${emoji}</span></div>`,
+      className: '',
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -22],
+    });
+
+  const markers = [];
+
+  function addMarkers(list) {
+    markers.forEach((m) => map.removeLayer(m.inst));
+    markers.length = 0;
+    list.forEach((m) => {
+      const inst = L.marker([m.lat, m.lng], { icon: pinIcon(m.emoji) })
+        .addTo(map)
+        .on('click', () => selectMonument(m.id));
+      markers.push({ id: m.id, emoji: m.emoji, inst });
+    });
+  }
+
+  addMarkers(MONUMENTS);
+
+  // --- DOM refs ---
+  const viewList = document.getElementById('view-list');
+  const viewDetail = document.getElementById('view-detail');
+  const listContainer = document.getElementById('monuments-list-container');
+  const searchInput = document.getElementById('search-input');
+
+  // --- List render ---
+  function renderList(list) {
+    listContainer.innerHTML = '';
+    if (!list.length) {
+      listContainer.innerHTML = '<p class="py-6 text-center text-[12px] text-[#a0a0a0]">No se encontraron monumentos.</p>';
+      return;
+    }
+    list.forEach((m) => {
+      const el = document.createElement('div');
+      el.className =
+        'flex items-center gap-3 rounded-2xl border border-black/[0.04] bg-white/60 p-2.5 backdrop-blur-md transition-all hover:bg-white/90 cursor-pointer active:scale-[0.98]';
+      el.innerHTML = `
+        <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#f5f3ff] text-xl">${m.emoji}</span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-[13px] font-bold text-[#1b1c1c]">${m.name}</p>
+          <p class="text-[11px] font-medium text-[#5c5c5c]">${m.category} · <span class="font-semibold">${m.dist}</span></p>
+        </div>
+        <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a]">
+          <span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1">play_arrow</span>
+        </span>`;
+      el.addEventListener('click', () => selectMonument(m.id));
+      listContainer.appendChild(el);
+    });
+  }
+
+  renderList(MONUMENTS);
+
+  // --- Selection ---
+  let selectedId = null;
+
+  function selectMonument(id) {
+    selectedId = id;
+    const m = MONUMENTS.find((x) => x.id === id);
+    if (!m) return;
+
+    map.setView([m.lat, m.lng], 16, { animate: true });
+
+    document.getElementById('detail-emoji').textContent = m.emoji;
+    document.getElementById('detail-name').textContent = m.name;
+    document.getElementById('detail-category').innerHTML = `${m.category} · <span id="detail-dist" class="font-semibold text-[#1b1c1c]">${m.dist}</span>`;
+    document.getElementById('detail-desc').textContent = m.desc;
+    document.getElementById('detail-duration').textContent = m.audioDuration;
+    document.getElementById('player-time').textContent = `0:00 / ${m.audioDuration}`;
+
+    stopAudio();
+
+    markers.forEach((x) => {
+      x.inst.setIcon(pinIcon(x.emoji, x.id === id));
+    });
+
+    viewList.classList.add('hidden');
+    viewDetail.classList.remove('hidden');
+  }
+
+  function deselect() {
+    selectedId = null;
+    stopAudio();
+    markers.forEach((x) => x.inst.setIcon(pinIcon(x.emoji, false)));
+    viewDetail.classList.add('hidden');
+    viewList.classList.remove('hidden');
+  }
+
+  document.getElementById('btn-close-detail').addEventListener('click', deselect);
+
+  // --- Search ---
+  searchInput.addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    const f = MONUMENTS.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q),
+    );
+    addMarkers(f);
+    renderList(f);
+    if (selectedId && !f.some((m) => m.id === selectedId)) deselect();
+  });
+
+  // --- Filter chips ---
+  const chips = document.querySelectorAll('.filter-chip');
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      chips.forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      const filter = chip.getAttribute('data-filter');
+      const f = filter === 'all' ? MONUMENTS : MONUMENTS.filter((m) => m.type === filter);
+      addMarkers(f);
+      renderList(f);
+      if (selectedId && !f.some((m) => m.id === selectedId)) deselect();
+    });
+  });
+
+  // --- Tile style toggle ---
+  document.getElementById('btn-style-toggle').addEventListener('click', () => {
+    map.removeLayer(tileLayer);
+    tileIdx = (tileIdx + 1) % TILE_ORDER.length;
+    tileLayer = L.tileLayer(TILES[TILE_ORDER[tileIdx]], { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+  });
+
+  // --- Audio simulation ---
+  const btnPlay = document.getElementById('btn-play-audio');
+  const playerUI = document.getElementById('audio-player');
+  const progressFill = document.getElementById('progress-bar-fill');
+  const progressContainer = document.getElementById('progress-bar-container');
+  const timeLabel = document.getElementById('player-time');
+  const toggleBtn = document.getElementById('btn-player-toggle');
+  const toggleIcon = document.getElementById('player-toggle-icon');
+
+  let timer = null,
+    sec = 0,
+    dur = 0,
+    playing = false;
+
+  const parseDur = (s) => {
+    const p = s.split(':');
+    return +p[0] * 60 + +p[1];
+  };
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  function updateUI() {
+    const m = MONUMENTS.find((x) => x.id === selectedId);
+    if (!m) return;
+    progressFill.style.width = `${(sec / dur) * 100}%`;
+    timeLabel.textContent = `${fmt(sec)} / ${m.audioDuration}`;
+  }
+
+  function startAudio() {
+    const m = MONUMENTS.find((x) => x.id === selectedId);
+    if (!m) return;
+    dur = parseDur(m.audioDuration);
+    btnPlay.classList.add('hidden');
+    playerUI.classList.remove('hidden');
+    playing = true;
+    toggleIcon.textContent = 'pause';
+    timer = setInterval(() => {
+      if (sec < dur) { sec++; updateUI(); } else stopAudio();
+    }, 1000);
+  }
+
+  function toggleAudio() {
+    if (playing) {
+      clearInterval(timer);
+      playing = false;
+      toggleIcon.textContent = 'play_arrow';
+    } else {
+      playing = true;
+      toggleIcon.textContent = 'pause';
+      const m = MONUMENTS.find((x) => x.id === selectedId);
+      if (!m) return;
+      dur = parseDur(m.audioDuration);
+      timer = setInterval(() => {
+        if (sec < dur) { sec++; updateUI(); } else stopAudio();
+      }, 1000);
+    }
+  }
+
+  function stopAudio() {
+    clearInterval(timer);
+    timer = null;
+    sec = 0;
+    playing = false;
+    progressFill.style.width = '0%';
+    btnPlay.classList.remove('hidden');
+    playerUI.classList.add('hidden');
+  }
+
+  btnPlay.addEventListener('click', startAudio);
+  toggleBtn.addEventListener('click', toggleAudio);
+  document.getElementById('btn-player-rw').addEventListener('click', () => { sec = Math.max(0, sec - 10); updateUI(); });
+  document.getElementById('btn-player-ff').addEventListener('click', () => { sec = Math.min(dur, sec + 10); updateUI(); });
+  progressContainer.addEventListener('click', (e) => {
+    const r = progressContainer.getBoundingClientRect();
+    sec = Math.round(((e.clientX - r.left) / r.width) * dur);
+    updateUI();
+  });
+
+  // --- Geolocation ---
+  let userMarker = null,
+    userCircle = null;
+  const dot = document.getElementById('geo-dot');
+  const geoText = document.getElementById('geo-text');
+
+  const setGeo = (state, msg) => {
+    if (!dot || !geoText) return;
+    dot.className = `h-2 w-2 rounded-full ${state === 'ok' ? 'bg-green-500' : state === 'error' ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`;
+    geoText.textContent = msg;
+  };
+
+  const onPos = (pos) => {
+    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+    if (userMarker) {
+      userMarker.setLatLng([lat, lng]);
+      userCircle?.setLatLng([lat, lng]).setRadius(accuracy);
+    } else {
+      userCircle = L.circle([lat, lng], { radius: accuracy, color: '#3f043a', fillColor: '#3f043a', fillOpacity: 0.06, weight: 1 }).addTo(map);
+      userMarker = L.marker([lat, lng], {
+        icon: L.divIcon({ className: 'user-dot', iconSize: [18, 18], iconAnchor: [9, 9] }),
+      }).addTo(map);
+    }
+    setGeo('ok', 'Ubicación activa');
+  };
+
+  const onErr = (err) => setGeo('error', err.code === 1 ? 'Permiso denegado' : 'Sin señal');
+
+  if ('geolocation' in navigator) {
+    setGeo('loading', 'Localizando...');
+    navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+  } else {
+    setGeo('error', 'GPS no soportado');
+  }
+
+  document.getElementById('btn-locate').addEventListener('click', () => {
+    if (userMarker) map.setView(userMarker.getLatLng(), 16, { animate: true });
+    else map.setView(CDMX, 15, { animate: true });
+  });
+
+  setTimeout(() => map.invalidateSize(), 200);
+</script>
