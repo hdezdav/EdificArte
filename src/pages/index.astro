@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import DemoOne from '../components/ui/demo.tsx';
 
 type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia';
 
@@ -345,7 +346,13 @@ const categoryLabel: Record<Category, string> = {
         id="ai-agent-popover"
         class="hidden absolute bottom-16 right-0 mb-2 w-72 rounded-3xl border border-slate-200/50 bg-white/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-xl transition-all duration-300 text-slate-800 dark:border-slate-800/50 dark:bg-slate-900/95 dark:text-white"
       >
-        <div class="flex items-start gap-3">
+        <!-- Loading State View -->
+        <div id="ai-agent-loading-view" class="flex flex-col items-center justify-center py-4">
+          <DemoOne client:load />
+        </div>
+
+        <!-- Content State View (hidden initially) -->
+        <div id="ai-agent-content-view" class="hidden flex items-start gap-3">
           <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-brand-600 to-purple-600 text-white text-base">
             <span class="material-symbols-outlined text-[18px]">smart_toy</span>
           </span>
@@ -442,17 +449,43 @@ const categoryLabel: Record<Category, string> = {
     updateList();
   });
 
-  // Toggle del Popover del Asistente IA
+  // Toggle del Popover del Asistente IA con simulación de carga
   const aiBtn = document.getElementById('ai-agent-btn');
   const aiPopover = document.getElementById('ai-agent-popover');
+  const aiLoadingView = document.getElementById('ai-agent-loading-view');
+  const aiContentView = document.getElementById('ai-agent-content-view');
+  let aiTimeout: number | null = null;
+
   if (aiBtn && aiPopover) {
     aiBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      aiPopover.classList.toggle('hidden');
+      const isHidden = aiPopover.classList.contains('hidden');
+
+      if (isHidden) {
+        aiPopover.classList.remove('hidden');
+        aiLoadingView?.classList.remove('hidden');
+        aiContentView?.classList.add('hidden');
+
+        if (aiTimeout) clearTimeout(aiTimeout);
+        aiTimeout = window.setTimeout(() => {
+          aiLoadingView?.classList.add('hidden');
+          aiContentView?.classList.remove('hidden');
+        }, 2200);
+      } else {
+        aiPopover.classList.add('hidden');
+        if (aiTimeout) {
+          clearTimeout(aiTimeout);
+          aiTimeout = null;
+        }
+      }
     });
 
     document.addEventListener('click', () => {
       aiPopover.classList.add('hidden');
+      if (aiTimeout) {
+        clearTimeout(aiTimeout);
+        aiTimeout = null;
+      }
     });
 
     aiPopover.addEventListener('click', (e) => {
