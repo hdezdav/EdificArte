@@ -49,9 +49,9 @@ SIEMPRE debés responder en formato JSON que cumpla exactamente con este esquema
       parts: [{ text: msg.content }]
     }));
 
-    // Hacer la petición a la API de Gemini 3.1 Pro Preview
+    // Hacer la petición a la API de Gemini 3.5 Flash
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
