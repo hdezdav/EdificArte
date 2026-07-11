@@ -14,6 +14,24 @@ let errorMsg = '';
 let successMsg = '';
 let activeTab = 'login'; // login | register
 
+// Verificar si tiene cookie de invitado activa
+const isGuest = Astro.cookies.get('edificarte_guest')?.value === 'true';
+
+if (!user && isGuest) {
+  user = {
+    id: 'guest',
+    email: 'invitado@edificarte.app',
+    name: 'Viajero Invitado',
+    avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&h=256&q=80',
+    bio: 'Explorando EdificARTE como invitado. ¡Creá una cuenta para guardar tu progreso on-chain de forma permanente!',
+    points: 0,
+    likes: 0,
+    visits: 0,
+    created_at: new Date().toISOString(),
+    isGuest: true
+  } as any;
+}
+
 // Manejo de peticiones POST (acciones de autenticación y perfil)
 if (Astro.request.method === 'POST') {
   try {
@@ -50,6 +68,9 @@ if (Astro.request.method === 'POST') {
             .bind(userId, email, hashedPassword, name, avatarUrl, bio)
             .run();
 
+          // Eliminar cookie de invitado si existía
+          Astro.cookies.delete('edificarte_guest', { path: '/' });
+
           // Crear sesión
           await createSession(Astro.cookies, env, userId);
           return Astro.redirect('/yo');
@@ -74,12 +95,25 @@ if (Astro.request.method === 'POST') {
         if (!dbUser) {
           errorMsg = 'Correo o contraseña incorrectos.';
         } else {
+          // Eliminar cookie de invitado si existía
+          Astro.cookies.delete('edificarte_guest', { path: '/' });
+
           await createSession(Astro.cookies, env, dbUser.id);
           return Astro.redirect('/yo');
         }
       }
+    } else if (action === 'guest') {
+      // Iniciar sesión como invitado temporal
+      Astro.cookies.set('edificarte_guest', 'true', {
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 365 // 1 año
+      });
+      return Astro.redirect('/yo');
     } else if (action === 'edit_profile') {
-      if (!user) return Astro.redirect('/yo');
+      if (!user || user.isGuest) return Astro.redirect('/yo');
 
       const name = formData.get('name')?.toString().trim();
       const bio = formData.get('bio')?.toString().trim();
@@ -100,6 +134,7 @@ if (Astro.request.method === 'POST') {
       }
     } else if (action === 'logout') {
       await deleteSession(Astro.cookies, env);
+      Astro.cookies.delete('edificarte_guest', { path: '/' });
       return Astro.redirect('/yo');
     }
   } catch (err: any) {
@@ -107,8 +142,8 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-// Cargar insignias del usuario (si está autenticado)
-const unlockedBadges = user ? await getUserBadges(env, user.id) : [];
+// Cargar insignias del usuario (si está autenticado y no es invitado)
+const unlockedBadges = user && !user.isGuest ? await getUserBadges(env, user.id) : [];
 
 const badges = [
   {
@@ -166,6 +201,38 @@ const badges = [
         </div>
       )}
 
+      {user.isGuest && (
+        <>
+          <div id="is-guest-flag" class="hidden"></div>
+          <div class="md:col-span-3 rounded-[2.5rem] border border-amber-200/50 bg-amber-50/70 p-6 text-sm text-amber-800 shadow-sm backdrop-blur-md dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-300 flex items-start gap-4">
+            <span class="material-symbols-outlined text-[24px] text-amber-600 dark:text-amber-400 mt-0.5 select-none">warning</span>
+            <div class="flex-1">
+              <p class="font-bold text-amber-900 dark:text-amber-200">Navegando como Invitado</p>
+              <p class="text-xs mt-1 leading-relaxed">
+                Estás usando una cuenta temporal. Tu progreso (insignias, puntos y visitas) se guardará localmente. Si no te registrás, perderás todo al limpiar los datos o cambiar de navegador.
+              </p>
+              <div class="mt-4 flex items-center gap-3">
+                <button
+                  id="btn-guest-register"
+                  class="rounded-xl bg-[#3f043a] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#3f043a]/90 transition-all active:scale-[0.97]"
+                >
+                  Crear una Cuenta
+                </button>
+                <form method="POST" action="/yo" class="inline">
+                  <input type="hidden" name="action" value="logout" />
+                  <button
+                    type="submit"
+                    class="text-xs font-bold text-amber-700 underline dark:text-amber-400 hover:text-amber-900 transition-colors"
+                  >
+                    Salir de modo Invitado
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <!-- Columna Izquierda: Tarjeta de Perfil -->
       <div class="flex flex-col justify-start md:col-span-1">
         <div class="relative mx-auto w-full max-w-sm rounded-[2rem] border border-slate-200/60 bg-white shadow-lg dark:border-slate-800/60 dark:bg-slate-900">
@@ -204,14 +271,18 @@ const badges = [
               id="settings-dropdown"
               class="absolute right-0 z-50 mt-2 hidden w-48 rounded-2xl border border-slate-200/50 bg-white/95 p-2 text-slate-800 shadow-xl backdrop-blur-md transition-all duration-200 dark:border-slate-800/50 dark:bg-slate-900/95 dark:text-white"
             >
-              <button
-                id="edit-profile-btn"
-                class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <span class="material-symbols-outlined text-[18px] text-brand-500">edit</span>
-                <span>Editar Perfil</span>
-              </button>
-              <hr class="my-1 border-slate-200/60 dark:border-slate-800/60" />
+              {!user.isGuest && (
+                <>
+                  <button
+                    id="edit-profile-btn"
+                    class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <span class="material-symbols-outlined text-[18px] text-brand-500">edit</span>
+                    <span>Editar Perfil</span>
+                  </button>
+                  <hr class="my-1 border-slate-200/60 dark:border-slate-800/60" />
+                </>
+              )}
               <form method="POST" action="/yo" class="w-full">
                 <input type="hidden" name="action" value="logout" />
                 <button
@@ -219,7 +290,7 @@ const badges = [
                   class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/20"
                 >
                   <span class="material-symbols-outlined text-[18px]">logout</span>
-                  <span>Cerrar Sesión</span>
+                  <span>{user.isGuest ? 'Salir de Invitado' : 'Cerrar Sesión'}</span>
                 </button>
               </form>
             </div>
@@ -241,8 +312,8 @@ const badges = [
             <!-- Experiencia (Puntos / Nivel) -->
             <div class="mb-4">
               <div class="mb-1 flex items-center justify-between text-xs">
-                <span class="font-bold text-brand-500 uppercase tracking-wider">Nivel {Math.floor(user.points / 500) + 1}</span>
-                <span class="text-slate-400">{user.points % 500} / 500 exp</span>
+                <span id="level-label" class="font-bold text-brand-500 uppercase tracking-wider">Nivel {Math.floor(user.points / 500) + 1}</span>
+                <span id="exp-label" class="text-slate-400">{user.points % 500} / 500 exp</span>
               </div>
               <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
@@ -259,7 +330,7 @@ const badges = [
               {user.name}
             </h2>
             <p class="mb-4 text-xs font-medium text-slate-400 dark:text-slate-500">
-              Viajero desde {new Date(user.created_at).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
+              {user.isGuest ? 'Cuenta Temporal de Invitado' : `Viajero desde ${new Date(user.created_at).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`}
             </p>
             <p class="mb-6 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
               {user.bio}
@@ -274,13 +345,13 @@ const badges = [
                 <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Me gusta</div>
               </div>
               <div class="border-l border-r border-slate-100 text-center dark:border-slate-800">
-                <div class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
+                <div id="stats-visits" class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
                   {user.visits}
                 </div>
                 <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Visitas</div>
               </div>
               <div class="text-center">
-                <div class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
+                <div id="stats-points" class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
                   {user.points}
                 </div>
                 <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Puntos</div>
@@ -297,25 +368,23 @@ const badges = [
             <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">
               Mis Coleccionables (Badges)
             </h2>
-            <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600 dark:bg-brand-950/40 dark:text-brand-400">
+            <span id="badges-count-label" class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600 dark:bg-brand-950/40 dark:text-brand-400">
               {badges.filter((b) => b.unlocked).length} Ganados
             </span>
           </div>
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {badges.map((badge) => (
-              <div class="group flex flex-col items-center justify-center space-y-3 rounded-2xl border border-slate-200/60 bg-white p-6 text-center shadow-sm transition-all duration-300 hover:border-brand-200/50 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-brand-900">
+              <div id={`badge-card-${badge.id}`} class="group flex flex-col items-center justify-center space-y-3 rounded-2xl border border-slate-200/60 bg-white p-6 text-center shadow-sm transition-all duration-300 hover:border-brand-200/50 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-brand-900">
                 <div class="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-slate-50 shadow-inner dark:border-slate-800">
                   <img
                     src={badge.image}
                     alt={badge.name}
                     class={`h-full w-full object-cover transition-all duration-500 group-hover:scale-110 ${badge.unlocked ? '' : 'opacity-35 grayscale'}`}
                   />
-                  {!badge.unlocked && (
-                    <div class="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <span class="material-symbols-outlined text-[20px] text-white drop-shadow">lock</span>
-                    </div>
-                  )}
+                  <div class={`lock-icon-container absolute inset-0 flex items-center justify-center bg-black/20 ${badge.unlocked ? 'hidden' : ''}`}>
+                    <span class="material-symbols-outlined text-[20px] text-white drop-shadow">lock</span>
+                  </div>
                 </div>
                 <div>
                   <h3 class={`text-sm font-bold ${badge.unlocked ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
@@ -535,6 +604,24 @@ const badges = [
             Registrarse
           </button>
         </form>
+
+        <!-- Separador -->
+        <div class="my-5 flex items-center justify-between gap-3 text-xs text-slate-400 select-none">
+          <div class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
+          <span>o también</span>
+          <div class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
+        </div>
+
+        <!-- Botón de Invitado -->
+        <form method="POST" action="/yo" class="w-full">
+          <input type="hidden" name="action" value="guest" />
+          <button
+            type="submit"
+            class="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98] dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400 dark:hover:bg-slate-900"
+          >
+            Continuar como Invitado
+          </button>
+        </form>
       </div>
     </div>
   )}
@@ -613,6 +700,109 @@ const badges = [
       setTimeout(() => {
         expBar.style.width = targetPercent;
       }, 300);
+    }
+
+    // 5. Carga de progreso del invitado desde localStorage y sincronización
+    const guestFlag = document.getElementById('is-guest-flag');
+    if (guestFlag) {
+      const guestVisits = parseInt(localStorage.getItem('edificarte_guest_visits') || '0', 10);
+      const guestPoints = parseInt(localStorage.getItem('edificarte_guest_points') || '0', 10);
+      let guestBadges: number[] = [];
+      try {
+        guestBadges = JSON.parse(localStorage.getItem('edificarte_guest_badges') || '[]');
+      } catch (e) {}
+
+      // Actualizar visitas y puntos en el DOM
+      const visitsEl = document.getElementById('stats-visits');
+      const pointsEl = document.getElementById('stats-points');
+      if (visitsEl) visitsEl.textContent = guestVisits.toString();
+      if (pointsEl) pointsEl.textContent = guestPoints.toString();
+
+      // Calcular nivel y experiencia
+      const level = Math.floor(guestPoints / 500) + 1;
+      const exp = guestPoints % 500;
+      
+      const levelLabel = document.getElementById('level-label');
+      const expLabel = document.getElementById('exp-label');
+      if (levelLabel) levelLabel.textContent = `Nivel ${level}`;
+      if (expLabel) expLabel.textContent = `${exp} / 500 exp`;
+
+      if (expBar) {
+        const percent = `${(exp / 500) * 100}%`;
+        expBar.setAttribute('data-percent', percent);
+        // Volver a aplicar el ancho para que empiece de 0 con transición
+        expBar.style.width = '0%';
+        setTimeout(() => {
+          expBar.style.width = percent;
+        }, 300);
+      }
+
+      // Actualizar contador de insignias
+      const countLabel = document.getElementById('badges-count-label');
+      if (countLabel) {
+        countLabel.textContent = `${guestBadges.length} Ganados`;
+      }
+
+      // Desbloquear visualmente las insignias obtenidas localmente
+      guestBadges.forEach((id) => {
+        const card = document.getElementById(`badge-card-${id}`);
+        if (card) {
+          const img = card.querySelector('img');
+          if (img) {
+            img.classList.remove('opacity-35', 'grayscale');
+          }
+          const lock = card.querySelector('.lock-icon-container');
+          if (lock) {
+            lock.classList.add('hidden');
+          }
+          const title = card.querySelector('h3');
+          if (title) {
+            title.classList.remove('text-slate-400', 'dark:text-slate-600');
+            title.classList.add('text-slate-800', 'dark:text-slate-200');
+          }
+          const desc = card.querySelector('p');
+          if (desc) {
+            desc.textContent = '¡Completado! Ya tienes esta insignia en tu billetera.';
+          }
+        }
+      });
+
+      // Registrarse / Crear cuenta: borrar cookie de invitado para volver a ver el formulario
+      const btnRegister = document.getElementById('btn-guest-register');
+      if (btnRegister) {
+        btnRegister.addEventListener('click', () => {
+          document.cookie = 'edificarte_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+          window.location.reload();
+        });
+      }
+    } else {
+      // Usuario real autenticado: Sincronizar progreso local si existía antes de loguearse/registrarse
+      let guestBadges: number[] = [];
+      try {
+        guestBadges = JSON.parse(localStorage.getItem('edificarte_guest_badges') || '[]');
+      } catch (e) {}
+
+      if (guestBadges.length > 0) {
+        // Enviar las insignias locales al backend D1 para guardarlas de forma definitiva
+        Promise.all(
+          guestBadges.map(id =>
+            fetch('/api/unlock-badge', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ badgeId: id })
+            }).then(r => r.json())
+          )
+        ).then(() => {
+          // Limpiar el progreso de invitado para evitar envíos duplicados
+          localStorage.removeItem('edificarte_guest_badges');
+          localStorage.removeItem('edificarte_guest_points');
+          localStorage.removeItem('edificarte_guest_visits');
+          // Recargar para mostrar los datos finales guardados en la BD
+          window.location.reload();
+        }).catch(err => {
+          console.error('Error al sincronizar progreso de invitado:', err);
+        });
+      }
     }
 
     // Ocultar notificaciones flotantes de éxito/error después de 3.5 segundos
