@@ -41,6 +41,11 @@ const tagStyles: Record<string, { badge: string; icon: string; bg: string }> = {
 ---
 
 <Layout title="EdificARTE — Explorar">
+  <script is:inline>
+    if (!localStorage.getItem('edificarte_lang')) {
+      window.location.href = '/mapa';
+    }
+  </script>
   <div class="space-y-6">
     <!-- Header -->
     <div
