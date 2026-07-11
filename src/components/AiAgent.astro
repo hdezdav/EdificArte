@@ -46,7 +46,7 @@ import AiLoader from './ui/AiLoader.astro';
           <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[12px]">
             <span class="material-symbols-outlined text-[14px]">smart_toy</span>
           </span>
-          <div class="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none px-3.5 py-2 text-[12px] shadow-sm leading-relaxed relative group pr-8">
+          <div class="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none px-3.5 py-2 text-[12px] shadow-sm leading-relaxed relative group pr-8 break-words">
             <div class="pr-2">
               ¡Hola! Soy tu asistente de <strong>EdificARTE</strong>. 🗺️<br/><br/>
               ¿Querés que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Preguntame lo que quieras!
@@ -242,7 +242,7 @@ import AiLoader from './ui/AiLoader.astro';
     if (!messagesContainer) return;
     const msgHtml = `
       <div class="flex justify-end w-full">
-        <div class="bg-brand-500 text-white rounded-2xl rounded-tr-none px-3.5 py-2 text-[12px] max-w-[85%] shadow-sm leading-relaxed">
+        <div class="bg-brand-500 text-white rounded-2xl rounded-tr-none px-3.5 py-2 text-[12px] max-w-[85%] shadow-sm leading-relaxed break-words">
           ${escapeHtml(text)}
         </div>
       </div>
@@ -347,6 +347,8 @@ import AiLoader from './ui/AiLoader.astro';
 
     const bubbleEl = el.querySelector('.bg-slate-100');
     if (bubbleEl) {
+      bubbleEl.classList.remove('flex', 'items-center', 'min-h-[32px]');
+      bubbleEl.classList.add('block', 'break-words');
       bubbleEl.innerHTML = `
         <div class="relative pr-6">
           <div>
