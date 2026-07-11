@@ -491,9 +491,11 @@ import Layout from '../layouts/Layout.astro';
 
   // --- Geolocation ---
   let userMarker = null,
-    userCircle = null;
+    userCircle = null,
+    watchId = null;
   const dot = document.getElementById('geo-dot');
   const geoText = document.getElementById('geo-text');
+  const geoStatusEl = document.getElementById('geo-status');
 
   const setGeo = (state, msg) => {
     if (!dot || !geoText) return;
@@ -515,18 +517,82 @@ import Layout from '../layouts/Layout.astro';
     setGeo('ok', 'Ubicación activa');
   };
 
-  const onErr = (err) => setGeo('error', err.code === 1 ? 'Permiso denegado' : 'Sin señal');
+  const onErr = (err) => {
+    setGeo('error', err.code === 1 ? 'Permiso denegado' : 'Sin señal');
+  };
 
-  if ('geolocation' in navigator) {
-    setGeo('loading', 'Localizando...');
-    navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
-  } else {
-    setGeo('error', 'GPS no soportado');
+  function startWatching() {
+    if (watchId) navigator.geolocation.clearWatch(watchId);
+    if ('geolocation' in navigator) {
+      setGeo('loading', 'Localizando...');
+      watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+    } else {
+      setGeo('error', 'GPS no soportado');
+    }
   }
 
+  function showPermissionInstructions() {
+    alert(
+      "El acceso a la ubicación está desactivado.\n\n" +
+      "Para activarlo:\n" +
+      "1. Toca el ícono del candado o la configuración al lado de la dirección URL de esta página.\n" +
+      "2. Cambia el permiso de \"Ubicación\" (Location) a \"Permitir\" (Allow).\n" +
+      "3. Recarga la página."
+    );
+  }
+
+  function requestLocationPermission() {
+    if (!('geolocation' in navigator)) {
+      alert("Tu dispositivo o navegador no soporta geolocalización.");
+      return;
+    }
+
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+        if (status.state === 'denied') {
+          showPermissionInstructions();
+        } else {
+          triggerLocationPrompt();
+        }
+      }).catch(() => {
+        triggerLocationPrompt();
+      });
+    } else {
+      triggerLocationPrompt();
+    }
+  }
+
+  function triggerLocationPrompt() {
+    setGeo('loading', 'Localizando...');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        onPos(pos);
+        startWatching();
+      },
+      (err) => {
+        onErr(err);
+        if (err.code === 1) { // PERMISSION_DENIED
+          showPermissionInstructions();
+        }
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }
+
+  // Initial trigger
+  startWatching();
+
+  geoStatusEl?.addEventListener('click', (e) => {
+    e.stopPropagation(); // Evitar colapsar/expandir el bottom sheet
+    requestLocationPermission();
+  });
+
   document.getElementById('btn-locate').addEventListener('click', () => {
-    if (userMarker) map.setView(userMarker.getLatLng(), 18, { animate: true });
-    else map.setView(CDMX, 17, { animate: true });
+    if (userMarker) {
+      map.setView(userMarker.getLatLng(), 18, { animate: true });
+    } else {
+      requestLocationPermission();
+    }
   });
 
   setTimeout(() => map.invalidateSize(), 200);
