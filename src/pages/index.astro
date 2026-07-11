@@ -4,7 +4,7 @@ import AiLoader from '../components/ui/AiLoader.astro';
 import { MONUMENTS } from '../data/monuments';
 import tianquiztlisProducts from '../data/tianquiztlis_products.json';
 
-type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'tienda';
+type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'tienda' | 'sitio-remoto';
 
 interface Experience {
   id: string;
@@ -20,6 +20,8 @@ interface Experience {
   price?: string;
   images?: string[];
   sku?: string;
+  videoUrl?: string;
+  isVRAvailable?: boolean;
   translations?: {
     es: { name: string; desc: string; category: string; cta: string; guide: string };
     en: { name: string; desc: string; category: string; cta: string; guide: string };
@@ -196,7 +198,53 @@ const tiendaExperiencias: Experience[] = uniqueTianquiztlisProducts.map((p, inde
   };
 });
 
-const todasLasExperiencias: Experience[] = [...experiencias, ...museosExperiencias, ...tiendaExperiencias];
+// Generar experiencias para monumentos remotos (sitio-remoto), por ejemplo Pirámides del Sol.
+// Estos monumentos NO aparecen en el mapa (filtrados en mapa-app.ts) pero sí en Explorar.
+const sitioRemotoExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'sitio-remoto').map((m) => {
+  const translations = {
+    es: {
+      name: m.name,
+      desc: m.desc,
+      category: m.category,
+      cta: 'Ver experiencia',
+      guide: `¡Bienvenido a ${m.name}! Esta experiencia remota forma parte del patrimonio cultural de México. A través de esta guía podés conocer la historia, el contexto y los detalles más importantes del sitio, complementado con una experiencia inmersiva en realidad virtual (VR) que te permite recorrerlo sin salir de tu casa.`,
+    },
+    en: {
+      name: m.name,
+      desc: m.desc,
+      category: m.category,
+      cta: 'View experience',
+      guide: `Welcome to ${m.name}! This remote experience is part of Mexico's cultural heritage. Through this guide you can learn the history, context, and most important details of the site, complemented by an immersive virtual reality (VR) experience that lets you tour it from anywhere.`,
+    },
+    señas: {
+      name: `${m.name} (LSM)`,
+      desc: 'Guía accesible en Lengua de Señas Mexicana (LSM) con subtítulos y descripción visual del sitio.',
+      category: 'Accesibilidad / LSM',
+      cta: 'Ver LSM',
+      guide: `Esta es la guía accesible en Lengua de Señas Mexicana (LSM) para ${m.name}. Explicamos la historia, el contexto arqueológico y los detalles más representativos del sitio para garantizar el acceso pleno a la cultura para la comunidad con discapacidad auditiva.`,
+      videoUrl: m.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    },
+  };
+
+  return {
+    id: m.id,
+    title: m.name,
+    description: m.desc,
+    image: m.image,
+    category: 'sitio-remoto',
+    tagColor: 'purple',
+    url: '#',
+    cta: 'Ver experiencia VR',
+    rating: 4.95,
+    reviewCount: 287,
+    price: 'Gratis',
+    translations,
+    videoUrl: m.videoUrl,
+    isVRAvailable: m.isVRAvailable,
+  };
+});
+
+const todasLasExperiencias: Experience[] = [...experiencias, ...museosExperiencias, ...sitioRemotoExperiencias, ...tiendaExperiencias];
 
 const tagStyles: Record<
   Experience['tagColor'],
@@ -242,9 +290,10 @@ const categoryLabel: Record<Category, string> = {
   gastronomia: 'Gastronomía',
   museo: 'Museos',
   tienda: 'Tienda Artesanal',
+  'sitio-remoto': 'Sitios Turísticos',
 };
 
-const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cultura', 'gastronomia', 'museo', 'tienda'];
+const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cultura', 'gastronomia', 'museo', 'tienda', 'sitio-remoto'];
 ---
 
 <Layout title="EdificARTE — Explorar">
@@ -433,6 +482,8 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                       data-title={exp.title}
                       data-desc={exp.description}
                       data-id={exp.id}
+                      data-is-vr={exp.isVRAvailable ? 'true' : 'false'}
+                      data-vr-url={exp.videoUrl || ''}
                       class={`exp-card group relative flex h-[350px] w-[250px] sm:w-[270px] flex-none snap-start flex-col overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md ${exp.translations ? 'cursor-pointer' : ''}`}
                     >
                       {/* Image */}
@@ -443,9 +494,23 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                           loading="lazy"
                           class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
+                        {/* VR Badge: aparece arriba a la derecha cuando hay experiencia VR */}
+                        {exp.isVRAvailable && exp.videoUrl && (
+                          <a
+                            href={exp.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-purple-600 text-white shadow-md backdrop-blur-md transition-all hover:bg-purple-700 active:scale-95"
+                            title="Ver en VR"
+                            aria-label="Ver experiencia en Realidad Virtual"
+                            onclick="event.stopPropagation()"
+                          >
+                            <span class="material-symbols-outlined text-[16px]">view_in_ar</span>
+                          </a>
+                        )}
                         <button
                           type="button"
-                          class="favorite-btn absolute top-3 right-3 z-10 rounded-full bg-white/80 dark:bg-slate-900/80 text-neutral-700 dark:text-neutral-300 backdrop-blur-sm hover:bg-white/90 dark:hover:bg-slate-900 hover:text-rose-500 dark:hover:text-rose-400 p-1.5 transition-all shadow-sm active:scale-90"
+                          class={`favorite-btn absolute ${exp.isVRAvailable ? 'top-12' : 'top-3'} right-3 z-10 rounded-full bg-white/80 dark:bg-slate-900/80 text-neutral-700 dark:text-neutral-300 backdrop-blur-sm hover:bg-white/90 dark:hover:bg-slate-900 hover:text-rose-500 dark:hover:text-rose-400 p-1.5 transition-all shadow-sm active:scale-90`}
                           title="Añadir a favoritos"
                         >
                           <svg class="h-4 w-4 fill-none stroke-current stroke-[2px]" viewBox="0 0 24 24">
@@ -1002,6 +1067,8 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
   let currentTranslations: any = null;
   let activeGuideLang = 'es';
   let currentMuseumId = '';
+  let currentIsVR = false;
+  let currentVRUrl = '';
 
   function openGuideModal(card: HTMLElement) {
     const rawTranslations = card.getAttribute('data-translations');
@@ -1024,9 +1091,20 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
       guideImage.alt = currentTranslations.es.name;
     }
     if (guideRating) guideRating.textContent = parseFloat(rating).toFixed(2);
-    
+
     // Default a español
     setGuideLanguage('es');
+
+    // Si la card tiene experiencia VR, mostrar el iframe en el slot del video
+    // y renombrar el título del bloque. La lógica de tabs sigue funcionando encima.
+    currentIsVR = card.getAttribute('data-is-vr') === 'true';
+    currentVRUrl = card.getAttribute('data-vr-url') || '';
+    const vrTitle = guideVideoContainer?.querySelector('h4');
+    if (currentIsVR && currentVRUrl && guideVideoContainer && guideVideo) {
+      guideVideoContainer.classList.remove('hidden');
+      if (vrTitle) vrTitle.textContent = 'Experiencia Inmersiva VR (YouTube 360°)';
+      guideVideo.src = currentVRUrl;
+    }
 
     if (guideModal) {
       guideModal.classList.remove('hidden');
@@ -1052,6 +1130,8 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
       setTimeout(() => {
         guideModal.classList.add('hidden');
         if (guideVideo) guideVideo.src = ''; // Detener video si se está reproduciendo
+        currentIsVR = false;
+        currentVRUrl = '';
       }, 300);
     }
   }
@@ -1081,8 +1161,12 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
       tab.classList.toggle('dark:hover:text-slate-350', !isSelected);
     });
 
-    // Manejar video de LSM
-    if (lang === 'señas' && data.videoUrl) {
+    // Manejar video de LSM o VR
+    if (currentIsVR && currentVRUrl) {
+      // Experiencia VR: el iframe queda fijo, los tabs solo cambian el texto guía
+      if (guideVideoContainer) guideVideoContainer.classList.remove('hidden');
+      if (guideVideo) guideVideo.src = currentVRUrl;
+    } else if (lang === 'señas' && data.videoUrl) {
       if (guideVideoContainer) guideVideoContainer.classList.remove('hidden');
       if (guideVideo) guideVideo.src = data.videoUrl;
     } else {

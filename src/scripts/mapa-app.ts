@@ -10,7 +10,7 @@ import type {
 // Tipos
 // ---------------------------------------------------------------------------
 
-type MonumentType = 'museo' | 'templo' | 'arqueologia' | 'rascacielos';
+type MonumentType = 'museo' | 'templo' | 'arqueologia' | 'rascacielos' | 'sitio-remoto';
 type TileKey = 'osm' | 'light' | 'dark' | 'sat';
 
 interface Monument {
@@ -39,6 +39,13 @@ interface VisitRecord {
 // ---------------------------------------------------------------------------
 
 import { MONUMENTS } from '../data/monuments';
+
+// En el mapa NO mostramos monumentos remotos (sitios arqueológicos fuera de CDMX
+// con experiencia VR). Solo aparecen en Explorar. Mantenemos MONUMENTS completo
+// para que `.find()` siga resolviendo por id al abrir detail / reproducir audio / trazar ruta.
+const MAPPABLE_MONUMENTS: typeof MONUMENTS = MONUMENTS.filter(
+  (m) => m.type !== 'sitio-remoto'
+);
 
 const CDMX: LatLngTuple = [19.4326, -99.1332];
 
@@ -145,7 +152,7 @@ function addMarkers(list: Monument[]) {
   });
 }
 
-addMarkers(MONUMENTS);
+addMarkers(MAPPABLE_MONUMENTS);
 
 map.on('click', () => deselect());
 
@@ -261,7 +268,7 @@ function renderList(list: Monument[]) {
   });
 }
 
-renderList(MONUMENTS);
+renderList(MAPPABLE_MONUMENTS);
 
 // ---------------------------------------------------------------------------
 // Selection & Visit Section
@@ -465,7 +472,7 @@ searchInput?.addEventListener('input', (e) => {
   if (searchDebounce) clearTimeout(searchDebounce);
   searchDebounce = setTimeout(() => {
     const q = (e.target as HTMLInputElement).value.toLowerCase().trim();
-    const f = filterByQuery(MONUMENTS, q);
+    const f = filterByQuery(MAPPABLE_MONUMENTS, q);
     addMarkers(f);
     renderList(f);
     if (selectedId && !f.some((m) => m.id === selectedId)) deselect();
@@ -504,7 +511,7 @@ if (btnSearchFilters && searchFiltersDropdown) {
       .forEach((c) => (c.checked = false));
 
     const q = searchInput?.value.toLowerCase().trim() ?? '';
-    const f = filterByQuery(MONUMENTS, q);
+    const f = filterByQuery(MAPPABLE_MONUMENTS, q);
     addMarkers(f);
     renderList(f);
     searchFiltersDropdown.classList.add('hidden');
@@ -521,7 +528,7 @@ if (btnSearchFilters && searchFiltersDropdown) {
     const onlyFeatured = $<HTMLInputElement>('filter-featured')?.checked;
 
     const q = searchInput?.value.toLowerCase().trim() ?? '';
-    let f = filterByQuery(MONUMENTS, q);
+    let f = filterByQuery(MAPPABLE_MONUMENTS, q);
 
     const saved = loadVisits();
     if (visitedFilter === 'visited') {
@@ -560,8 +567,8 @@ document.querySelectorAll<HTMLElement>('.filter-chip').forEach((chip) => {
     const filter = chip.getAttribute('data-filter');
     const f =
       !filter || filter === 'all'
-        ? MONUMENTS
-        : MONUMENTS.filter((m) => m.type === filter);
+        ? MAPPABLE_MONUMENTS
+        : MAPPABLE_MONUMENTS.filter((m) => m.type === filter);
     addMarkers(f);
     renderList(f);
     if (selectedId && !f.some((m) => m.id === selectedId)) deselect();

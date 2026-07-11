@@ -164,20 +164,27 @@ import AiLoader from './ui/AiLoader.astro';
         // Forzar bottom inline; esto anula el `top-[135px]` del mapa.
         const keyboardHeight = window.innerHeight - vv.height;
         aiContainer.style.top = 'auto';
-        aiContainer.style.bottom = `${keyboardHeight + 8}px`;
+        aiContainer.style.bottom = `${keyboardHeight + 16}px`;
         aiContainer.style.right = '12px';
-        // Esconder el bottom nav mientras el teclado esté abierto
-        if (bottomNav) bottomNav.style.transform = 'translateY(100%)';
-        // Achicar el popover para que entre arriba del teclado
+        // Limitar ancho en pantallas chicas para que no se salga
+        aiContainer.style.maxWidth = 'calc(100vw - 24px)';
         if (aiPopover) {
+          aiPopover.style.maxWidth = 'calc(100vw - 24px)';
+          // Achicar el popover para que entre arriba del teclado
           aiPopover.style.height = `${Math.max(220, vv.height - keyboardHeight - 16)}px`;
         }
+        // Esconder el bottom nav mientras el teclado esté abierto
+        if (bottomNav) bottomNav.style.transform = 'translateY(100%)';
       } else {
         aiContainer.style.top = '';
         aiContainer.style.bottom = '';
         aiContainer.style.right = '';
         aiContainer.style.height = '';
-        if (aiPopover) aiPopover.style.height = '';
+        aiContainer.style.maxWidth = '';
+        if (aiPopover) {
+          aiPopover.style.maxWidth = '';
+          aiPopover.style.height = '';
+        }
         if (bottomNav) bottomNav.style.transform = '';
       }
     };

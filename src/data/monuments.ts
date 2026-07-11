@@ -8,8 +8,11 @@ export interface Monument {
   emoji: string;
   desc: string;
   audioDuration: string;
-  type: 'museo' | 'templo' | 'arqueologia' | 'rascacielos';
+  type: 'museo' | 'templo' | 'arqueologia' | 'rascacielos' | 'sitio-remoto';
   image: string;
+  // Opcionales para experiencias especiales:
+  videoUrl?: string;       // VR / 360 video link
+  isVRAvailable?: boolean; // Si tiene experiencia VR
 }
 
 export const MONUMENTS: Monument[] = [
@@ -138,5 +141,33 @@ export const MONUMENTS: Monument[] = [
     type: 'arqueologia',
     image:
       'https://mexicocity.cdmx.gob.mx/wp-content/uploads/2014/12/1024px-Plaza_de_las_3_cultruas_p3.jpg',
+  },
+  {
+    id: 'piramides-sol',
+    name: 'Pirámides del Sol',
+    category: 'Zona Arqueológica · Teotihuacán',
+    dist: '~50 km',
+    lat: 19.6925,
+    lng: -98.8438,
+    emoji: '🔺',
+    desc: 'La Pirámide del Sol es la estructura más grande de Teotihuacán, construida en el siglo I d.C. Mide 65 metros de altura y fue dedicada al dios sol. Recorré este sitio arqueológico en una experiencia inmersiva en realidad virtual.',
+    audioDuration: '8:00',
+    type: 'sitio-remoto',
+    image: 'https://plus.unsplash.com/premium_photo-1697730030977-ea0505bd45ac?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    videoUrl: 'https://www.youtube.com/embed/Wq9BpTOjE1E',
+    isVRAvailable: true,
+  },
+  {
+    id: 'hotel-virreyes',
+    name: 'Hotel Virreyes',
+    category: 'Hotel Boutique · Roma',
+    dist: '~2 km',
+    lat: 19.427015,
+    lng: -99.141775,
+    emoji: '🏨',
+    desc: 'Hotel boutique ubicado en Avenida José María Izazaga 8, colonia Roma, alcaldía Cuauhtémoc, Ciudad de México. Un refugio de diseño contemporáneo que rinde homenaje a la historia y la cultura mexicana, con habitaciones temáticas inspiradas en los grandes artistas y arquitectos del país.',
+    audioDuration: '3:30',
+    type: 'museo',
+    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVgXWGNBg6LC5gaZ1rmUXpQAGgDntOWI5TTClkJJirEquxSwry7wYM1pY&s=10',
   },
 ];
