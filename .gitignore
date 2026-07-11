@@ -26,3 +26,8 @@ pnpm-debug.log*
 
 # Local agent system caches
 .atl/
+
+# Tianquiztli / Mercado files/caches
+tianquiztlismercado
+tianquiztlismercado/
+tianquiztlismercado*

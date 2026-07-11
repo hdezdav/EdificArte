@@ -21,7 +21,7 @@ if (!user && isGuest) {
   user = {
     id: 'guest',
     email: 'invitado@edificarte.app',
-    name: 'Viajero Invitado',
+    name: 'Edificador Invitado',
     avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&h=256&q=80',
     bio: 'Explorando EdificARTE como invitado. ¡Creá una cuenta para guardar tu progreso on-chain de forma permanente!',
     points: 0,
@@ -58,9 +58,9 @@ if (Astro.request.method === 'POST') {
           const userId = crypto.randomUUID();
           const hashedPassword = await hashPassword(password);
           
-          // Avatar por defecto de viajero (Unsplash)
+          // Avatar por defecto de edificador (Unsplash)
           const avatarUrl = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&h=256&q=80';
-          const bio = '¡Hola! Soy un nuevo viajero explorando el patrimonio cultural con EdificARTE.';
+          const bio = '¡Hola! Soy un nuevo edificador explorando el patrimonio cultural con EdificARTE.';
 
           await env.DB.prepare(
             'INSERT INTO users (id, email, password, name, avatar_url, bio, points, likes, visits) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0)'
@@ -330,7 +330,7 @@ const badges = [
               {user.name}
             </h2>
             <p class="mb-4 text-xs font-medium text-slate-400 dark:text-slate-500">
-              {user.isGuest ? 'Cuenta Temporal de Invitado' : `Viajero desde ${new Date(user.created_at).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`}
+              {user.isGuest ? 'Cuenta Temporal de Invitado' : `Edificador desde ${new Date(user.created_at).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`}
             </p>
             <p class="mb-6 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
               {user.bio}

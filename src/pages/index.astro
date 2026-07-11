@@ -2,8 +2,9 @@
 import Layout from '../layouts/Layout.astro';
 import AiLoader from '../components/ui/AiLoader.astro';
 import { MONUMENTS } from '../data/monuments';
+import tianquiztlisProducts from '../data/tianquiztlis_products.json';
 
-type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo';
+type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'tienda';
 
 interface Experience {
   id: string;
@@ -11,12 +12,14 @@ interface Experience {
   description: string;
   image: string;
   category: Exclude<Category, 'todos'>;
-  tagColor: 'emerald' | 'brand' | 'amber' | 'rose' | 'indigo';
+  tagColor: 'emerald' | 'brand' | 'amber' | 'rose' | 'indigo' | 'purple';
   url: string;
   cta: string;
   rating?: number;
   reviewCount?: number;
   price?: string;
+  images?: string[];
+  sku?: string;
   translations?: {
     es: { name: string; desc: string; category: string; cta: string; guide: string };
     en: { name: string; desc: string; category: string; cta: string; guide: string };
@@ -170,7 +173,26 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
   };
 });
 
-const todasLasExperiencias: Experience[] = [...experiencias, ...museosExperiencias];
+// Generar experiencias a partir de los productos de Tianquiztlis Mercado
+const tiendaExperiencias: Experience[] = tianquiztlisProducts.map((p, index) => {
+  return {
+    id: `prod-${p.sku || index}`,
+    title: p.name,
+    description: p.description,
+    image: p.images[0] || 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&h=500&q=80',
+    category: 'tienda',
+    tagColor: 'purple',
+    url: '#',
+    cta: 'Ver Detalles',
+    rating: parseFloat((4.75 + (index % 5) * 0.05).toFixed(2)),
+    reviewCount: 14 + (index * 7) % 43,
+    price: p.price ? `$${p.price} ${p.currency}` : 'Consultar',
+    images: p.images,
+    sku: p.sku
+  };
+});
+
+const todasLasExperiencias: Experience[] = [...experiencias, ...museosExperiencias, ...tiendaExperiencias];
 
 const tagStyles: Record<
   Experience['tagColor'],
@@ -201,6 +223,11 @@ const tagStyles: Record<
       'border-indigo-200/50 bg-indigo-50 text-indigo-700 dark:border-indigo-800/50 dark:bg-indigo-950/40 dark:text-indigo-400',
     pill: 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400',
   },
+  purple: {
+    badge:
+      'border-purple-200/50 bg-purple-50 text-purple-700 dark:border-purple-800/50 dark:bg-purple-950/40 dark:text-purple-400',
+    pill: 'border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950/30 dark:text-purple-400',
+  },
 };
 
 const categoryLabel: Record<Category, string> = {
@@ -210,9 +237,10 @@ const categoryLabel: Record<Category, string> = {
   cultura: 'Cultura',
   gastronomia: 'Gastronomía',
   museo: 'Museos',
+  tienda: 'Tienda Artesanal',
 };
 
-const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cultura', 'gastronomia', 'museo'];
+const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cultura', 'gastronomia', 'museo', 'tienda'];
 ---
 
 <Layout title="EdificARTE — Explorar">
@@ -341,16 +369,64 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                 </div>
               </div>
 
-              <div
-                class="scroll-container no-scrollbar -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-3 scroll-smooth"
-              >
-                {
-                  catExp.map((exp) => (
+              {cat === 'tienda' ? (
+                <div class="scroll-container no-scrollbar -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-3 scroll-smooth">
+                  {
+                    (() => {
+                      const chunks = [];
+                      for (let i = 0; i < catExp.length; i += 4) {
+                        chunks.push(catExp.slice(i, i + 4));
+                      }
+                      return chunks.map((chunk) => (
+                        <div class="grid grid-cols-2 gap-3 w-[calc(100vw-32px)] sm:w-[704px] flex-none snap-start">
+                          {chunk.map((exp) => (
+                            <article
+                              data-category={exp.category}
+                              data-is-product="true"
+                              data-title={exp.title}
+                              data-desc={exp.description}
+                              data-price={exp.price}
+                              data-sku={exp.sku}
+                              data-image={exp.image}
+                              data-images={exp.images ? JSON.stringify(exp.images) : undefined}
+                              class="exp-card group relative aspect-square overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer active:scale-[0.98]"
+                            >
+                              {/* Product Image */}
+                              <img
+                                src={exp.image}
+                                alt={exp.title}
+                                loading="lazy"
+                                class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                              />
+
+                              {/* Glassmorphic Overlay for Title & Price */}
+                              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent p-3 pt-8 flex flex-col justify-end text-white">
+                                <h3 class="text-[11px] font-bold truncate tracking-tight">{exp.title}</h3>
+                                <p class="text-[9px] font-extrabold text-purple-300 mt-0.5">{exp.price}</p>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      ));
+                    })()
+                  }
+                </div>
+              ) : (
+                <div
+                  class="scroll-container no-scrollbar -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-3 scroll-smooth"
+                >
+                  {catExp.map((exp) => (
                     <article
                       data-category={exp.category}
                       data-translations={exp.translations ? JSON.stringify(exp.translations) : undefined}
                       data-rating={exp.rating}
                       data-image={exp.image}
+                      data-images={exp.images ? JSON.stringify(exp.images) : undefined}
+                      data-price={exp.price}
+                      data-sku={exp.sku}
+                      data-is-product="false"
+                      data-title={exp.title}
+                      data-desc={exp.description}
                       data-id={exp.id}
                       class={`exp-card group relative flex h-[350px] w-[250px] sm:w-[270px] flex-none snap-start flex-col overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md ${exp.translations ? 'cursor-pointer' : ''}`}
                     >
@@ -415,7 +491,7 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                             exp.translations ? (
                               <button
                                 type="button"
-                                class="guide-trigger-btn ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+                                class="ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97] guide-trigger-btn"
                               >
                                 {exp.cta}
                                 <span class="material-symbols-outlined text-[12px] transition-transform duration-200 group-hover:translate-x-0.5">arrow_forward</span>
@@ -435,9 +511,9 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                         </div>
                       </div>
                     </article>
-                  ))
-                }
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
           );
         })
@@ -460,46 +536,6 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
       </div>
     </div>
 
-    <!-- Coming Soon Footer -->
-    <div
-      class="flex flex-col items-center gap-3 rounded-2xl border border-slate-200/60 bg-white p-6 text-center shadow-sm dark:border-slate-800/60 dark:bg-slate-900"
-    >
-      <div
-        class="rounded-2xl bg-brand-50 p-3 text-brand-500 dark:bg-brand-950/30 dark:text-brand-400"
-      >
-        <svg
-          class="h-7 w-7"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-          ></path>
-        </svg>
-      </div>
-      <div>
-        <p class="text-sm font-bold text-slate-800 dark:text-slate-200">
-          Más experiencias próximamente
-        </p>
-        <p class="mt-1 max-w-sm text-[12px] text-slate-500 dark:text-slate-400">
-          Seguimos sumando proyectos, rutas y organizaciones que transforman el
-          turismo y el patrimonio cultural de México.
-        </p>
-      </div>
-      <span
-        class="inline-flex items-center gap-1.5 rounded-full border border-brand-200/50 bg-brand-50 px-3 py-1 text-[11px] font-semibold text-brand-600 dark:border-brand-800/50 dark:bg-brand-950/40 dark:text-brand-400"
-      >
-        <span
-          class="h-1.5 w-1.5 animate-ping rounded-full bg-brand-500 dark:bg-brand-400"
-        ></span>
-        En construcción
-      </span>
-    </div>
   <!-- Museum/Guide Details Modal (Overlay) -->
   <div
     id="guide-modal"
@@ -606,6 +642,203 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
         >
           <span class="material-symbols-outlined text-[16px]">map</span>
           <span>Ver ruta en el mapa</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Cart Button -->
+  <button
+    type="button"
+    id="btn-cart-toggle"
+    class="fixed bottom-[76px] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg shadow-purple-500/30 backdrop-blur-md transition-all active:scale-90 hover:bg-purple-700 focus:outline-none border border-white/20"
+    aria-label="Abrir carrito de compras"
+  >
+    <span class="material-symbols-outlined text-[24px]">shopping_cart</span>
+    <span
+      id="cart-badge"
+      class="absolute -top-1 -right-1 hidden h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white"
+    >
+      0
+    </span>
+  </button>
+
+  <!-- Cart Sidebar Drawer -->
+  <div
+    id="cart-drawer"
+    class="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity duration-300 opacity-0 hidden"
+  >
+    <div
+      id="cart-drawer-content"
+      class="h-full w-full max-w-md translate-x-full transform border-l border-slate-200/50 bg-white/95 dark:border-slate-800/50 dark:bg-slate-900/95 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col justify-between"
+    >
+      <!-- Header -->
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-4">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-purple-600 dark:text-purple-400">shopping_bag</span>
+          <h2 class="text-lg font-bold text-slate-800 dark:text-white">Mi Carrito</h2>
+        </div>
+        <button
+          type="button"
+          id="btn-close-cart"
+          class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors"
+        >
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Cart Items (Scrollable) -->
+      <div id="cart-items-container" class="flex-1 overflow-y-auto py-4 space-y-4 no-scrollbar">
+        <div id="cart-empty-state" class="flex flex-col items-center justify-center h-full text-center space-y-2 py-8">
+          <span class="material-symbols-outlined text-4xl text-slate-350">production_quantity_limits</span>
+          <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Tu carrito está vacío</p>
+          <p class="text-[12px] text-slate-500">¡Explora la tienda y añade hermosas artesanías mexicanas!</p>
+        </div>
+      </div>
+
+      <!-- Footer / Summary -->
+      <div class="border-t border-slate-100 dark:border-slate-800/60 pt-4 space-y-4">
+        <div class="space-y-1.5 text-sm">
+          <div class="flex justify-between text-slate-500 dark:text-slate-400">
+            <span>Subtotal</span>
+            <span id="cart-subtotal">$0.00 MXN</span>
+          </div>
+          <div class="flex justify-between text-slate-500 dark:text-slate-400">
+            <span>Envío</span>
+            <span class="text-emerald-600 dark:text-emerald-400 font-semibold">Gratis</span>
+          </div>
+          <div class="flex justify-between text-base font-bold text-slate-800 dark:text-white pt-1.5 border-t border-dashed border-slate-150 dark:border-slate-800/60">
+            <span>Total</span>
+            <span id="cart-total">$0.00 MXN</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          id="btn-checkout"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold py-3.5 text-xs shadow-md transition-all active:scale-[0.98]"
+        >
+          <span class="material-symbols-outlined text-[18px]">chat</span>
+          <span>Pedir por WhatsApp</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Details Modal (Overlay) -->
+  <div
+    id="product-modal"
+    class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
+  >
+    <div
+      class="w-full max-w-lg scale-95 transform rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[90vh] overflow-hidden"
+    >
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-850">
+        <div>
+          <span class="inline-flex items-center rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border border-purple-200/50">
+            Tianquiztlis Mercado
+          </span>
+          <h2 id="product-modal-title" class="text-lg font-bold text-slate-800 dark:text-white mt-1">
+            Nombre del Producto
+          </h2>
+        </div>
+        <button
+          type="button"
+          id="btn-close-product"
+          class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors"
+        >
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="flex-1 overflow-y-auto py-4 space-y-4 no-scrollbar">
+        <!-- Image Gallery / Slideshow -->
+        <div class="relative h-60 w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-850">
+          <img
+            id="product-modal-image"
+            src=""
+            alt=""
+            class="h-full w-full object-cover transition-all duration-300"
+          />
+          <!-- Navigation Arrows -->
+          <button
+            type="button"
+            id="btn-product-prev-img"
+            class="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 dark:bg-slate-900/80 text-neutral-700 dark:text-neutral-300 backdrop-blur-sm p-1.5 transition-all shadow-sm active:scale-90"
+            title="Imagen anterior"
+          >
+            <span class="material-symbols-outlined text-[16px] font-bold">chevron_left</span>
+          </button>
+          <button
+            type="button"
+            id="btn-product-next-img"
+            class="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 dark:bg-slate-900/80 text-neutral-700 dark:text-neutral-300 backdrop-blur-sm p-1.5 transition-all shadow-sm active:scale-90"
+            title="Imagen siguiente"
+          >
+            <span class="material-symbols-outlined text-[16px] font-bold">chevron_right</span>
+          </button>
+          <!-- Dots Indicator -->
+          <div id="product-image-dots" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5"></div>
+        </div>
+
+        <!-- Price and Availability -->
+        <div class="flex items-center justify-between">
+          <div class="text-lg font-extrabold text-purple-600 dark:text-purple-400" id="product-modal-price">
+            $0.00 MXN
+          </div>
+          <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-200/50">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            Disponible (En Stock)
+          </span>
+        </div>
+
+        <!-- Description -->
+        <div class="space-y-1">
+          <h3 class="font-bold text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Descripción del Producto
+          </h3>
+          <p id="product-modal-desc" class="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+            Descripción detallada...
+          </p>
+        </div>
+
+        <!-- Metadata -->
+        <div class="flex justify-center text-[10px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800/60 pt-3">
+          <span>100% Artesanal / Hecho a mano</span>
+        </div>
+      </div>
+      
+      <!-- Modal Footer / Add to Cart Controls -->
+      <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-3">
+        <!-- Quantity Selector -->
+        <div class="flex items-center border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-1 bg-slate-50 dark:bg-slate-900">
+          <button
+            type="button"
+            id="btn-qty-minus"
+            class="p-1 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-lg text-slate-600 dark:text-slate-400 active:scale-95 transition-all"
+          >
+            <span class="material-symbols-outlined text-[16px] font-bold">remove</span>
+          </button>
+          <span id="product-qty-value" class="px-3 text-xs font-bold text-slate-800 dark:text-slate-100 min-w-[20px] text-center">1</span>
+          <button
+            type="button"
+            id="btn-qty-plus"
+            class="p-1 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-lg text-slate-600 dark:text-slate-400 active:scale-95 transition-all"
+          >
+            <span class="material-symbols-outlined text-[16px] font-bold">add</span>
+          </button>
+        </div>
+
+        <!-- Add to Cart Button -->
+        <button
+          type="button"
+          id="btn-add-to-cart"
+          class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 text-xs shadow-sm transition-all active:scale-[0.97]"
+        >
+          <span class="material-symbols-outlined text-[16px]">add_shopping_cart</span>
+          <span>Añadir al Carrito</span>
         </button>
       </div>
     </div>
@@ -853,18 +1086,44 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
     }
   }
 
-  // Escuchar clics en tarjetas de museos
-  document.querySelectorAll<HTMLElement>('.exp-card[data-translations]').forEach((card) => {
+  // Escuchar clics en tarjetas (museos y tienda)
+  document.querySelectorAll<HTMLElement>('.exp-card').forEach((card) => {
     card.addEventListener('click', (e) => {
-      // Ignorar si pulsó el botón de favoritos
+      // Ignorar si pulsó el botón de favoritos u otros botones internos
       const target = e.target as HTMLElement;
-      if (target.closest('.favorite-btn')) return;
+      if (target.closest('.favorite-btn') || target.closest('.guide-trigger-btn') || target.closest('.product-trigger-btn')) {
+        if (target.closest('.favorite-btn')) return;
+      }
 
-      openGuideModal(card);
+      const isProduct = card.getAttribute('data-is-product') === 'true';
+      if (isProduct) {
+        openProductModal(card);
+      } else if (card.getAttribute('data-translations')) {
+        openGuideModal(card);
+      }
     });
   });
 
-  // Escuchar clics en los tabs de idioma
+  // También escuchar en botones específicos de acción
+  document.querySelectorAll<HTMLButtonElement>('.guide-trigger-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = btn.closest('.exp-card') as HTMLElement;
+      if (card) openGuideModal(card);
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.product-trigger-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = btn.closest('.exp-card') as HTMLElement;
+      if (card) openProductModal(card);
+    });
+  });
+
+  // Escuchar clics en los tabs de idioma del modal de guía
   langTabs.forEach((tab) => {
     tab.addEventListener('click', () => {
       const lang = tab.getAttribute('data-guide-lang');
@@ -874,7 +1133,7 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
 
   btnCloseGuide?.addEventListener('click', closeGuideModal);
   
-  // Cerrar haciendo clic afuera del modal
+  // Cerrar haciendo clic afuera del modal de guía
   guideModal?.addEventListener('click', (e) => {
     if (e.target === guideModal) {
       closeGuideModal();
@@ -887,4 +1146,388 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
       window.location.href = `/mapa?route=${currentMuseumId}&play=true`;
     }
   });
+
+  // --- LÓGICA DE TIENDA Y CARRITO DE COMPRAS ---
+
+  // Elementos de la Tienda
+  const productModal = document.getElementById('product-modal');
+  const btnCloseProduct = document.getElementById('btn-close-product');
+  const productTitle = document.getElementById('product-modal-title');
+  const productImage = document.getElementById('product-modal-image') as HTMLImageElement;
+  const productPrice = document.getElementById('product-modal-price');
+  const productDesc = document.getElementById('product-modal-desc');
+  const productSku = document.getElementById('product-modal-sku');
+  const productImageDots = document.getElementById('product-image-dots');
+  const btnProductPrevImg = document.getElementById('btn-product-prev-img');
+  const btnProductNextImg = document.getElementById('btn-product-next-img');
+  
+  const btnQtyMinus = document.getElementById('btn-qty-minus');
+  const btnQtyPlus = document.getElementById('btn-qty-plus');
+  const qtyValueEl = document.getElementById('product-qty-value');
+  const btnAddToCart = document.getElementById('btn-add-to-cart');
+
+  const btnCartToggle = document.getElementById('btn-cart-toggle');
+  const btnCloseCart = document.getElementById('btn-close-cart');
+  const cartDrawer = document.getElementById('cart-drawer');
+  const cartDrawerContent = document.getElementById('cart-drawer-content');
+  const cartItemsContainer = document.getElementById('cart-items-container');
+  const cartEmptyState = document.getElementById('cart-empty-state');
+  const cartSubtotalEl = document.getElementById('cart-subtotal');
+  const cartTotalEl = document.getElementById('cart-total');
+  const cartBadge = document.getElementById('cart-badge');
+  const btnCheckout = document.getElementById('btn-checkout');
+
+  // Estado de la Tienda
+  interface CartItem {
+    sku: string;
+    name: string;
+    price: number;
+    image: string;
+    qty: number;
+  }
+
+  let cart: CartItem[] = [];
+  let productImages: string[] = [];
+  let currentImageIdx = 0;
+  let currentQty = 1;
+  let activeProduct: { sku: string; name: string; price: number; image: string } | null = null;
+
+  // Cargar Carrito desde LocalStorage
+  function loadCart() {
+    try {
+      const stored = localStorage.getItem('edificarte_cart');
+      if (stored) {
+        cart = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Error loading cart:', e);
+      cart = [];
+    }
+    updateCartUI();
+  }
+
+  // Guardar Carrito en LocalStorage
+  function saveCart() {
+    localStorage.setItem('edificarte_cart', JSON.stringify(cart));
+    updateCartUI();
+  }
+
+  // Actualizar la interfaz del carrito y contador
+  function updateCartUI() {
+    const totalItems = cart.reduce((acc, item) => acc + item.qty, 0);
+    const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+
+    // Actualizar badge del botón flotante
+    if (cartBadge) {
+      cartBadge.textContent = totalItems.toString();
+      cartBadge.classList.toggle('hidden', totalItems === 0);
+      cartBadge.classList.toggle('flex', totalItems > 0);
+    }
+
+    // Renderizar items del carrito
+    if (cartItemsContainer) {
+      // Remover todo excepto el empty state
+      const itemEls = cartItemsContainer.querySelectorAll('.cart-item-row');
+      itemEls.forEach(el => el.remove());
+
+      if (cart.length === 0) {
+        if (cartEmptyState) cartEmptyState.classList.remove('hidden');
+      } else {
+        if (cartEmptyState) cartEmptyState.classList.add('hidden');
+
+        cart.forEach((item) => {
+          const row = document.createElement('div');
+          row.className = 'cart-item-row flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800/40';
+          
+          row.innerHTML = `
+            <img src="${item.image}" alt="${item.name}" class="h-16 w-16 rounded-xl object-cover bg-slate-100 dark:bg-slate-800 flex-none" />
+            <div class="flex-1 min-w-0">
+              <h4 class="text-xs font-bold text-slate-800 dark:text-white truncate">${item.name}</h4>
+              <p class="text-[11px] font-extrabold text-purple-600 dark:text-purple-400 mt-0.5">$${item.price.toFixed(2)} MXN</p>
+              <div class="flex items-center justify-between mt-2">
+                <!-- Qty controls -->
+                <div class="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-0.5 bg-white dark:bg-slate-900">
+                  <button type="button" class="btn-cart-minus p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 active:scale-90" data-sku="${item.sku}">
+                    <span class="material-symbols-outlined text-[12px] font-bold">remove</span>
+                  </button>
+                  <span class="px-2 text-[11px] font-bold text-slate-700 dark:text-slate-200">${item.qty}</span>
+                  <button type="button" class="btn-cart-plus p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 active:scale-90" data-sku="${item.sku}">
+                    <span class="material-symbols-outlined text-[12px] font-bold">add</span>
+                  </button>
+                </div>
+                <!-- Remove btn -->
+                <button type="button" class="btn-cart-remove text-rose-500 hover:text-rose-600 p-1 rounded-full hover:bg-rose-50 dark:hover:bg-rose-950/20 active:scale-90 transition-all" data-sku="${item.sku}" title="Eliminar artículo">
+                  <span class="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+              </div>
+            </div>
+          `;
+
+          // Bindear eventos
+          row.querySelector('.btn-cart-minus')?.addEventListener('click', () => {
+            if (item.qty > 1) {
+              updateItemQty(item.sku, item.qty - 1);
+            } else {
+              removeItem(item.sku);
+            }
+          });
+
+          row.querySelector('.btn-cart-plus')?.addEventListener('click', () => {
+            updateItemQty(item.sku, item.qty + 1);
+          });
+
+          row.querySelector('.btn-cart-remove')?.addEventListener('click', () => {
+            removeItem(item.sku);
+          });
+
+          cartItemsContainer.appendChild(row);
+        });
+      }
+    }
+
+    // Totales
+    if (cartSubtotalEl) cartSubtotalEl.textContent = `$${subtotal.toFixed(2)} MXN`;
+    if (cartTotalEl) cartTotalEl.textContent = `$${subtotal.toFixed(2)} MXN`;
+  }
+
+  function updateItemQty(sku: string, qty: number) {
+    const item = cart.find(i => i.sku === sku);
+    if (item) {
+      item.qty = qty;
+      saveCart();
+    }
+  }
+
+  function removeItem(sku: string) {
+    cart = cart.filter(i => i.sku !== sku);
+    saveCart();
+  }
+
+  // Abrir Modal de Producto
+  function openProductModal(card: HTMLElement) {
+    const title = card.getAttribute('data-title') || '';
+    const desc = card.getAttribute('data-desc') || '';
+    const priceText = card.getAttribute('data-price') || '';
+    const sku = card.getAttribute('data-sku') || '';
+    const rawImages = card.getAttribute('data-images');
+    const defaultImage = card.getAttribute('data-image') || '';
+
+    try {
+      productImages = rawImages ? JSON.parse(rawImages) : [defaultImage];
+    } catch (e) {
+      productImages = [defaultImage];
+    }
+
+    currentImageIdx = 0;
+    currentQty = 1;
+
+    // Parsear precio numérico
+    let numericPrice = 0;
+    if (priceText) {
+      const match = priceText.match(/[\d.]+/);
+      if (match) numericPrice = parseFloat(match[0]);
+    }
+
+    activeProduct = {
+      sku: sku || title,
+      name: title,
+      price: numericPrice,
+      image: productImages[0] || defaultImage
+    };
+
+    if (productTitle) productTitle.textContent = title;
+    if (productDesc) productDesc.textContent = desc;
+    if (productPrice) productPrice.textContent = priceText || 'Consultar';
+    if (productSku) productSku.textContent = sku || 'N/A';
+    if (qtyValueEl) qtyValueEl.textContent = currentQty.toString();
+
+    updateProductGallery();
+
+    if (productModal) {
+      productModal.classList.remove('hidden');
+      void productModal.offsetHeight;
+      productModal.classList.remove('opacity-0');
+      const innerContent = productModal.querySelector('div');
+      if (innerContent) {
+        innerContent.classList.remove('scale-95');
+        innerContent.classList.add('scale-100');
+      }
+    }
+  }
+
+  // Cerrar Modal de Producto
+  function closeProductModal() {
+    if (productModal) {
+      productModal.classList.add('opacity-0');
+      const innerContent = productModal.querySelector('div');
+      if (innerContent) {
+        innerContent.classList.remove('scale-100');
+        innerContent.classList.add('scale-95');
+      }
+      setTimeout(() => {
+        productModal.classList.add('hidden');
+      }, 300);
+    }
+  }
+
+  // Actualizar Galería de Imágenes
+  function updateProductGallery() {
+    if (productImages.length === 0) return;
+
+    if (productImage) {
+      productImage.src = productImages[currentImageIdx];
+      productImage.alt = activeProduct?.name || 'Producto';
+    }
+
+    // Ocultar flechas si solo hay 1 imagen
+    if (btnProductPrevImg && btnProductNextImg) {
+      const showArrows = productImages.length > 1;
+      btnProductPrevImg.classList.toggle('hidden', !showArrows);
+      btnProductNextImg.classList.toggle('hidden', !showArrows);
+    }
+
+    // Renderizar puntitos indicadores
+    if (productImageDots) {
+      productImageDots.innerHTML = '';
+      if (productImages.length > 1) {
+        productImages.forEach((_, idx) => {
+          const dot = document.createElement('button');
+          dot.type = 'button';
+          dot.className = `h-1.5 rounded-full transition-all duration-300 ${idx === currentImageIdx ? 'w-4 bg-purple-600' : 'w-1.5 bg-slate-300 dark:bg-slate-700'}`;
+          dot.addEventListener('click', () => {
+            currentImageIdx = idx;
+            updateProductGallery();
+          });
+          productImageDots.appendChild(dot);
+        });
+      }
+    }
+  }
+
+  // Eventos de Navegación de Imágenes
+  btnProductPrevImg?.addEventListener('click', () => {
+    if (productImages.length > 1) {
+      currentImageIdx = (currentImageIdx - 1 + productImages.length) % productImages.length;
+      updateProductGallery();
+    }
+  });
+
+  btnProductNextImg?.addEventListener('click', () => {
+    if (productImages.length > 1) {
+      currentImageIdx = (currentImageIdx + 1) % productImages.length;
+      updateProductGallery();
+    }
+  });
+
+  // Eventos de Cantidad
+  btnQtyMinus?.addEventListener('click', () => {
+    if (currentQty > 1) {
+      currentQty--;
+      if (qtyValueEl) qtyValueEl.textContent = currentQty.toString();
+    }
+  });
+
+  btnQtyPlus?.addEventListener('click', () => {
+    currentQty++;
+    if (qtyValueEl) qtyValueEl.textContent = currentQty.toString();
+  });
+
+  // Agregar al Carrito
+  btnAddToCart?.addEventListener('click', () => {
+    if (!activeProduct) return;
+
+    const existingIdx = cart.findIndex(item => item.sku === activeProduct!.sku);
+    if (existingIdx !== -1) {
+      cart[existingIdx].qty += currentQty;
+    } else {
+      cart.push({
+        sku: activeProduct.sku,
+        name: activeProduct.name,
+        price: activeProduct.price,
+        image: activeProduct.image,
+        qty: currentQty
+      });
+    }
+
+    saveCart();
+    closeProductModal();
+
+    // Feedback visual breve del botón de carrito flotante (animación de rebote)
+    if (btnCartToggle) {
+      btnCartToggle.classList.add('scale-110', 'bg-purple-700');
+      setTimeout(() => {
+        btnCartToggle.classList.remove('scale-110', 'bg-purple-700');
+      }, 300);
+    }
+  });
+
+  // Cerrar Modal Producto al hacer clic afuera
+  productModal?.addEventListener('click', (e) => {
+    if (e.target === productModal) {
+      closeProductModal();
+    }
+  });
+
+  btnCloseProduct?.addEventListener('click', closeProductModal);
+
+  // --- GESTIÓN DEL DRAWER DEL CARRITO ---
+
+  function openCartDrawer() {
+    if (cartDrawer && cartDrawerContent) {
+      cartDrawer.classList.remove('hidden');
+      void cartDrawer.offsetHeight;
+      cartDrawer.classList.remove('opacity-0');
+      cartDrawerContent.classList.remove('translate-x-full');
+      cartDrawerContent.classList.add('translate-x-0');
+    }
+  }
+
+  function closeCartDrawer() {
+    if (cartDrawer && cartDrawerContent) {
+      cartDrawer.classList.add('opacity-0');
+      cartDrawerContent.classList.remove('translate-x-0');
+      cartDrawerContent.classList.add('translate-x-full');
+      setTimeout(() => {
+        cartDrawer.classList.add('hidden');
+      }, 300);
+    }
+  }
+
+  btnCartToggle?.addEventListener('click', openCartDrawer);
+  btnCloseCart?.addEventListener('click', closeCartDrawer);
+  
+  cartDrawer?.addEventListener('click', (e) => {
+    if (e.target === cartDrawer) {
+      closeCartDrawer();
+    }
+  });
+
+  // Realizar Pedido por WhatsApp
+  btnCheckout?.addEventListener('click', () => {
+    if (cart.length === 0) return;
+
+    // Número de teléfono de Fundación EdificARTE (simulado)
+    const phoneNumber = '5215512345678';
+    
+    // Crear el mensaje detallado del pedido
+    let message = '¡Hola! Me interesa comprar los siguientes productos artesanales de Tianquiztlis Mercado:\n\n';
+    
+    cart.forEach((item, index) => {
+      message += `${index + 1}. *${item.name}* (Cant: ${item.qty}) - $${(item.price * item.qty).toFixed(2)} MXN\n\n`;
+    });
+
+    const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+    message += `*Total del Pedido:* $${total.toFixed(2)} MXN\n`;
+    message += `*Envío:* Gratis\n\n`;
+    message += '¿Me podrían indicar los pasos para completar mi compra y acordar la entrega? ¡Muchas gracias!';
+
+    const encodedText = encodeURIComponent(message);
+    const waUrl = `https://wa.me/${phoneNumber}?text=${encodedText}`;
+
+    // Abrir enlace en pestaña nueva
+    window.open(waUrl, '_blank');
+  });
+
+  // Inicializar carrito en la carga
+  loadCart();
 </script>
