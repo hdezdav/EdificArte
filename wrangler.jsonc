@@ -14,19 +14,13 @@
     {
       "binding": "DB",
       "database_name": "edificarte-db",
-      "database_id": "PLACEHOLDER_DATABASE_ID",
-    },
-  ],
-  "r2_buckets": [
-    {
-      "binding": "ASSETS",
-      "bucket_name": "edificarte-assets",
+      "database_id": "8520a765-4030-4d9c-a4f7-b7d3432a7533",
     },
   ],
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "PLACEHOLDER_KV_NAMESPACE_ID",
+      "id": "513879ce14e346a9a370f2514977eb1c",
     },
   ],
 }
