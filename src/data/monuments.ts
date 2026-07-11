@@ -25,7 +25,7 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '4:15',
     type: 'museo',
     image:
-      'https://images.unsplash.com/photo-1512813583145-ac554ac82e4a?auto=format&fit=crop&w=400&h=250&q=80',
+      'https://images.unsplash.com/photo-1604340923514-0a2b69fcc51f?q=80&w=1075&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 'catedral',
@@ -39,7 +39,7 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '5:30',
     type: 'templo',
     image:
-      'https://images.unsplash.com/photo-1627918361099-c85264b4c3bf?auto=format&fit=crop&w=400&h=250&q=80',
+      'https://images.unsplash.com/photo-1610220260088-07fafc859f87?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 'templo-mayor',
@@ -67,7 +67,7 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '3:50',
     type: 'museo',
     image:
-      'https://images.unsplash.com/photo-1585123334904-845d60e97b29?auto=format&fit=crop&w=400&h=250&q=80',
+      'https://images.unsplash.com/photo-1564975930846-3da8c44284a5?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 'torre-latino',
@@ -81,7 +81,7 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '4:10',
     type: 'rascacielos',
     image:
-      'https://images.unsplash.com/photo-1509840144299-db509406a73c?auto=format&fit=crop&w=400&h=250&q=80',
+      'https://plus.unsplash.com/premium_photo-1754211681560-19c9f3b9bb85?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 'revolucion',
@@ -95,7 +95,7 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '5:10',
     type: 'museo',
     image:
-      'https://images.unsplash.com/photo-1580979843603-5161cd896e38?auto=format&fit=crop&w=400&h=250&q=80',
+      'https://images.unsplash.com/photo-1611164589008-bf38fc66118c?q=80&w=1188&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 'angel',
@@ -109,7 +109,7 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '4:50',
     type: 'museo',
     image:
-      'https://images.unsplash.com/photo-1585464297275-3626a29fa2a5?auto=format&fit=crop&w=400&h=250&q=80',
+      'https://images.unsplash.com/photo-1682916114863-ba2f7b7d39c9?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 'chapultepec',
@@ -123,7 +123,7 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '7:15',
     type: 'museo',
     image:
-      'https://images.unsplash.com/photo-1601382270349-49c15bddf738?auto=format&fit=crop&w=400&h=250&q=80',
+      'https://images.unsplash.com/photo-1693925369183-a815a771f7d5?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 'tres-culturas',
@@ -137,6 +137,6 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '5:45',
     type: 'arqueologia',
     image:
-      'https://images.unsplash.com/photo-1512813583145-ac554ac82e4a?auto=format&fit=crop&w=400&h=250&q=80',
+      'https://mexicocity.cdmx.gob.mx/wp-content/uploads/2014/12/1024px-Plaza_de_las_3_cultruas_p3.jpg',
   },
 ];
