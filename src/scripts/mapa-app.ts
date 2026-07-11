@@ -143,6 +143,7 @@ const bottomSheet = $('bottom-sheet');
 const sheetHeader = $('sheet-header');
 const sheetChevron = $('sheet-chevron');
 const sheetBody = $('sheet-body');
+const floatingControls = $('map-floating-controls');
 
 function updateSheetUI() {
   if (!bottomSheet || !sheetChevron || !sheetBody) return;
@@ -152,11 +153,17 @@ function updateSheetUI() {
     sheetBody.style.opacity = '0';
     sheetBody.style.pointerEvents = 'none';
     sheetChevron.style.transform = 'rotate(0deg)';
+    if (floatingControls) {
+      floatingControls.style.bottom = 'calc(5.5rem + env(safe-area-inset-bottom, 0px))';
+    }
   } else {
     sheetBody.style.maxHeight = '360px';
     sheetBody.style.opacity = '1';
     sheetBody.style.pointerEvents = 'auto';
     sheetChevron.style.transform = 'rotate(180deg)';
+    if (floatingControls) {
+      floatingControls.style.bottom = 'calc(28.5rem + env(safe-area-inset-bottom, 0px))';
+    }
   }
 }
 
