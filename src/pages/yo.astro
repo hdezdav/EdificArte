@@ -37,80 +37,78 @@ const badges = [
   <div class="grid grid-cols-1 gap-8 md:grid-cols-3 max-w-screen-md mx-auto">
     <!-- Left Column: Profile Card -->
     <div class="md:col-span-1 flex flex-col justify-start">
-      <div class="bg-card rounded-[2rem] shadow-lg overflow-hidden border border-border w-full max-w-sm mx-auto">
+      <div class="relative bg-card rounded-[2rem] shadow-lg border border-border w-full max-w-sm mx-auto">
         <!-- Header with background -->
-        <div class="relative h-40 bg-gradient-to-br from-sky-start to-sky-end overflow-hidden">
+        <div class="relative h-40 bg-gradient-to-br from-sky-start to-sky-end rounded-t-[2rem] overflow-hidden">
           <img
             src="https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=800&q=80"
             alt="Background"
             class="w-full h-full object-cover opacity-60"
           />
+        </div>
 
+        <!-- Settings button -->
+        <div class="absolute top-4 right-4 z-30">
+          <button
+            id="settings-btn"
+            class="p-2 bg-white/20 text-white backdrop-blur-md rounded-full border border-white/30 hover:bg-white/30 transition-all shadow-sm"
+            aria-label="Configuración"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+              <circle cx="12" cy="12" r="1"></circle>
+              <circle cx="12" cy="5" r="1"></circle>
+              <circle cx="12" cy="19" r="1"></circle>
+            </svg>
+          </button>
 
-
-          <!-- Settings button -->
-          <div class="absolute top-4 right-4">
+          <!-- Settings dropdown -->
+          <div
+            id="settings-dropdown"
+            class="hidden absolute right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/50 p-2 shadow-xl z-50 text-slate-800 transition-all duration-200"
+          >
             <button
-              id="settings-btn"
-              class="p-2 bg-white/20 text-white backdrop-blur-md rounded-full border border-white/30 hover:bg-white/30 transition-all shadow-sm"
-              aria-label="Configuración"
+              id="edit-profile-btn"
+              class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors text-left"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-500">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <span>Editar Perfil</span>
+            </button>
+            <button
+              id="config-btn"
+              class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors text-left"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-500">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <span>Configuración</span>
+            </button>
+            <button
+              id="help-btn"
+              class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors text-left"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-500">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" x2="12.01" y1="17" y2="17"></line>
+              </svg>
+              <span>Ayuda & Soporte</span>
+            </button>
+            <hr class="my-1 border-slate-200/60" />
+            <button
+              id="logout-btn"
+              class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-red-50 text-red-600 transition-colors text-left"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
-                <circle cx="12" cy="12" r="1"></circle>
-                <circle cx="12" cy="5" r="1"></circle>
-                <circle cx="12" cy="19" r="1"></circle>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" x2="9" y1="12" y2="12"></line>
               </svg>
+              <span>Cerrar Sesión</span>
             </button>
-
-            <!-- Settings dropdown -->
-            <div
-              id="settings-dropdown"
-              class="hidden absolute right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/50 p-2 shadow-xl z-50 text-slate-800 transition-all duration-200"
-            >
-              <button
-                id="edit-profile-btn"
-                class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors text-left"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-500">
-                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <span>Editar Perfil</span>
-              </button>
-              <button
-                id="config-btn"
-                class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors text-left"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-500">
-                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                <span>Configuración</span>
-              </button>
-              <button
-                id="help-btn"
-                class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors text-left"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-brand-500">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                  <line x1="12" x2="12.01" y1="17" y2="17"></line>
-                </svg>
-                <span>Ayuda & Soporte</span>
-              </button>
-              <hr class="my-1 border-slate-200/60" />
-              <button
-                id="logout-btn"
-                class="flex items-center gap-3 w-full px-3 py-2 text-sm rounded-xl hover:bg-red-50 text-red-600 transition-colors text-left"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                  <polyline points="16 17 21 12 16 7"></polyline>
-                  <line x1="21" x2="9" y1="12" y2="12"></line>
-                </svg>
-                <span>Cerrar Sesión</span>
-              </button>
-            </div>
           </div>
         </div>
 

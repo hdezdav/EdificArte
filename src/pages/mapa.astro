@@ -4,7 +4,10 @@ import Layout from '../layouts/Layout.astro';
 
 <Layout title="EdificARTE — Mapa" fullScreen={true}>
   <!-- Floating Search Bar -->
-  <div class="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col items-center gap-2 px-5 pt-[env(safe-area-inset-top,12px)]">
+  <div
+    class="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col items-center gap-2 px-5"
+    style="padding-top: calc(env(safe-area-inset-top, 0px) + 16px);"
+  >
     <div class="pointer-events-auto flex w-full max-w-lg items-center rounded-full border border-black/[0.06] bg-white/90 px-4 py-3 shadow-[0_2px_16px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all">
       <span class="material-symbols-outlined mr-2.5 text-[20px] text-[#3f043a]">search</span>
       <input
@@ -19,7 +22,7 @@ import Layout from '../layouts/Layout.astro';
     </div>
 
     <!-- Filter Chips -->
-    <div class="no-scrollbar pointer-events-auto flex w-full max-w-lg gap-2 overflow-x-auto px-0.5 pb-1">
+    <div class="no-scrollbar pointer-events-auto flex w-full max-w-lg gap-2 overflow-x-auto -mx-5 px-5 pt-2 pb-4 scroll-smooth">
       <button data-filter="all" class="filter-chip active flex-shrink-0 rounded-full bg-[#3f043a] px-4 py-[7px] text-[11px] font-semibold text-white shadow-sm transition-all active:scale-95">
         Todos
       </button>
