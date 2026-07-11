@@ -1,0 +1,74 @@
+---
+import BottomNav from '../components/BottomNav.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = 'EdificARTE — Audio guía geolocalizada y gamificación turística de monumentos históricos.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+
+    <!-- Script to set dark mode early to avoid flash of light mode -->
+    <script is:inline>
+      const getTheme = () => {
+        if (
+          typeof localStorage !== 'undefined' &&
+          localStorage.getItem('theme')
+        ) {
+          return localStorage.getItem('theme');
+        }
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          return 'dark';
+        }
+        return 'light';
+      };
+
+      const theme = getTheme();
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
+  </head>
+  <body
+    class="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100"
+  >
+    <header
+      class="sticky top-0 z-40 w-full border-b border-slate-200/50 bg-white/70 backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-900/70"
+    >
+      <div
+        class="mx-auto flex h-14 max-w-screen-md items-center justify-between px-4"
+      >
+        <div class="flex items-center gap-2">
+          <span
+            class="bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-xl font-bold text-transparent"
+          >
+            EdificARTE
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-screen-md flex-grow px-4 pb-24 pt-6">
+      <slot />
+    </main>
+
+    <BottomNav />
+  </body>
+</html>
