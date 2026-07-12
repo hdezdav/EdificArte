@@ -11,7 +11,7 @@ interface Props {
 
 const {
   title,
-  description = 'EdificARTE — Audio guía geolocalizada y gamificación turística de monumentos históricos.',
+  description = 'EdificARTE - Audio guía geolocalizada y gamificación turística de monumentos históricos.',
   fullScreen = false,
 } = Astro.props;
 ---
@@ -47,6 +47,21 @@ const {
     <!-- Force light mode -->
     <script is:inline>
       document.documentElement.classList.remove('dark');
+
+      // Observer to dynamically hide header and bottom-nav when modal is open
+      // This is bulletproof and works instantly even with cached CSS stylesheets
+      const observer = new MutationObserver(() => {
+        const isModalOpen = document.body.classList.contains('modal-open');
+        const header = document.getElementById('site-header');
+        const bottomNav = document.getElementById('bottom-nav');
+        if (header) {
+          header.style.setProperty('display', isModalOpen ? 'none' : '', 'important');
+        }
+        if (bottomNav) {
+          bottomNav.style.setProperty('display', isModalOpen ? 'none' : '', 'important');
+        }
+      });
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     </script>
   </head>
   <body

@@ -58,13 +58,21 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
       .first<{ points: number }>();
     const totalPoints = newPoints?.points ?? 0;
 
+    // Buscar si el usuario tiene una wallet vinculada en user_wallets
+    const walletRow = await env.DB.prepare(
+      'SELECT address FROM user_wallets WHERE user_id = ? LIMIT 1'
+    )
+      .bind(user.id)
+      .first<{ address: string }>();
+    const walletAddress = walletRow?.address ?? body.walletAddress ?? '0x0000000000000000000000000000000000000000';
+
     // Mint NFT on-chain (mock hasta deploy).
     let txHash: string | undefined;
     let mode: 'mock' | 'live' | undefined;
     try {
       const minter = getBadgeMinter(env);
       const result = await minter.safeMint({
-        toAddress: body.walletAddress ?? '0x0000000000000000000000000000000000000000',
+        toAddress: walletAddress,
         badgeId,
         metadata: {
           name: body.monumentName ?? `Badge #${badgeId}`,

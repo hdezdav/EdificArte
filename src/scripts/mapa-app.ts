@@ -839,26 +839,27 @@ function updateAudioUI() {
 const MONUMENT_BADGE_MAP: Record<string, number> = {
   'bellas-artes': 1,
   'catedral': 2,
-  'torre-latino': 3,
+  'hotel-virreyes': 3,
   'templo-mayor': 4
 };
 
-function showBadgeNotification(badgeId: number) {
-  const badgeNames: Record<number, string> = {
-    1: 'Explorador Romano (Palacio de Bellas Artes)',
-    2: 'Alma Gótica (Catedral Metropolitana)',
-    3: 'Guardián del Tiempo (Torre Latinoamericana)',
-    4: 'Cazador de Templos (Templo Mayor)'
-  };
-  const badgeImages: Record<number, string> = {
-    1: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=150&h=150&q=80',
-    2: 'https://images.unsplash.com/photo-1543872084-c7bd3822856f?auto=format&fit=crop&w=150&h=150&q=80',
-    3: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=150&h=150&q=80',
-    4: 'https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&w=150&h=150&q=80'
-  };
+const BADGE_NAMES: Record<number, string> = {
+  1: 'Explorador Romano (Palacio de Bellas Artes)',
+  2: 'Alma Gótica (Catedral Metropolitana)',
+  3: 'Legado Virreinal (Hotel Virreyes)',
+  4: 'Cazador de Templos (Templo Mayor)'
+};
 
-  const name = badgeNames[badgeId] || 'Nueva Insignia';
-  const img = badgeImages[badgeId];
+const BADGE_IMAGES: Record<number, string> = {
+  1: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=150&h=150&q=80',
+  2: 'https://images.unsplash.com/photo-1543872084-c7bd3822856f?auto=format&fit=crop&w=150&h=150&q=80',
+  3: 'https://coming-aqua-flyingfish.myfilebase.com/ipfs/QmSb45pdEwGTuJFivhHuaRwZZFX83nrx4Gki1o5cCXqDo1',
+  4: 'https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&w=150&h=150&q=80'
+};
+
+function showBadgeNotification(badgeId: number) {
+  const name = BADGE_NAMES[badgeId] || 'Nueva Insignia';
+  const img = BADGE_IMAGES[badgeId];
 
   // Crear elemento de notificación flotante premium
   const toast = document.createElement('div');
@@ -927,10 +928,16 @@ function startAudio() {
   // Desbloquear logro al reproducir audioguía si está logueado
   const badgeId = MONUMENT_BADGE_MAP[m.id];
   if (badgeId) {
+    const badgeName = BADGE_NAMES[badgeId] || m.name;
+    const badgeImage = BADGE_IMAGES[badgeId] || m.image;
     fetch('/api/unlock-badge', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ badgeId })
+      body: JSON.stringify({
+        badgeId,
+        monumentName: badgeName,
+        monumentImage: badgeImage
+      })
     })
       .then(res => {
         if (res.ok) return res.json();

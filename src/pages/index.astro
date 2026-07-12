@@ -323,7 +323,7 @@ function toExperience(tour: Tour): Experience {
 const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDRESS as string | undefined;
 ---
 
-<Layout title="EdificARTE — Explorar">
+<Layout title="EdificARTE - Explorar">
   <script is:inline define:vars={{ paymentAddress }}>
     // Inyectado server-side: address receptora de pagos USDC. Si no está
     // configurada en wrangler.jsonc vars, queda como string vacío y el botón
@@ -1220,7 +1220,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
             Reservar tour
           </h2>
           <p id="tour-modal-subtitle" class="mt-0.5 text-[11px] font-medium text-brand-700 dark:text-brand-300">
-            —
+            -
           </p>
         </div>
         <button type="button" id="tour-modal-close" class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors flex-shrink-0" aria-label="Cerrar">

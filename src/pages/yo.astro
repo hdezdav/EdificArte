@@ -178,10 +178,10 @@ const badges = [
   },
   {
     id: 3,
-    name: 'Guardián del Tiempo',
-    description: 'Reproduce la audioguía de la Torre Latinoamericana.',
+    name: 'Legado Virreinal',
+    description: 'Reproduce la audioguía del Hotel Virreyes.',
     image:
-      'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=150&h=150&q=80',
+      'https://coming-aqua-flyingfish.myfilebase.com/ipfs/QmSb45pdEwGTuJFivhHuaRwZZFX83nrx4Gki1o5cCXqDo1',
     unlocked: unlockedBadges.includes(3),
   },
   {
@@ -200,7 +200,7 @@ const isEmoji = (str: string) => {
 };
 ---
 
-<Layout title="EdificARTE — Yo">
+<Layout title="EdificARTE - Yo">
   {user ? (
     /* =========================================================================
        VISTA DEL PANEL DE USUARIO AUTENTICADO
@@ -1217,7 +1217,7 @@ const isEmoji = (str: string) => {
 
   /** Formato corto de fecha YYYY-MM-DD → "12 mar 2026" en es-MX. */
   function formatDate(iso: string): string {
-    if (!iso) return '—';
+    if (!iso) return '-';
     const parts = iso.split('-');
     if (parts.length !== 3) return iso;
     const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];

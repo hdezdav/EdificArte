@@ -172,6 +172,6 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '1:50',
     audioUrl: '/audio/hotel.mp3',
     type: 'museo',
-    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVgXWGNBg6LC5gaZ1rmUXpQAGgDntOWI5TTClkJJirEquxSwry7wYM1pY&s=10',
+    image: '/nft/hotel.png',
   },
 ];
