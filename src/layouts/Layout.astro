@@ -150,7 +150,7 @@ const {
           clearTimeout(toastTimeout);
           toast.classList.add('hidden');
           markSeen(monument.id);
-          window.location.href = '/mapa?route=' + encodeURIComponent(monument.id) + '&play=true';
+          window.location.href = '/mapa?pin=' + encodeURIComponent(monument.id) + '&play=true';
         });
         newNo.addEventListener('click', function() {
           clearTimeout(toastTimeout);

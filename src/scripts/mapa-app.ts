@@ -1693,9 +1693,9 @@ window.addEventListener('ai-play-audio', (e: Event) => {
   }
 });
 
-// Comprobar parámetros de URL al cargar para dibujar la ruta e iniciar audio si se solicita
 const urlParams = new URLSearchParams(window.location.search);
 const urlRoute = urlParams.get('route');
+const urlPin = urlParams.get('pin');
 const urlPlay = urlParams.get('play') === 'true';
 
 if (urlRoute) {
@@ -1708,6 +1708,15 @@ if (urlRoute) {
       }, 500);
     }
   }, 600);
+} else if (urlPin) {
+  setTimeout(() => {
+    selectMonument(urlPin);
+    if (urlPlay) {
+      setTimeout(() => {
+        startAudio();
+      }, 500);
+    }
+  }, 400);
 }
 
 // ---------------------------------------------------------------------------
