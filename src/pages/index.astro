@@ -5,7 +5,7 @@ import tianquiztlisProducts from '../data/tianquiztlis_products.json';
 import { TOURS } from '../data/tours';
 import type { Tour } from '../data/tours';
 
-type Category = 'todos' | 'turismo' | 'patrimonio' | 'voluntariado' | 'cultura' | 'gastronomia' | 'museo' | 'tienda' | 'sitio-remoto' | 'eventos';
+type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'tienda' | 'sitio-remoto' | 'eventos';
 
 interface Experience {
   id: string;
@@ -24,6 +24,7 @@ interface Experience {
   videoUrl?: string;
   isVRAvailable?: boolean;
   meetingPoint?: string;
+  customBadge?: string;
   currency?: string;
   duration?: string;
   highlights?: string[];
@@ -61,12 +62,13 @@ const experiencias: Experience[] = [
       'Preservamos el patrimonio arquitectónico y cultural de México a través de la educación y la tecnología.',
     image:
       'https://www.fundacionedificate.org/wp-content/uploads/2025/01/Edificate.jpg',
-    category: 'voluntariado',
+    category: 'turismo',
     tagColor: 'brand',
     url: 'https://www.fundacionedificate.org/',
     cta: 'Visitar sitio',
     rating: 4.9,
     reviewCount: 98,
+    customBadge: 'Voluntariado',
     price: 'Gratis',
   },
   {
@@ -311,7 +313,6 @@ const categoryLabel: Record<Category, string> = {
   turismo: 'Turismo',
   'sitio-remoto': 'Sitios Turísticos',
   patrimonio: 'Patrimonio',
-  voluntariado: 'Voluntariado',
   cultura: 'Cultura',
   museo: 'Museos',
   gastronomia: 'Gastronomía',
@@ -770,7 +771,7 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
                         <span
                           class={`absolute top-3 left-3 rounded-lg px-2 py-0.5 font-bold text-[10px] uppercase tracking-wider backdrop-blur-md border ${tagStyles[exp.tagColor].badge}`}
                         >
-                          {categoryLabel[exp.category]}
+                          {exp.customBadge ?? categoryLabel[exp.category]}
                         </span>
                       </div>
 
@@ -904,7 +905,7 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
                         <div class="relative h-44 w-full overflow-hidden rounded-t-2xl bg-slate-100 dark:bg-slate-850">
                           <img src={exp.image} alt={exp.title} loading="lazy" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                           <span class={`absolute top-3 left-3 rounded-lg px-2 py-0.5 font-bold text-[10px] uppercase tracking-wider backdrop-blur-md border ${tagStyles[exp.tagColor].badge}`}>
-                            {categoryLabel[exp.category]}
+                            {exp.customBadge ?? categoryLabel[exp.category]}
                           </span>
                         </div>
                         <div class="flex flex-1 flex-col justify-between p-4 bg-white dark:bg-slate-900">

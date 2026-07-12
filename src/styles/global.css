@@ -130,3 +130,11 @@
 body.modal-open {
   overflow: hidden !important;
 }
+
+/* Cuando hay un modal abierto, ocultamos los elementos fijos del layout
+   para que no queden visibles ni interactivos por encima del blur. */
+body.modal-open #bottom-nav,
+body.modal-open #ai-agent-container,
+body.modal-open #proximity-toast {
+  display: none !important;
+}
