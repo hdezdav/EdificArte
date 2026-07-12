@@ -51,4 +51,10 @@ module.exports = {
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
     },
   },
+  sourcify: {
+    enabled: true
+  },
+  etherscan: {
+    apiKey: process.env.SCAN_KEY
+  }
 };

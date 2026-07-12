@@ -15,18 +15,17 @@
     // reemplazá por la dirección de USDC de prueba de Circle.
     "USDC_CONTRACT_ADDRESS": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
     // POLYGON_RPC_URL queda como fallback público si ALCHEMY_KEY no está
-    // seteado. En prod NO usar — mejor setear ALCHEMY_KEY como secret
-    // (ver src/lib/onchain/index.ts getRpcUrl()).
-    "POLYGON_RPC_URL": "",
+    // seteado.
+    "POLYGON_RPC_URL": "https://polygon-mainnet.g.alchemy.com/v2/7dWApRtF0HNIC8ZOP04ls",
     // Contratos deployados en Polygon mainnet (chainId 137).
     // Owner de ambos: 0xD540067d763bc792b81f816a677bB25d7e6d4B0B
     // Ver contracts/README.md para PolygonScan links.
     "PUBLIC_BADGE_CONTRACT_ADDRESS": "0xF3BFe6Fac28Fa7E17280fd74e9C52294686a5F25",
     "PUBLIC_REVIEW_CONTRACT_ADDRESS": "0x993362db73F57f3CbEBD310b31E42Bb21ED27538",
     // Wallet receptora de pagos USDC de la tienda Tianquiztlis Mercado.
-    "EDIFICARTE_PAYMENT_ADDRESS": "",
+    "EDIFICARTE_PAYMENT_ADDRESS": "0xD540067d763bc792b81f816a677bB25d7e6d4B0B",
     // Wallet receptora de donaciones USDC (free-form).
-    "EDIFICARTE_DONATION_ADDRESS": "",
+    "EDIFICARTE_DONATION_ADDRESS": "0xD540067d763bc792b81f816a677bB25d7e6d4B0B",
   },
   "d1_databases": [
     {

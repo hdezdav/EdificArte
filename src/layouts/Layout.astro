@@ -141,8 +141,8 @@ const {
         clearTimeout(toastTimeout);
         toastTimeout = setTimeout(function() { toast.classList.add('hidden'); }, 15000);
 
-        var newYes = btnYes.cloneNode(true);
-        var newNo  = btnNo.cloneNode(true);
+        const newYes = btnYes.cloneNode(true);
+        const newNo  = btnNo.cloneNode(true);
         btnYes.replaceWith(newYes);
         btnNo.replaceWith(newNo);
 
@@ -160,14 +160,14 @@ const {
       }
 
       function checkProximity(pos) {
-        var latitude = pos.coords.latitude;
-        var longitude = pos.coords.longitude;
-        var seen = getSeenIds();
-        for (var i = 0; i < MONUMENTS.length; i++) {
-          var m = MONUMENTS[i];
+        const latitude = pos.coords.latitude;
+        const longitude = pos.coords.longitude;
+        const seen = getSeenIds();
+        for (let i = 0; i < MONUMENTS.length; i++) {
+          const m = MONUMENTS[i];
           if (!m.lat || !m.lng) continue;
           if (seen.has(m.id)) continue;
-          var dist = haversine(latitude, longitude, m.lat, m.lng);
+          const dist = haversine(latitude, longitude, m.lat, m.lng);
           if (dist <= RADIUS_M) {
             showToast(m);
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
