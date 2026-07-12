@@ -28,7 +28,7 @@ export const TOURS: Tour[] = [
     duration: '4-5 horas',
     pricePerPerson: 480,
     currency: 'MXN',
-    image: 'https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?q=80&w=1200&auto=format&fit=crop',
+    image: 'https://offloadmedia.feverup.com/cdmxsecreta.com/wp-content/uploads/2026/02/10151742/Museo-Anahuacalli.jpg',
     highlights: [
       'Entrada por Francisco Sosa, la calle más bella de Coyoacán',
       'Jardín Centenario',
@@ -53,7 +53,7 @@ export const TOURS: Tour[] = [
     duration: '4 horas',
     pricePerPerson: 480,
     currency: 'MXN',
-    image: 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?q=80&w=1200&auto=format&fit=crop',
+    image: 'https://oem.com.mx/elsoldemexico/img/13792936/1720504512/BASE_LANDSCAPE/1200/image.jpg',
     highlights: [
       'Ex convento del Carmen',
       'Plaza de San Jacinto con la Casa del Risco (Centro Cultural Isidro Fabela)',
@@ -77,7 +77,7 @@ export const TOURS: Tour[] = [
     duration: '3-4 horas',
     pricePerPerson: 480,
     currency: 'MXN',
-    image: 'https://images.unsplash.com/photo-1584285405439e5755cd8?auto=format&fit=crop&w=1200&q=80',
+    image: 'https://offloadmedia.feverup.com/cdmxsecreta.com/wp-content/uploads/2023/03/06125107/Que-hacer-en-xochimilco.jpg',
     highlights: [
       'Recorrido por las chinampas de Xochimilco (Patrimonio Cultural de la Humanidad)',
       'Técnicas prehispánicas de cultivo',
@@ -99,7 +99,7 @@ export const TOURS: Tour[] = [
     duration: '3 horas',
     pricePerPerson: 480,
     currency: 'MXN',
-    image: 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=1200&q=80',
+    image: 'https://content-historia.nationalgeographic.com.es/medio/2024/04/04/imagen-de-las-ruinas-del-templo-mayor-de-la-antigua-tenochtitlan-y-al-fondo-la-catedral-metropolitana-de-ciudad-de-mexico_513eb790_240404143954_1280x853.jpg',
     highlights: [
       'Recorrido por las ruinas del Templo Mayor',
       'Visita guiada al Museo del Templo Mayor',
