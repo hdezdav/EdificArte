@@ -24,33 +24,61 @@ import {
  * `worker-configuration.d.ts` / `src/env.d.ts`, así las API routes
  * pueden pasar `locals.runtime.env` directamente sin cast.
  *
- * Mantenemos USDC_CONTRACT_ADDRESS y POLYGON_RPC_URL como requeridas
- * (igual que en Env). Si en algún momento se quiere permitir modo mock
- * sin esas vars, usar `Partial<OnchainEnv>` en el call site.
+ * POLYGON_RPC_URL es opcional (puede faltar si ALCHEMY_KEY está
+ * disponible — `getRpcUrl()` resuelve la URL en runtime).
  */
 export interface OnchainEnv {
   USDC_CONTRACT_ADDRESS: string;
-  POLYGON_RPC_URL: string;
+  POLYGON_RPC_URL?: string;
   PUBLIC_BADGE_CONTRACT_ADDRESS?: string;
   PUBLIC_REVIEW_CONTRACT_ADDRESS?: string;
   EDIFICARTE_PAYMENT_ADDRESS?: string;
+  EDIFICARTE_DONATION_ADDRESS?: string;
   ADMIN_PRIVATE_KEY?: string;
+  ALCHEMY_KEY?: string;
+}
+
+/**
+ * Resuelve la URL del RPC de Polygon en runtime.
+ *
+ * Prioridad:
+ *   1. ALCHEMY_KEY (si está seteada) → Alchemy Polygon mainnet
+ *   2. POLYGON_RPC_URL (fallback)
+ *
+ * Lanza error si ninguna está configurada (el caller no debería llegar
+ * acá sin configurar el RPC).
+ */
+export function getRpcUrl(env: OnchainEnv): string {
+  if (env.ALCHEMY_KEY) {
+    return `https://polygon-mainnet.g.alchemy.com/v2/${env.ALCHEMY_KEY}`;
+  }
+  if (env.POLYGON_RPC_URL) {
+    return env.POLYGON_RPC_URL;
+  }
+  throw new Error(
+    'No hay RPC configurado. Setear ALCHEMY_KEY (recomendado) o POLYGON_RPC_URL en el env.'
+  );
 }
 
 /**
  * Detecta si hay configuración suficiente para correr en modo live.
  * Si falta cualquiera de las env vars críticas, devuelve false.
  *
- * Requiere AMBAS contract addresses (badge + reviews) + RPC + admin key.
- * Esto es estricto: cualquier var faltante hace caer todo a Mock.
- * Si querés rollout por fases (ej. badges en live + reviews en mock),
- * usá `getBadgeMinter` / `getReviewEmitter` directos con vars parciales.
+ * Requiere AMBAS contract addresses (badge + reviews) + RPC (resuelto
+ * por getRpcUrl) + admin key.
  */
 export function isLiveMode(env: OnchainEnv): boolean {
+  let rpcOk = false;
+  try {
+    getRpcUrl(env);
+    rpcOk = true;
+  } catch {
+    rpcOk = false;
+  }
   return Boolean(
     env.PUBLIC_BADGE_CONTRACT_ADDRESS &&
       env.PUBLIC_REVIEW_CONTRACT_ADDRESS &&
-      env.POLYGON_RPC_URL &&
+      rpcOk &&
       env.ADMIN_PRIVATE_KEY
   );
 }
@@ -58,7 +86,7 @@ export function isLiveMode(env: OnchainEnv): boolean {
 export function getBadgeMinter(env: OnchainEnv): BadgeMinter {
   if (!isLiveMode(env)) return new MockBadgeMinter();
   return new LiveBadgeMinter(
-    env.POLYGON_RPC_URL!,
+    getRpcUrl(env),
     env.PUBLIC_BADGE_CONTRACT_ADDRESS! as `0x${string}`,
     env.ADMIN_PRIVATE_KEY as `0x${string}` | undefined
   );
@@ -72,7 +100,7 @@ export function getBadgeMinter(env: OnchainEnv): BadgeMinter {
 export function getReviewEmitter(env: OnchainEnv): ReviewEmitter {
   if (!isLiveMode(env)) return new MockReviewEmitter();
   return new LiveReviewEmitter(
-    env.POLYGON_RPC_URL!,
+    getRpcUrl(env),
     env.PUBLIC_REVIEW_CONTRACT_ADDRESS! as `0x${string}`,
     env.ADMIN_PRIVATE_KEY as `0x${string}` | undefined
   );
@@ -81,14 +109,12 @@ export function getReviewEmitter(env: OnchainEnv): ReviewEmitter {
 /**
  * Devuelve el verificador USDC.
  *
- * Como USDC_CONTRACT_ADDRESS y POLYGON_RPC_URL son requeridas en `Env`
- * (están en wrangler.jsonc vars con defaults), asumimos que siempre
- * están presentes. Si el caller quiere modo mock para payments,
- * que no llame a esta función y use el Mock directo.
+ * Como USDC_CONTRACT_ADDRESS es requerida en `Env`, asumimos que siempre
+ * está presente. El RPC se resuelve via `getRpcUrl()`.
  */
 export function getUsdcVerifier(env: OnchainEnv): UsdcVerifier {
   return new LiveUsdcVerifier(
-    env.POLYGON_RPC_URL,
+    getRpcUrl(env),
     env.USDC_CONTRACT_ADDRESS as `0x${string}`
   );
 }

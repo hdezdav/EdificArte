@@ -9,8 +9,9 @@ interface Env {
   // === Public chain vars (from wrangler.jsonc `vars` block) ===
   // USDC nativo en Polygon mainnet (Circle). Para Amoy testnet reemplazá.
   USDC_CONTRACT_ADDRESS: string;
-  // URL del RPC público de Polygon. En prod conviene provider dedicado.
-  POLYGON_RPC_URL: string;
+  // URL del RPC público de Polygon. Fallback si ALCHEMY_KEY no está
+  // disponible. En prod conviene ALCHEMY_KEY (más rápido + SLA).
+  POLYGON_RPC_URL?: string;
   // Address del contrato EdificARteBadge. Vacía hasta deploy.
   PUBLIC_BADGE_CONTRACT_ADDRESS?: string;
   // Address del contrato EdificARteReviews. Vacía hasta deploy.
@@ -27,6 +28,10 @@ interface Env {
   ADMIN_PRIVATE_KEY?: string;
   // Google Gemini API key (chat AI).
   GEMINI_API_KEY?: string;
+  // Alchemy API key para Polygon mainnet RPC. Recomendado: subir como
+  // secret en prod (no hardcodear en wrangler.jsonc). Si está, se usa
+  // ALCHEMY_KEY; si no, fallback a POLYGON_RPC_URL.
+  ALCHEMY_KEY?: string;
 }
 
 declare namespace App {
