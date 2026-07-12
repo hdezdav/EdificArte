@@ -19,6 +19,7 @@ export interface User {
   points: number;
   likes: number;
   visits: number;
+  phone: string | null;
   created_at: string;
 }
 

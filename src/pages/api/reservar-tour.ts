@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { getUsdcVerifier } from '../../lib/onchain';
 
 interface ReservationPayload {
   tourId: string;
@@ -8,6 +9,9 @@ interface ReservationPayload {
   date: string;
   people: number;
   notes?: string;
+  txHash?: string;
+  walletAddress?: string;
+  totalUSDC?: number;
 }
 
 const TOURS_INFO: Record<string, { title: string; pricePerPerson: number }> = {
@@ -17,7 +21,18 @@ const TOURS_INFO: Record<string, { title: string; pricePerPerson: number }> = {
   'templo-mayor': { title: 'Recorrido Histórico: Templo Mayor y Centro Mexica', pricePerPerson: 480 },
 };
 
-export const POST: APIRoute = async ({ request }) => {
+const USDC_DECIMALS = 6;
+
+function toRawUsdc(humanAmount: number): string {
+  const [whole, dec = ''] = String(humanAmount).split('.');
+  const decPadded = (dec + '0'.repeat(USDC_DECIMALS)).slice(0, USDC_DECIMALS);
+  const raw = BigInt(whole) * BigInt(10) ** BigInt(USDC_DECIMALS) + BigInt(decPadded || '0');
+  return raw.toString();
+}
+
+export const POST: APIRoute = async ({ request, locals }) => {
+  const env = locals.runtime.env;
+
   try {
     const body = (await request.json()) as ReservationPayload;
 
@@ -54,9 +69,50 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    const total = tourInfo.pricePerPerson * body.people;
+    const totalMXN = tourInfo.pricePerPerson * body.people;
+    let isPaid = false;
 
-    // STUB: loguear la reserva (futuro: enviar email + guardar en D1)
+    // Si se intentó pagar con USDC, validar la tx en Polygon
+    if (body.txHash && body.walletAddress && body.totalUSDC) {
+      const paymentAddress = env.EDIFICARTE_PAYMENT_ADDRESS;
+      if (!paymentAddress) {
+        return new Response(
+          JSON.stringify({ ok: false, error: 'Pagos USDC no configurados en el servidor (EDIFICARTE_PAYMENT_ADDRESS).' }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const expectedRawAmount = toRawUsdc(body.totalUSDC);
+      let verifier;
+      try {
+        verifier = getUsdcVerifier(env);
+      } catch (err) {
+        console.error('[api/reservar-tour] No se pudo crear el verificador USDC:', err);
+        return new Response(
+          JSON.stringify({ ok: false, error: 'Error de configuración de pagos.' }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const transfer = await verifier.verifyTransfer({
+        txHash: body.txHash,
+        expectedTo: paymentAddress,
+        expectedAmount: expectedRawAmount,
+      });
+
+      if (!transfer) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: 'La transacción de pago no es válida. Verificá el monto, destino y que esté confirmada.',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      isPaid = true;
+    }
+
+    // STUB: loguear la reserva
     console.log('[RESERVAR TOUR]', {
       timestamp: new Date().toISOString(),
       tour: tourInfo.title,
@@ -64,8 +120,12 @@ export const POST: APIRoute = async ({ request }) => {
       customer: { name: body.name, email: body.email, phone: body.phone },
       date: body.date,
       people: body.people,
-      totalMXN: total,
+      totalMXN,
       notes: body.notes,
+      isPaid,
+      txHash: body.txHash,
+      walletAddress: body.walletAddress,
+      totalUSDC: body.totalUSDC
     });
 
     return new Response(
@@ -73,7 +133,8 @@ export const POST: APIRoute = async ({ request }) => {
         ok: true,
         reservationId: `RES-${Date.now()}`,
         tour: tourInfo.title,
-        totalMXN: total,
+        totalMXN,
+        status: isPaid ? 'paid' : 'pending',
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );

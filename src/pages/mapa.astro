@@ -349,13 +349,25 @@ import Layout from '../layouts/Layout.astro';
               </p>
             </div>
           </div>
-          <button
-            id="btn-close-detail"
-            class="rounded-full p-1.5 text-[#a0a0a0] transition-colors hover:bg-black/5"
-            aria-label="Cerrar detalle"
-          >
-            <span class="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button
+              id="detail-favorite-btn"
+              type="button"
+              class="rounded-full p-1.5 text-neutral-400 hover:bg-black/5 hover:text-rose-500 transition-colors"
+              title="Añadir a favoritos"
+            >
+              <svg class="h-5 w-5 fill-none stroke-current stroke-[2px]" viewBox="0 0 24 24">
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+              </svg>
+            </button>
+            <button
+              id="btn-close-detail"
+              class="rounded-full p-1.5 text-[#a0a0a0] transition-colors hover:bg-black/5"
+              aria-label="Cerrar detalle"
+            >
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
         </div>
 
         <p
@@ -584,7 +596,7 @@ import Layout from '../layouts/Layout.astro';
   <!-- Language Selection Modal (Overlay) -->
   <div
     id="lang-modal"
-    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
     role="dialog"
     aria-modal="true"
     aria-labelledby="lang-modal-title"
@@ -641,7 +653,7 @@ import Layout from '../layouts/Layout.astro';
   <!-- Welcome & Location Modal (Overlay) -->
   <div
     id="welcome-modal"
-    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
     role="dialog"
     aria-modal="true"
     aria-labelledby="welcome-modal-heading"

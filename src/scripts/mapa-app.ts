@@ -121,14 +121,27 @@ const MONUMENT_ICONS: Record<string, string> = {
   'tres-culturas': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M2 22 L2 18 L6 18 L6 22"/><path d="M2 18 L6 18 L5 14 L3 14 Z"/><path d="M3 14 L5 14 L4.5 11 L3.5 11 Z"/><path d="M4 11 L4 10"/><path d="M8 22 L8 14 L13 14 L13 22"/><path d="M10 14 L10 6 L11 6 L11 14"/><path d="M9 6 L12 6"/><path d="M10.5 4 L10.5 2 L11.5 2 L11.5 4"/><path d="M9 14 L9 11 A 2 1.5 0 0 1 13 11 L13 14"/><path d="M15 22 L15 8 L21 8 L21 22"/><path d="M16 10 L17 10 M16 12 L17 12 M16 14 L17 14 M16 16 L17 16 M19 10 L20 10 M19 12 L20 12 M19 14 L20 14 M19 16 L20 16"/><path d="M17 8 L19 8 L19 5 L17 5 Z"/></svg>`,
   'piramides-sol': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 22 L23 22"/><path d="M2 22 L22 22 L20 18 L4 18 Z"/><path d="M4 18 L20 18 L18.5 14 L5.5 14 Z"/><path d="M5.5 14 L18.5 14 L17 10 L7 10 Z"/><path d="M7 10 L17 10 L15 6 L9 6 Z"/><path d="M9 6 L15 6 L13 3 L11 3 Z"/><path d="M10.5 3 L13.5 3 L13 1 L11 1 Z"/><path d="M12 22 L12 1"/></svg>`,
   'hotel-virreyes': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M4 22 L4 8 L20 8 L20 22"/><path d="M3 8 L12 3 L21 8"/><path d="M6 22 L6 12 L10 12 L10 22"/><path d="M14 22 L14 12 L18 12 L18 22"/><path d="M7 16 L9 16 M7 18 L9 18 M15 16 L17 16 M15 18 L17 18"/><path d="M11 6 L11 4 M13 6 L13 4 M11 5 L13 5"/></svg>`,
+  'memorial-68': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M4 22 L4 10 L20 10 L20 22"/><path d="M4 10 L12 5 L20 10"/><path d="M10 22 L10 16 L14 16 L14 22"/><path d="M6 14 L8 14 M6 17 L8 17 M16 14 L18 14 M16 17 L18 17"/><path d="M12 5 L12 3"/><path d="M10 3 L14 3"/><path d="M12 3 Q11 1 10 2 M12 3 Q13 1 14 2"/></svg>`,
+  'el-rule': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M4 22 L4 8 L20 8 L20 22"/><path d="M4 8 L4 6 L20 6 L20 8"/><path d="M10 22 L10 16 A2 2 0 0 1 14 16 L14 22"/><path d="M6 11 L8 11 L8 14 L6 14 Z"/><path d="M16 11 L18 11 L18 14 L16 14 Z"/><path d="M7 17 L7 19 M17 17 L17 19"/><path d="M11 6 L11 3 Q12 1 13 3 L13 6"/><path d="M9 4 L15 4"/></svg>`,
 };
 
 const pinIcon = (monumentId: string, emoji: string, selected = false): L.DivIcon => {
   const svg =
     MONUMENT_ICONS[monumentId] ||
     `<span style="font-size:20px;line-height:1">${emoji}</span>`;
+
+  let favorites: string[] = [];
+  try {
+    favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
+  } catch {}
+  const isFav = favorites.includes(monumentId);
+
+  const heartBadge = isFav 
+    ? `<div class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white border border-white" style="width:16px;height:16px;font-size:9px;box-shadow:0 1px 3px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">❤️</div>` 
+    : '';
+
   return L.divIcon({
-    html: `<div class="monument-pin ${selected ? 'selected' : ''}">${svg}</div>`,
+    html: `<div class="monument-pin relative ${selected ? 'selected' : ''}">${svg}${heartBadge}</div>`,
     className: '',
     iconSize: [40, 40],
     iconAnchor: [20, 20],
@@ -448,9 +461,56 @@ function renderList(list: Monument[]) {
 
     el.appendChild(textWrap);
 
+    // Botón de favorito (corazón)
+    const favWrap = document.createElement('button');
+    favWrap.type = 'button';
+    favWrap.className = 'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-slate-400 hover:text-rose-500 transition-colors mr-1';
+    
+    let favorites: string[] = [];
+    try {
+      favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
+    } catch {}
+    const isFav = favorites.includes(m.id);
+
+    favWrap.innerHTML = `
+      <svg class="h-4 w-4 ${isFav ? 'fill-rose-500 text-rose-500' : 'fill-none stroke-current stroke-[2px]'}" viewBox="0 0 24 24">
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+      </svg>
+    `;
+
+    favWrap.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      let currentFavs: string[] = [];
+      try {
+        currentFavs = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
+      } catch {}
+      const index = currentFavs.indexOf(m.id);
+      if (index > -1) {
+        currentFavs.splice(index, 1);
+        favWrap.querySelector('svg')?.classList.replace('fill-rose-500', 'fill-none');
+        favWrap.querySelector('svg')?.classList.remove('text-rose-500');
+      } else {
+        currentFavs.push(m.id);
+        favWrap.querySelector('svg')?.classList.replace('fill-none', 'fill-rose-500');
+        favWrap.querySelector('svg')?.classList.add('text-rose-500');
+      }
+      localStorage.setItem('edificarte_favorites', JSON.stringify(currentFavs));
+
+      // Sincronizar el botón de detalle si está abierto
+      updateDetailFavoriteState();
+
+      // Sincronizar los pines
+      markers.forEach((x) => {
+        x.inst.setIcon(pinIcon(x.id, x.emoji, x.id === selectedId));
+      });
+    });
+
+    el.appendChild(favWrap);
+
     const playWrap = document.createElement('span');
     playWrap.className =
-      'flex h-7 w-7 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a]';
+      'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a]';
 
     const playIcon = document.createElement('span');
     playIcon.className = 'material-symbols-outlined text-[16px]';
@@ -567,6 +627,27 @@ function updateVisitSection(m: Monument) {
   }
 }
 
+function updateDetailFavoriteState() {
+  const btn = $('detail-favorite-btn');
+  if (!btn || !selectedId) return;
+  const svg = btn.querySelector('svg');
+  if (!svg) return;
+
+  let favorites: string[] = [];
+  try {
+    favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
+  } catch {}
+  const isFav = favorites.includes(selectedId);
+
+  if (isFav) {
+    svg.classList.remove('fill-none', 'text-neutral-400');
+    svg.classList.add('fill-rose-500', 'text-rose-500');
+  } else {
+    svg.classList.remove('fill-rose-500', 'text-rose-500');
+    svg.classList.add('fill-none', 'text-neutral-400');
+  }
+}
+
 function selectMonument(id: string) {
   selectedId = id;
   const m = MONUMENTS.find((x) => x.id === id);
@@ -591,6 +672,7 @@ function selectMonument(id: string) {
   stopAudio();
   markers.forEach((x) => x.inst.setIcon(pinIcon(x.id, x.emoji, x.id === id)));
   updateVisitSection(m);
+  updateDetailFavoriteState();
 
   // Mostrar / ocultar promo de recorrido guiado
   const tourPromoCard = $('tour-promo-card');
@@ -636,6 +718,38 @@ function deselect() {
 
 
 $('btn-close-detail')?.addEventListener('click', deselect);
+
+$('detail-favorite-btn')?.addEventListener('click', () => {
+  if (!selectedId) return;
+  let favorites: string[] = [];
+  try {
+    favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
+  } catch {}
+  const index = favorites.indexOf(selectedId);
+  if (index > -1) {
+    favorites.splice(index, 1);
+  } else {
+    favorites.push(selectedId);
+  }
+  localStorage.setItem('edificarte_favorites', JSON.stringify(favorites));
+
+  updateDetailFavoriteState();
+
+  // Actualizar los pines del mapa para mostrar/ocultar el badge de corazón
+  markers.forEach((x) => {
+    x.inst.setIcon(pinIcon(x.id, x.emoji, x.id === selectedId));
+  });
+
+  // Volver a renderizar la lista para actualizar los corazones en ella
+  const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
+  const filtered = MONUMENTS.filter(
+    (m) =>
+      m.name.toLowerCase().includes(term) ||
+      m.category.toLowerCase().includes(term) ||
+      m.desc.toLowerCase().includes(term)
+  );
+  renderList(filtered);
+});
 
 // ---------------------------------------------------------------------------
 // Visit & Review handlers

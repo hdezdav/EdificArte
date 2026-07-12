@@ -5,7 +5,7 @@ import tianquiztlisProducts from '../data/tianquiztlis_products.json';
 import { TOURS } from '../data/tours';
 import type { Tour } from '../data/tours';
 
-type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'tienda' | 'sitio-remoto';
+type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'tienda' | 'sitio-remoto' | 'eventos';
 
 interface Experience {
   id: string;
@@ -13,7 +13,7 @@ interface Experience {
   description: string;
   image: string;
   category: Exclude<Category, 'todos'>;
-  tagColor: 'emerald' | 'brand' | 'amber' | 'rose' | 'indigo' | 'purple';
+  tagColor: 'emerald' | 'brand' | 'amber' | 'rose' | 'indigo' | 'purple' | 'blue';
   url: string;
   cta: string;
   rating?: number;
@@ -28,10 +28,13 @@ interface Experience {
   duration?: string;
   highlights?: string[];
   isTour?: boolean;
+  lat?: number;
+  lng?: number;
   translations?: {
     es: { name: string; desc: string; category: string; cta: string; guide: string };
     en: { name: string; desc: string; category: string; cta: string; guide: string };
     señas: { name: string; desc: string; category: string; cta: string; guide: string; videoUrl: string };
+    native?: { name: string; desc: string; category: string; cta: string; guide: string };
   };
 }
 
@@ -96,7 +99,7 @@ const experiencias: Experience[] = [
     reviewCount: 342,
     price: 'Gratis',
   },
-  
+
   {
     id: 'museo-anahuacalli',
     title: 'Museo Anahuacalli',
@@ -122,22 +125,28 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
     'revolucion': { rating: 4.92, reviewCount: 204, price: '$120 MXN' },
     'angel': { rating: 4.96, reviewCount: 412, price: 'Gratis' },
     'chapultepec': { rating: 4.98, reviewCount: 520, price: '$90 MXN' },
+    'memorial-68': { rating: 4.88, reviewCount: 95, price: '$30 MXN' },
+    'el-rule': { rating: 4.85, reviewCount: 78, price: 'Gratis' },
   };
 
   const translations = {
     es: {
       name: m.name,
       desc: m.desc,
-      category: m.category,
-      cta: 'Ver guía',
-      guide: `¡Bienvenido al ${m.name}! Este emblemático espacio es parte fundamental del patrimonio histórico de la Ciudad de México. Aquí podrás contemplar una arquitectura imponente y aprender sobre su evolución artística, social e histórica a través del tiempo. Disfrutá del recorrido detallado por sus salas principales y descubrí los secretos que sus paredes guardan.`,
+      category: m.id === 'el-rule' ? 'Exposición / Evento' : m.category,
+      cta: m.id === 'el-rule' ? 'Ver Evento' : 'Ver guía',
+      guide: m.id === 'el-rule'
+        ? '¡Bienvenido al Centro Cultural El Rule! Te invitamos a la exposición multilingüe y multisensorial "Nombrar el Orgullo Neo" auspiciada por la UNESCO. Esta exhibición celebra la identidad y la diversidad cultural a través del arte contemporáneo, el diálogo social y la inclusión.'
+        : `¡Bienvenido al ${m.name}! Este emblemático espacio es parte fundamental del patrimonio histórico de la Ciudad de México. Aquí podrás contemplar una arquitectura imponente y aprender sobre su evolución artística, social e histórica a través del tiempo. Disfrutá del recorrido detallado por sus salas principales y descubrí los secretos que sus paredes guardan.`,
     },
     en: {
-      name: m.name === 'Palacio de Bellas Artes' ? 'Palace of Fine Arts' : (m.name === 'Palacio Nacional' ? 'National Palace' : (m.name === 'Castillo de Chapultepec' ? 'Chapultepec Castle' : (m.name === 'Ángel de la Independencia' ? 'Angel of Independence' : 'Monument to the Revolution'))),
-      desc: m.name === 'Palacio de Bellas Artes' ? 'One of the world\'s most famous opera houses, known for its Art Nouveau exterior and Art Deco interior.' : m.desc,
-      category: m.category === 'Museo / Teatro' ? 'Museum / Theater' : (m.category === 'Museo / Castillo' ? 'Museum / Castle' : 'Historical Monument'),
-      cta: 'View guide',
-      guide: `Welcome to the ${m.name}! This emblematic site is a key piece of Mexico City's historical heritage. Here, you can contemplate stunning architecture and learn about its artistic, social, and historical evolution through time. Enjoy the detailed self-guided tour through its main halls and uncover the secrets written in its walls.`,
+      name: m.id === 'el-rule' ? 'El Rule Cultural Center' : (m.name === 'Palacio de Bellas Artes' ? 'Palace of Fine Arts' : (m.name === 'Palacio Nacional' ? 'National Palace' : (m.name === 'Castillo de Chapultepec' ? 'Chapultepec Castle' : (m.name === 'Ángel de la Independencia' ? 'Angel of Independence' : (m.name === 'Museo Memorial del 68' ? '68 Memorial Museum' : (m.name === 'Hotel Virreyes' ? 'Hotel Virreyes' : 'Monument to the Revolution')))))),
+      desc: m.id === 'el-rule' ? 'Multidisciplinary cultural space in the historic center of Mexico City.' : (m.name === 'Palacio de Bellas Artes' ? 'One of the world\'s most famous opera houses, known for its Art Nouveau exterior and Art Deco interior.' : m.desc),
+      category: m.id === 'el-rule' ? 'Exhibition / Event' : (m.category === 'Museo / Teatro' ? 'Museum / Theater' : (m.category === 'Museo / Castillo' ? 'Museum / Castle' : (m.category === 'Museo Histórico' ? 'Historical Museum' : 'Historical Monument'))),
+      cta: m.id === 'el-rule' ? 'View Event' : 'View guide',
+      guide: m.id === 'el-rule'
+        ? 'Welcome to El Rule Cultural Center! We invite you to the UNESCO-sponsored multilingual and multisensorial exhibition "Nombrar el Orgullo Neo". This exhibition celebrates identity and cultural diversity through contemporary art, social dialogue, and inclusion.'
+        : `Welcome to the ${m.name}! This emblematic site is a key piece of Mexico City's historical heritage. Here, you can contemplate stunning architecture and learn about its artistic, social, and historical evolution through time. Enjoy the detailed self-guided tour through its main halls and uncover the secrets written in its walls.`,
     },
     señas: {
       name: `${m.name} (LSM)`,
@@ -145,8 +154,17 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
       category: 'Accesibilidad / LSM',
       cta: 'Ver LSM',
       guide: `Esta es la guía accesible en Lengua de Señas Mexicana (LSM) para el ${m.name}. Explicamos la historia, el contexto y los murales o detalles artísticos más representativos para garantizar el acceso pleno a la cultura para la comunidad con discapacidad auditiva.`,
-      videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', // Video educativo genérico como demo
+      videoUrl: 'https://www.youtube.com/embed/WEvDk9y1e_E?si=m8XYBMkzBom_wtPl',
     },
+    ...(m.id === 'el-rule' ? {
+      native: {
+        name: 'El Rule (Lenguas Originarias)',
+        desc: 'Traducción multilingüe y multisensorial de la exposición "Nombrar el Orgullo Neo" de la UNESCO en lenguas originarias.',
+        category: 'Multilingüe / UNESCO',
+        cta: 'Ver Trad.',
+        guide: 'Esta guía y exposición de la UNESCO cuenta con traducción a lenguas indígenas mexicanas.\n\nPodés acceder a la página traducida a las lenguas indígenas visitando el portal oficial de MetaLingua: https://www.metalinguamx.org/\n\nLeé la nota de prensa de la exposición "Nombrar el Orgullo Neo" en SinEmbargo: https://www.sinembargo.mx/4810195/nombrar-el-orgullo-neo-exposicion-multilingue-y-multisensorial-de-la-unesco/',
+      }
+    } : {})
   };
 
   const rData = ratings[m.id] || { rating: 4.8, reviewCount: 15, price: 'Gratis' };
@@ -156,10 +174,12 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
     title: m.name,
     description: m.desc,
     image: m.image,
-    category: 'museo',
-    tagColor: 'indigo',
+    lat: m.lat,
+    lng: m.lng,
+    category: m.id === 'el-rule' ? 'eventos' : 'museo',
+    tagColor: m.id === 'el-rule' ? 'blue' : 'indigo',
     url: '#',
-    cta: 'Ver guía',
+    cta: m.id === 'el-rule' ? 'Ver Evento' : 'Ver guía',
     rating: rData.rating,
     reviewCount: rData.reviewCount,
     price: rData.price,
@@ -214,7 +234,7 @@ const sitioRemotoExperiencias: Experience[] = MONUMENTS.filter((m) => m.type ===
       category: 'Accesibilidad / LSM',
       cta: 'Ver LSM',
       guide: `Esta es la guía accesible en Lengua de Señas Mexicana (LSM) para ${m.name}. Explicamos la historia, el contexto arqueológico y los detalles más representativos del sitio para garantizar el acceso pleno a la cultura para la comunidad con discapacidad auditiva.`,
-      videoUrl: m.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+      videoUrl: 'https://www.youtube.com/embed/WEvDk9y1e_E?si=m8XYBMkzBom_wtPl',
     },
   };
 
@@ -223,6 +243,8 @@ const sitioRemotoExperiencias: Experience[] = MONUMENTS.filter((m) => m.type ===
     title: m.name,
     description: m.desc,
     image: m.image,
+    lat: m.lat,
+    lng: m.lng,
     category: 'sitio-remoto',
     tagColor: 'purple',
     url: '#',
@@ -272,6 +294,11 @@ const tagStyles: Record<
       'border-purple-200/50 bg-purple-50 text-purple-700 dark:border-purple-800/50 dark:bg-purple-950/40 dark:text-purple-400',
     pill: 'border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950/30 dark:text-purple-400',
   },
+  blue: {
+    badge:
+      'border-blue-200/50 bg-blue-50 text-blue-700 dark:border-blue-800/50 dark:bg-blue-950/40 dark:text-blue-400',
+    pill: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400',
+  },
 };
 
 // Orden visual de los chips (izquierda → derecha) y de las secciones
@@ -288,15 +315,18 @@ const categoryLabel: Record<Category, string> = {
   museo: 'Museos',
   gastronomia: 'Gastronomía',
   tienda: 'Artesanías',
+  eventos: 'Eventos / Exposiciones',
 };
 
 const categories: Exclude<Category, 'todos'>[] = [
   'turismo',
   'sitio-remoto',
   'museo',
-  'gastronomia',
-  'tienda',
 ];
+// gastronomia & eventos: misma fila (grid 2 col)
+const pairedCategories: [Exclude<Category,'todos'>, Exclude<Category,'todos'>] = ['gastronomia', 'eventos'];
+// tienda va al final sola
+const lastCategories: Exclude<Category,'todos'>[] = ['tienda'];
 
 // Helper: convierte un Tour en Experience para mezclarlo en el carousel de Turismo
 function toExperience(tour: Tour): Experience {
@@ -325,10 +355,14 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
 
 <Layout title="EdificARTE - Explorar">
   <script is:inline define:vars={{ paymentAddress }}>
-    // Inyectado server-side: address receptora de pagos USDC. Si no está
-    // configurada en wrangler.jsonc vars, queda como string vacío y el botón
-    // de checkout muestra error explicando qué falta.
     window.__EDIFICARTE_PAYMENT_ADDRESS__ = paymentAddress || '';
+  </script>
+  <script is:inline define:vars={{ experiencesMap: Object.fromEntries(todasLasExperiencias.map(e => [e.id, { title: e.title, image: e.image, category: e.category }])) }}>
+    window.__EDIFICARTE_EXPERIENCES__ = experiencesMap;
+  </script>
+  <script is:inline define:vars={{ monumentsList: MONUMENTS.map(m => ({ id: m.id, name: m.name, lat: m.lat, lng: m.lng, image: m.image })) }}>
+    // For proximity notifications in Layout.astro
+    window.__EDIFICARTE_MONUMENTS__ = monumentsList;
   </script>
   <script is:inline>
     // Primera carga del navegador: si nunca se mostró la bienvenida, la
@@ -355,7 +389,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
        conservará ese nombre automáticamente. -->
   <div
     id="welcome-modal"
-    class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md"
+    class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md"
     role="dialog"
     aria-modal="true"
     aria-labelledby="welcome-modal-title"
@@ -691,6 +725,8 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
                       data-title={exp.title}
                       data-desc={exp.description}
                       data-id={exp.id}
+                      data-lat={exp.lat ?? ''}
+                      data-lng={exp.lng ?? ''}
                       data-is-vr={exp.isVRAvailable ? 'true' : 'false'}
                       data-vr-url={exp.videoUrl || ''}
                       data-tour-id={exp.isTour ? exp.id : undefined}
@@ -821,6 +857,146 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
         })
       }
 
+      {/* Gastronomía + Eventos: rendered side-by-side in a two-column row */}
+      {
+        (() => {
+          const pairs = pairedCategories.map((cat) => ({
+            cat,
+            exps: todasLasExperiencias.filter(exp => exp.category === cat),
+          })).filter(p => p.exps.length > 0);
+          if (pairs.length === 0) return null;
+          return (
+            <div
+              id="paired-sections-row"
+              class={`grid gap-4 py-2 border-b border-slate-100/60 dark:border-slate-800/60 ${
+                pairs.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+              }`}
+            >
+              {pairs.map(({ cat, exps }) => (
+                <section
+                  data-category={cat}
+                  data-render-categories={cat}
+                  class="category-section min-w-0"
+                >
+                  <div class="mb-2 flex items-center justify-between">
+                    <h2 class="font-bold text-sm tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-1">
+                      <span class="h-2 w-2 rounded-full bg-brand-500"></span>
+                      {categoryLabel[cat]}
+                    </h2>
+                  </div>
+                  <div class="scroll-container no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scroll-smooth">
+                    {exps.map((exp) => (
+                      <article
+                        data-category={exp.category}
+                        data-translations={exp.translations ? JSON.stringify(exp.translations) : undefined}
+                        data-rating={exp.rating}
+                        data-image={exp.image}
+                        data-price={exp.price}
+                        data-is-product="false"
+                        data-title={exp.title}
+                        data-desc={exp.description}
+                        data-id={exp.id}
+                        data-is-vr="false"
+                        data-vr-url=""
+                        class={`exp-card group relative flex h-[350px] w-[250px] sm:w-[270px] flex-none snap-start flex-col overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md ${exp.translations ? 'cursor-pointer' : ''}`}
+                      >
+                        <div class="relative h-44 w-full overflow-hidden rounded-t-2xl bg-slate-100 dark:bg-slate-850">
+                          <img src={exp.image} alt={exp.title} loading="lazy" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                          <span class={`absolute top-3 left-3 rounded-lg px-2 py-0.5 font-bold text-[10px] uppercase tracking-wider backdrop-blur-md border ${tagStyles[exp.tagColor].badge}`}>
+                            {categoryLabel[exp.category]}
+                          </span>
+                        </div>
+                        <div class="flex flex-1 flex-col justify-between p-4 bg-white dark:bg-slate-900">
+                          <div>
+                            <p class="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider">México / Ciudad de México</p>
+                            <h2 class="text-sm font-bold tracking-tight text-slate-800 dark:text-slate-100 mt-1 line-clamp-1 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{exp.title}</h2>
+                            <p class="text-slate-500 dark:text-slate-400 text-xs tracking-tight mt-1.5 line-clamp-2 leading-relaxed">{exp.description}</p>
+                          </div>
+                          <div class="mt-auto pt-3 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/60">
+                            {exp.rating && (
+                              <span class="flex items-center gap-0.5 text-amber-500">
+                                <span class="material-symbols-outlined text-[14px] !font-bold">star</span>
+                                <span class="text-slate-800 dark:text-slate-200">{exp.rating.toFixed(2)}</span>
+                              </span>
+                            )}
+                            {exp.reviewCount && <span class="text-slate-400 dark:text-slate-500 font-normal">({exp.reviewCount})</span>}
+                            {exp.price && <span class="text-slate-400 dark:text-slate-500 font-normal ml-0.5">· {exp.price}</span>}
+                            {exp.translations && (
+                              <button type="button" class="guide-trigger-btn ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]">
+                                {exp.cta}
+                                <span class="material-symbols-outlined text-[12px]">arrow_forward</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          );
+        })()
+      }
+      {/* Artesanías: última sección, full-width */}
+      {
+        lastCategories.map((cat) => {
+          const catExp = todasLasExperiencias.filter(exp => exp.category === cat);
+          if (catExp.length === 0) return null;
+          return (
+            <section
+              data-category={cat}
+              data-render-categories={cat}
+              class="category-section w-full py-2 border-b border-slate-100/60 dark:border-slate-800/60 last:border-0"
+            >
+              <div class="mb-3 flex items-center justify-between">
+                <h2 class="font-bold text-base md:text-lg tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                  <span class="h-2 w-2 rounded-full bg-brand-500"></span>
+                  {categoryLabel[cat]}
+                </h2>
+                <div class="flex items-center gap-1.5">
+                  <button type="button" class="scroll-left-btn h-7 w-7 rounded-full border border-slate-200 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-all active:scale-90" title="Deslizar izquierda">
+                    <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                  </button>
+                  <button type="button" class="scroll-right-btn h-7 w-7 rounded-full border border-slate-200 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-all active:scale-90" title="Deslizar derecha">
+                    <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+              <div class="scroll-container no-scrollbar -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-3 scroll-smooth">
+                {(() => {
+                  const chunks = [];
+                  for (let i = 0; i < catExp.length; i += 4) chunks.push(catExp.slice(i, i + 4));
+                  return chunks.map((chunk) => (
+                    <div class="grid grid-cols-2 gap-3 w-[calc(100vw-32px)] sm:w-[704px] flex-none snap-start">
+                      {chunk.map((exp) => (
+                        <article
+                          data-category={exp.category}
+                          data-is-product="true"
+                          data-title={exp.title}
+                          data-desc={exp.description}
+                          data-price={exp.price}
+                          data-sku={exp.sku}
+                          data-image={exp.image}
+                          data-images={exp.images ? JSON.stringify(exp.images) : undefined}
+                          class="exp-card group relative aspect-square overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer active:scale-[0.98]"
+                        >
+                          <img src={exp.image} alt={exp.title} loading="lazy" class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                          <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent p-3 pt-8 flex flex-col justify-end text-white">
+                            <h3 class="text-[11px] font-bold truncate tracking-tight">{exp.title}</h3>
+                            <p class="text-[9px] font-extrabold text-purple-300 mt-0.5">{exp.price}</p>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ));
+                })()}
+              </div>
+            </section>
+          );
+        })
+      }
+
       <!-- Empty state (shown by JS when no matches) -->
       <div
         id="empty-state"
@@ -844,7 +1020,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <!-- Museum/Guide Details Modal (Overlay) -->
   <div
     id="guide-modal"
-    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
       class="w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100vh-32px)] sm:max-h-[90vh] overflow-hidden"
@@ -903,6 +1079,14 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
           >
             🤟 LSM
           </button>
+          <button
+            type="button"
+            id="btn-guide-lang-native"
+            data-guide-lang="native"
+            class="guide-lang-tab flex-1 py-2 text-[11px] font-bold rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-350 hidden"
+          >
+            🇲🇽 Nativo
+          </button>
         </div>
 
         <!-- Translated Content -->
@@ -944,7 +1128,15 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
 
           <div id="guide-modal-reviews-list" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar"></div>
 
-          <form id="guide-modal-review-form" class="space-y-2 pt-1">
+          <!-- Proximity gate: shown while checking location -->
+          <div id="review-proximity-gate" class="hidden flex-col items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 p-3 text-center">
+            <span class="material-symbols-outlined text-[22px] text-amber-500">location_searching</span>
+            <p id="review-proximity-msg" class="text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+              Verificando tu ubicación…
+            </p>
+          </div>
+
+          <form id="guide-modal-review-form" class="space-y-2 pt-1 hidden">
             <input type="hidden" name="targetId" />
             <input type="hidden" name="targetType" value="museum" />
             <div class="flex items-center gap-2">
@@ -1010,7 +1202,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <!-- Cart Sidebar Drawer -->
   <div
     id="cart-drawer"
-    class="fixed inset-0 z-50 [&:not(.hidden)]:flex justify-end bg-black/60 backdrop-blur-sm transition-opacity duration-300 opacity-0 hidden"
+    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex justify-end bg-black/60 backdrop-blur-sm transition-opacity duration-300 opacity-0 hidden"
   >
     <div
       id="cart-drawer-content"
@@ -1084,7 +1276,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <!-- Product Details Modal (Overlay) -->
   <div
     id="product-modal"
-    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
       class="w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100vh-32px)] sm:max-h-[90vh] overflow-hidden"
@@ -1203,7 +1395,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <!-- Tour Reservation Modal (Overlay) -->
   <div
     id="tour-modal"
-    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-4"
+    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-4"
     role="dialog"
     aria-modal="true"
     aria-labelledby="tour-modal-title"
@@ -1275,14 +1467,23 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
         <!-- Total -->
         <div class="flex items-center justify-between rounded-xl bg-slate-100 dark:bg-slate-800 p-3">
           <span class="text-[12px] font-bold text-slate-700 dark:text-slate-300">Total estimado</span>
-          <span id="tour-total" class="text-lg font-extrabold text-brand-700 dark:text-brand-400">$960 MXN</span>
+          <div class="text-right">
+            <span id="tour-total" class="text-base font-extrabold text-brand-700 dark:text-brand-400">$960 MXN</span>
+            <span id="tour-total-usdc" class="block text-[11px] font-semibold text-slate-400 dark:text-slate-500">≈ $0.00 USDC</span>
+          </div>
         </div>
 
-        <!-- Submit -->
-        <button type="submit" id="tour-submit-btn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white font-bold py-3 text-sm shadow-sm transition-all active:scale-[0.97]">
-          <span class="material-symbols-outlined text-[18px]">send</span>
-          Enviar solicitud de reserva
-        </button>
+        <!-- Action Buttons -->
+        <div class="flex flex-col gap-2 pt-1">
+          <button type="button" id="tour-pay-usdc-btn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#3f043a] hover:bg-[#3f043a]/90 text-white font-bold py-3 text-sm shadow-sm transition-all active:scale-[0.97]">
+            <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+            <span id="tour-pay-usdc-label">Pagar con USDC en Polygon</span>
+          </button>
+          <button type="submit" id="tour-submit-btn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-transparent dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold py-2.5 text-xs shadow-sm transition-all active:scale-[0.97]">
+            <span class="material-symbols-outlined text-[14px]">send</span>
+            Solo enviar solicitud (pendiente de pago)
+          </button>
+        </div>
       </form>
 
       <!-- Success state (hidden by default) -->
@@ -1416,24 +1617,65 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
     }
   });
 
-  // Hacer interactivos los botones de favoritos (corazón)
-  document.querySelectorAll('.favorite-btn').forEach(btn => {
+  // Hacer interactivos los botones de favoritos (corazón) y persistirlos
+  function loadFavoritesState() {
+    let favorites: string[] = [];
+    try {
+      favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
+    } catch {}
+
+    document.querySelectorAll<HTMLButtonElement>('.favorite-btn').forEach(btn => {
+      const card = btn.closest<HTMLElement>('.exp-card');
+      if (!card) return;
+      const expId = card.dataset.id;
+      if (!expId) return;
+
+      const svg = btn.querySelector('svg');
+      if (svg) {
+        const isFav = favorites.includes(expId);
+        if (isFav) {
+          svg.classList.remove('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
+          svg.classList.add('fill-rose-500', 'text-rose-500');
+        } else {
+          svg.classList.remove('fill-rose-500', 'text-rose-500');
+          svg.classList.add('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
+        }
+      }
+    });
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.favorite-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      const card = btn.closest<HTMLElement>('.exp-card');
+      if (!card) return;
+      const expId = card.dataset.id;
+      if (!expId) return;
+
+      let favorites: string[] = [];
+      try {
+        favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
+      } catch {}
+
       const svg = btn.querySelector('svg');
       if (svg) {
-        const isFavorited = svg.classList.contains('fill-rose-500');
-        if (isFavorited) {
+        const index = favorites.indexOf(expId);
+        if (index > -1) {
+          favorites.splice(index, 1);
           svg.classList.remove('fill-rose-500', 'text-rose-500');
           svg.classList.add('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
         } else {
+          favorites.push(expId);
           svg.classList.remove('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
           svg.classList.add('fill-rose-500', 'text-rose-500');
         }
       }
+      localStorage.setItem('edificarte_favorites', JSON.stringify(favorites));
     });
   });
+
+  loadFavoritesState();
 
   // Lógica del modal de guías y traducciones
   const guideModal = document.getElementById('guide-modal');
@@ -1471,6 +1713,55 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
     if (reviewTargetInput) reviewTargetInput.value = currentMuseumId;
     const rating = card.getAttribute('data-rating') || '4.8';
     const imageSrc = card.getAttribute('data-image') || '';
+    const cardLat = parseFloat(card.getAttribute('data-lat') || '');
+    const cardLng = parseFloat(card.getAttribute('data-lng') || '');
+
+    // --- Proximity gate for reviews ---
+    const proximityGate = document.getElementById('review-proximity-gate');
+    const proximityMsg  = document.getElementById('review-proximity-msg');
+    const reviewForm    = document.getElementById('guide-modal-review-form');
+
+    function showReviewForm() {
+      proximityGate?.classList.add('hidden');
+      reviewForm?.classList.remove('hidden');
+    }
+    function showProximityMsg(msg: string) {
+      if (proximityMsg) proximityMsg.textContent = msg;
+      proximityGate?.classList.remove('hidden');
+      proximityGate?.classList.add('flex');
+      reviewForm?.classList.add('hidden');
+    }
+
+    if (!cardLat || !cardLng) {
+      // Sin coordenadas → permitir siempre (tienda, tours sin lat/lng)
+      showReviewForm();
+    } else if (!('geolocation' in navigator)) {
+      showProximityMsg('Tu navegador no soporta geolocalización. No podés dejar una reseña.');
+    } else {
+      showProximityMsg('Verificando tu ubicación…');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          // Haversine simplificado (metros)
+          const R = 6371000;
+          const dLat = (cardLat - pos.coords.latitude) * Math.PI / 180;
+          const dLng = (cardLng - pos.coords.longitude) * Math.PI / 180;
+          const a = Math.sin(dLat/2)**2 +
+            Math.cos(pos.coords.latitude * Math.PI / 180) *
+            Math.cos(cardLat * Math.PI / 180) *
+            Math.sin(dLng/2)**2;
+          const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          if (dist <= 500) {
+            showReviewForm();
+          } else {
+            showProximityMsg(`Necesitás estar a menos de 500 m del lugar para dejar una reseña. Estás a ${Math.round(dist)} m.`);
+          }
+        },
+        () => {
+          showProximityMsg('No se pudo obtener tu ubicación. Acercate al lugar para dejar una reseña.');
+        },
+        { timeout: 8000, maximumAge: 60000 }
+      );
+    }
 
     if (guideTitle) guideTitle.textContent = currentTranslations.es.name;
     if (guideImage) {
@@ -1478,6 +1769,16 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
       guideImage.alt = currentTranslations.es.name;
     }
     if (guideRating) guideRating.textContent = parseFloat(rating).toFixed(2);
+
+    // Mostrar u ocultar pestaña de lengua nativa
+    const nativeTab = document.getElementById('btn-guide-lang-native');
+    if (nativeTab) {
+      if (currentTranslations && currentTranslations.native) {
+        nativeTab.classList.remove('hidden');
+      } else {
+        nativeTab.classList.add('hidden');
+      }
+    }
 
     // Default a español
     setGuideLanguage('es');
@@ -1532,7 +1833,17 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
 
     if (guideTitle) guideTitle.textContent = data.name;
     if (guideBadge) guideBadge.textContent = data.category;
-    if (guideText) guideText.textContent = data.guide;
+    if (guideText) {
+      let guideHtml = data.guide || '';
+      // Convertir URLs en enlaces cliqueables
+      guideHtml = guideHtml.replace(
+        /(https?:\/\/[^\s)]+)/g,
+        (url: string) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 dark:text-indigo-400 underline font-semibold hover:text-indigo-700">${url.replace('https://', '')}</a>`
+      );
+      // Reemplazar saltos de línea por <br>
+      guideHtml = guideHtml.replace(/\n/g, '<br>');
+      guideText.innerHTML = guideHtml;
+    }
 
     // Actualizar tabs activas visualmente
     langTabs.forEach((tab) => {
@@ -2094,7 +2405,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
       const wallet = new BrowserWalletProvider();
 
       const txHash = await wallet.sendUsdcTransfer({
-        to: window.__EDIFICARTE_PAYMENT_ADDRESS__ || '0x0000000000000000000000000000000000000000',
+        to: window.__EDIFICARTE_PAYMENT_ADDRESS__ || '0xD540067d763bc792b81f816a677bB25d7e6d4B0B',
         rawAmount,
       });
 
@@ -2161,6 +2472,9 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   const tourIdInput = document.getElementById('tour-id-input') as HTMLInputElement | null;
   const tourForm = document.getElementById('tour-reservation-form') as HTMLFormElement | null;
   const tourTotalEl = document.getElementById('tour-total');
+  const tourTotalUsdcEl = document.getElementById('tour-total-usdc');
+  const tourPayUsdcBtn = document.getElementById('tour-pay-usdc-btn') as HTMLButtonElement | null;
+  const tourPayUsdcLabel = document.getElementById('tour-pay-usdc-label');
   const tourSuccess = document.getElementById('tour-success-state');
   const tourSuccessClose = document.getElementById('tour-success-close');
   const tourPeopleInput = document.getElementById('tour-people') as HTMLInputElement | null;
@@ -2198,8 +2512,13 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
 
   function updateTourTotal() {
     const n = parseInt(tourPeopleInput?.value || '1', 10) || 1;
+    const mxn = n * TOUR_PRICE;
     if (tourTotalEl) {
-      tourTotalEl.textContent = `$${(n * TOUR_PRICE).toLocaleString('es-MX')} MXN`;
+      tourTotalEl.textContent = `$${mxn.toLocaleString('es-MX')} MXN`;
+    }
+    if (tourTotalUsdcEl) {
+      const usdc = mxnToUsdc(mxn);
+      tourTotalUsdcEl.textContent = `≈ $${usdc.toFixed(2)} USDC`;
     }
   }
 
@@ -2223,6 +2542,124 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   tourSuccessClose?.addEventListener('click', closeTourModal);
   tourModal?.addEventListener('click', (e) => {
     if (e.target === tourModal) closeTourModal();
+  });
+
+  tourPayUsdcBtn?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!tourForm || !tourPayUsdcBtn || !tourPayUsdcLabel) return;
+
+    // Obtener los datos del formulario
+    const tourId = tourIdInput?.value || '';
+    const tourCard = document.querySelector<HTMLElement>(`[data-tour-id="${tourId}"]`);
+    const tourTitle = tourCard?.dataset.tourTitle || 'Tour';
+    const tourImage = tourCard?.dataset.tourImage || '';
+
+    const formData = new FormData(tourForm);
+    const data: any = {
+      tourId,
+      name: formData.get('name'),
+      email: formData.get('email'),
+      phone: formData.get('phone'),
+      date: formData.get('date'),
+      people: parseInt(formData.get('people') as string, 10) || 1,
+      notes: formData.get('notes') || '',
+    };
+
+    if (!data.name || !data.email || !data.phone || !data.date || !data.people) {
+      alert('Por favor completá todos los campos obligatorios para el pago y registro.');
+      return;
+    }
+
+    // 1. Conectar wallet
+    let walletAddress = '';
+    try {
+      if (typeof (window as any).ethereum === 'undefined') {
+        alert('MetaMask o un navegador Web3 es requerido para pagar con USDC.');
+        return;
+      }
+      const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+      walletAddress = accounts[0];
+    } catch (err: any) {
+      alert(err?.message || 'No se pudo conectar la wallet.');
+      return;
+    }
+
+    // 2. Calcular total USDC y firmar la tx
+    const totalMXN = data.people * TOUR_PRICE;
+    const totalUSDC = mxnToUsdc(totalMXN);
+    const rawAmount = rawUsdc(totalUSDC);
+
+    const originalLabel = tourPayUsdcLabel.textContent;
+    tourPayUsdcLabel.textContent = 'Esperando firma…';
+    tourPayUsdcBtn.disabled = true;
+
+    try {
+      const { BrowserWalletProvider } = await import('../lib/onchain/client');
+      const wallet = new BrowserWalletProvider();
+
+      const txHash = await wallet.sendUsdcTransfer({
+        to: window.__EDIFICARTE_PAYMENT_ADDRESS__ || '0xD540067d763bc792b81f816a677bB25d7e6d4B0B',
+        rawAmount,
+      });
+
+      tourPayUsdcLabel.textContent = 'Confirmando pago…';
+
+      // 3. Enviar al server la reserva con el txHash de USDC
+      data.txHash = txHash;
+      data.walletAddress = walletAddress;
+      data.totalUSDC = totalUSDC;
+
+      const response = await fetch('/api/reservar-tour', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Error en el servidor al registrar el pago');
+      }
+
+      const result = await response.json();
+
+      // Persistir reserva en localStorage
+      try {
+        const STORAGE_KEY = 'edificarte_reservations';
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<Record<string, unknown>>;
+        const reservation = {
+          id: result.reservationId || `RES-${Date.now()}`,
+          tourId: data.tourId,
+          tourTitle,
+          tourImage,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          date: data.date,
+          people: data.people,
+          totalMXN,
+          totalUSDC,
+          txHash,
+          status: 'paid',
+          createdAt: new Date().toISOString(),
+        };
+        existing.push(reservation);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      } catch (storageErr) {
+        console.warn('No se pudo guardar la reserva en localStorage:', storageErr);
+      }
+
+      // Cerrar y mostrar éxito
+      if (tourSuccess) tourSuccess.classList.remove('hidden');
+      if (tourForm) tourForm.classList.add('hidden');
+      tourForm.reset();
+      if (tourPeopleInput) tourPeopleInput.value = '2';
+    } catch (err: any) {
+      console.error('Error al realizar el pago del tour:', err);
+      alert(err?.message || 'Hubo un error al procesar el pago con USDC.');
+    } finally {
+      tourPayUsdcBtn.disabled = false;
+      tourPayUsdcLabel.textContent = originalLabel;
+    }
   });
 
   tourForm?.addEventListener('submit', async (e) => {

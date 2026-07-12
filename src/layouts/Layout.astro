@@ -47,21 +47,6 @@ const {
     <!-- Force light mode -->
     <script is:inline>
       document.documentElement.classList.remove('dark');
-
-      // Observer to dynamically hide header and bottom-nav when modal is open
-      // This is bulletproof and works instantly even with cached CSS stylesheets
-      const observer = new MutationObserver(() => {
-        const isModalOpen = document.body.classList.contains('modal-open');
-        const header = document.getElementById('site-header');
-        const bottomNav = document.getElementById('bottom-nav');
-        if (header) {
-          header.style.setProperty('display', isModalOpen ? 'none' : '', 'important');
-        }
-        if (bottomNav) {
-          bottomNav.style.setProperty('display', isModalOpen ? 'none' : '', 'important');
-        }
-      });
-      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     </script>
   </head>
   <body
@@ -69,7 +54,7 @@ const {
   >
     {
       !fullScreen && (
-        <header id="site-header" class="sticky top-0 z-40 w-full border-b border-slate-200/50 bg-white/70 backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-900/70">
+        <header id="site-header" class="sticky top-0 z-30 w-full border-b border-slate-200/50 bg-white/70 backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-900/70">
           <div class="mx-auto flex h-14 max-w-screen-md items-center justify-between px-4">
             <div class="flex items-center gap-2">
               <span class="text-xl font-extrabold text-[#3f043a] tracking-tight">
@@ -91,6 +76,123 @@ const {
 
     <AiAgent />
     <BottomNav />
+
+    <!-- Proximity Notification: fires a browser notification when user is within 300 m of a monument -->
+    <div
+      id="proximity-toast"
+      class="fixed bottom-24 left-4 right-4 z-[200] hidden max-w-sm mx-auto"
+      role="alert"
+      aria-live="polite"
+    >
+      <div class="flex items-center gap-3 rounded-2xl border border-brand-200/60 bg-white/95 dark:bg-slate-900/95 px-4 py-3 shadow-xl backdrop-blur-md">
+        <span class="material-symbols-outlined text-[24px] text-brand-600 dark:text-brand-400 flex-shrink-0">location_on</span>
+        <div class="min-w-0 flex-1">
+          <p id="proximity-toast-msg" class="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight"></p>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">¿Querés saber más?</p>
+        </div>
+        <div class="flex flex-col gap-1">
+          <button id="proximity-toast-yes" class="rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold px-3 py-1 text-[10px] transition-all active:scale-95">Ver</button>
+          <button id="proximity-toast-dismiss" class="rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 font-bold px-3 py-1 text-[10px] transition-all active:scale-95">No</button>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline>
+    (function proximityNotifications() {
+      const MONUMENTS = (window.__EDIFICARTE_MONUMENTS__ || []);
+      if (!MONUMENTS.length) return;
+      if (!('geolocation' in navigator)) return;
+
+      const RADIUS_M = 300;
+      const STORAGE_KEY = 'edificarte_proximity_seen';
+      let toastTimeout = null;
+
+      function getSeenIds() {
+        try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); }
+        catch { return new Set(); }
+      }
+      function markSeen(id) {
+        try {
+          const seen = getSeenIds();
+          seen.add(id);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify([...seen]));
+        } catch {}
+      }
+
+      function haversine(lat1, lng1, lat2, lng2) {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLng/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      }
+
+      function showToast(monument) {
+        const toast = document.getElementById('proximity-toast');
+        const msg   = document.getElementById('proximity-toast-msg');
+        const btnYes = document.getElementById('proximity-toast-yes');
+        const btnNo  = document.getElementById('proximity-toast-dismiss');
+        if (!toast || !msg || !btnYes || !btnNo) return;
+
+        msg.textContent = 'Estas cerca de ' + monument.name;
+        toast.classList.remove('hidden');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(function() { toast.classList.add('hidden'); }, 15000);
+
+        var newYes = btnYes.cloneNode(true);
+        var newNo  = btnNo.cloneNode(true);
+        btnYes.replaceWith(newYes);
+        btnNo.replaceWith(newNo);
+
+        newYes.addEventListener('click', function() {
+          clearTimeout(toastTimeout);
+          toast.classList.add('hidden');
+          markSeen(monument.id);
+          window.location.href = '/mapa?route=' + encodeURIComponent(monument.id) + '&play=true';
+        });
+        newNo.addEventListener('click', function() {
+          clearTimeout(toastTimeout);
+          toast.classList.add('hidden');
+          markSeen(monument.id);
+        });
+      }
+
+      function checkProximity(pos) {
+        var latitude = pos.coords.latitude;
+        var longitude = pos.coords.longitude;
+        var seen = getSeenIds();
+        for (var i = 0; i < MONUMENTS.length; i++) {
+          var m = MONUMENTS[i];
+          if (!m.lat || !m.lng) continue;
+          if (seen.has(m.id)) continue;
+          var dist = haversine(latitude, longitude, m.lat, m.lng);
+          if (dist <= RADIUS_M) {
+            showToast(m);
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              new Notification('EdificARTE - Cerca de ' + m.name, {
+                body: 'Pulsa para ver el pin en el mapa.',
+                icon: '/favicon-32x32.png',
+                tag: 'proximity-' + m.id,
+              });
+            }
+            break;
+          }
+        }
+      }
+
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        Notification.requestPermission().catch(function() {});
+      }
+
+      navigator.geolocation.watchPosition(checkProximity, function() {}, {
+        enableHighAccuracy: true,
+        maximumAge: 30000,
+        timeout: 15000,
+      });
+    })();
+    </script>
 
   </body>
 </html>

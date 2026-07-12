@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { verifyMessage, getAddress } from 'viem';
-import { getUserByWalletAddress, hashPassword, createSession, type User } from '../../lib/auth';
+import { getUserByWalletAddress, hashPassword, createSession, getUserBySession, type User } from '../../lib/auth';
 
 /**
  * POST /api/wallet-login
@@ -30,7 +30,7 @@ function abbrevAddress(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-async function createUserFromWallet(env: Env, address: string): Promise<User> {
+async function createUserFromWallet(env: Env, address: string, phone: string | null): Promise<User> {
   // Email sintético único derivado de la address. No se puede usar para
   // login con password (password random), solo para identificar el user
   // en queries internas.
@@ -41,9 +41,9 @@ async function createUserFromWallet(env: Env, address: string): Promise<User> {
 
   const userId = crypto.randomUUID();
   await env.DB.prepare(
-    'INSERT INTO users (id, email, password, name, avatar_url, bio, points, likes, visits) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0)'
+    'INSERT INTO users (id, email, password, name, avatar_url, bio, points, likes, visits, phone) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, ?)'
   )
-    .bind(userId, email, hashedPassword, name, '👷', null)
+    .bind(userId, email, hashedPassword, name, '👷', null, phone)
     .run();
 
   return {
@@ -55,6 +55,7 @@ async function createUserFromWallet(env: Env, address: string): Promise<User> {
     points: 0,
     likes: 0,
     visits: 0,
+    phone,
     created_at: new Date().toISOString(),
   };
 }
@@ -63,6 +64,8 @@ interface WalletLoginBody {
   address?: string;
   nonce?: string;
   signature?: string;
+  phone?: string;
+  guestBadges?: (string | number)[];
 }
 
 export const POST: APIRoute = async ({ request, cookies, locals }) => {
@@ -186,64 +189,140 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     );
   }
 
-  // 4. Buscar user existente por wallet.
-  let user = await getUserByWalletAddress(env, address);
+  // 3b. Obtener el usuario autenticado actualmente por sesión (si existe)
+  const loggedInUser = await getUserBySession(cookies, env);
+
+  let user: User | null = null;
   let isNew = false;
 
-  if (!user) {
-    // 4a. Crear user nuevo + asociar wallet.
-    try {
-      // Antes de crear un user nuevo, verificar si ya existe un user
-      // huérfano con el email sintético `0x{address}@wallet...`. Esto
-      // pasa cuando un login previo falló entre INSERT users y INSERT
-      // user_wallets (queda el user sin wallet linkeada). Recover: usar
-      // el user existente y solo agregar el link.
-      const syntheticEmail = `${address.toLowerCase()}@wallet.edificarte.app`;
-      const orphan = await env.DB.prepare('SELECT * FROM users WHERE email = ?')
-        .bind(syntheticEmail)
-        .first<User>();
+  if (loggedInUser) {
+    // Vincular la wallet a la cuenta de usuario existente
+    const existingLink = await env.DB.prepare('SELECT user_id FROM user_wallets WHERE address = ?')
+      .bind(address)
+      .first<{ user_id: string }>();
+    if (existingLink && existingLink.user_id !== loggedInUser.id) {
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Esta wallet ya está vinculada a otra cuenta.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
-      let newUser: User;
-      if (orphan) {
-        newUser = orphan;
-      } else {
-        newUser = await createUserFromWallet(env, address);
-      }
+    if (!existingLink) {
+      await env.DB.prepare(
+        'INSERT INTO user_wallets (user_id, address, chain_id) VALUES (?, ?, 137)'
+      )
+        .bind(loggedInUser.id, address)
+        .run();
+    }
 
-      try {
-        await env.DB.prepare(
-          'INSERT INTO user_wallets (user_id, address, chain_id) VALUES (?, ?, 137)'
-        )
-          .bind(newUser.id, address)
-          .run();
-        user = newUser;
-        isNew = orphan === null;
-      } catch (insertErr) {
-        // Race condition: otro request creó la misma wallet en paralelo.
-        // UNIQUE constraint en address hace fallar el INSERT. Hacemos retry
-        // del lookup para usar el user que ganó la carrera.
-        const errMsg = insertErr instanceof Error ? insertErr.message : String(insertErr);
-        console.warn('[api/wallet-login] wallet insert failed (retrying lookup):', errMsg);
-        user = await getUserByWalletAddress(env, address);
-        if (!user) {
-          // Si el lookup falla después del conflict, es un error real.
-          throw insertErr;
+    if (body.phone) {
+      await env.DB.prepare('UPDATE users SET phone = ? WHERE id = ?')
+        .bind(body.phone, loggedInUser.id)
+        .run();
+    }
+
+    // Vincular insignias de guest si se pasaron
+    if (body.guestBadges && Array.isArray(body.guestBadges)) {
+      for (const badgeId of body.guestBadges) {
+        const bId = Number(badgeId);
+        if (!isNaN(bId)) {
+          await env.DB.prepare(
+            'INSERT OR IGNORE INTO user_badges (user_id, badge_id) VALUES (?, ?)'
+          )
+            .bind(loggedInUser.id, bId)
+            .run();
         }
       }
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      const errStack = err instanceof Error ? err.stack : '';
-      console.error('[api/wallet-login] create user error:', errMsg);
-      console.error('[api/wallet-login] stack:', errStack);
-      // Devolvemos el mensaje real al cliente (dev mode) para debuggear.
-      // En prod se loggea suficiente en server logs; devolvemos mensaje genérico.
-      const debugMsg = import.meta.env.PROD
-        ? 'No pudimos crear tu cuenta. Intentá de nuevo.'
-        : `No pudimos crear tu cuenta: ${errMsg}`;
-      return new Response(
-        JSON.stringify({ ok: false, error: debugMsg }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+    }
+
+    user = loggedInUser;
+  } else {
+    // 4. Buscar user existente por wallet.
+    user = await getUserByWalletAddress(env, address);
+
+    if (user) {
+      if (body.phone) {
+        await env.DB.prepare('UPDATE users SET phone = ? WHERE id = ?')
+          .bind(body.phone, user.id)
+          .run();
+        user.phone = body.phone;
+      }
+      // Vincular insignias de guest si se pasaron
+      if (body.guestBadges && Array.isArray(body.guestBadges)) {
+        for (const badgeId of body.guestBadges) {
+          const bId = Number(badgeId);
+          if (!isNaN(bId)) {
+            await env.DB.prepare(
+              'INSERT OR IGNORE INTO user_badges (user_id, badge_id) VALUES (?, ?)'
+            )
+              .bind(user.id, bId)
+              .run();
+          }
+        }
+      }
+    } else {
+      // 4a. Crear user nuevo + asociar wallet.
+      try {
+        const syntheticEmail = `${address.toLowerCase()}@wallet.edificarte.app`;
+        const orphan = await env.DB.prepare('SELECT * FROM users WHERE email = ?')
+          .bind(syntheticEmail)
+          .first<User>();
+
+        let newUser: User;
+        if (orphan) {
+          newUser = orphan;
+          if (body.phone) {
+            await env.DB.prepare('UPDATE users SET phone = ? WHERE id = ?')
+              .bind(body.phone, newUser.id)
+              .run();
+            newUser.phone = body.phone;
+          }
+        } else {
+          newUser = await createUserFromWallet(env, address, body.phone || null);
+        }
+
+        try {
+          await env.DB.prepare(
+            'INSERT INTO user_wallets (user_id, address, chain_id) VALUES (?, ?, 137)'
+          )
+            .bind(newUser.id, address)
+            .run();
+          user = newUser;
+          isNew = orphan === null;
+        } catch (insertErr) {
+          // Race condition
+          const errMsg = insertErr instanceof Error ? insertErr.message : String(insertErr);
+          console.warn('[api/wallet-login] wallet insert failed (retrying lookup):', errMsg);
+          user = await getUserByWalletAddress(env, address);
+          if (!user) {
+            throw insertErr;
+          }
+        }
+
+        // Vincular insignias de guest si se pasaron
+        if (user && body.guestBadges && Array.isArray(body.guestBadges)) {
+          for (const badgeId of body.guestBadges) {
+            const bId = Number(badgeId);
+            if (!isNaN(bId)) {
+              await env.DB.prepare(
+                'INSERT OR IGNORE INTO user_badges (user_id, badge_id) VALUES (?, ?)'
+              )
+                .bind(user.id, bId)
+                .run();
+            }
+          }
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error('[api/wallet-login] create user error:', errMsg);
+        const debugMsg = import.meta.env.PROD
+          ? 'No pudimos crear tu cuenta. Intentá de nuevo.'
+          : `No pudimos crear tu cuenta: ${errMsg}`;
+        return new Response(
+          JSON.stringify({ ok: false, error: debugMsg }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
     }
   }
 
