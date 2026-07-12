@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { verifyMessage } from 'viem';
+import { verifyMessage, getAddress } from 'viem';
 import { getUserByWalletAddress, hashPassword, createSession, type User } from '../../lib/auth';
 
 /**
@@ -121,7 +121,10 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     await env.SESSION.delete(nonceKey);
 
     const parsed = JSON.parse(raw) as { nonce?: string; issuedAt?: string };
-    if (!parsed.nonce || parsed.nonce !== nonce) {
+    // Normalizar ambos a lowercase para comparación robusta.
+    const storedNormalized = parsed.nonce?.toLowerCase() ?? '';
+    const submittedNormalized = nonce.toLowerCase();
+    if (!storedNormalized || storedNormalized !== submittedNormalized || !parsed.nonce) {
       return new Response(
         JSON.stringify({ ok: false, error: 'Nonce no coincide.' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -138,6 +141,21 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   }
 
   // 3. Reconstruir el MISMO mensaje que el cliente firmó y verificar firma.
+  // El cliente firma con el rawAddress que recibió en wallet-nonce (mixed
+  // case EIP-55). Usamos la MISMA mixed-case acá para que el hash coincida.
+  // Y pasamos la address también en EIP-55 a verifyMessage, porque viem
+  // hace un checksum check interno que falla con address lowercase pura.
+  let checksummedAddress: `0x${string}`;
+  try {
+    checksummedAddress = getAddress(address);
+  } catch (err) {
+    console.warn('[api/wallet-login] getAddress failed for', address, err);
+    return new Response(
+      JSON.stringify({ ok: false, error: 'Address inválida para verificación.' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   const message = [
     'Bienvenido a EdificARTE.',
     '',
@@ -152,12 +170,12 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   let valid: boolean;
   try {
     valid = await verifyMessage({
-      address: address as `0x${string}`,
+      address: checksummedAddress,
       message,
       signature: signature as `0x${string}`,
     });
   } catch (err) {
-    console.warn('[api/wallet-login] verifyMessage error:', err);
+    console.warn('[api/wallet-login] verifyMessage threw (likely malformed address or signature):', err);
     valid = false;
   }
 
@@ -188,7 +206,8 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
         // Race condition: otro request creó la misma wallet en paralelo.
         // UNIQUE constraint en address hace fallar el INSERT. Hacemos retry
         // del lookup para usar el user que ganó la carrera.
-        console.warn('[api/wallet-login] UNIQUE conflict on wallet insert, retrying lookup:', insertErr);
+        const errMsg = insertErr instanceof Error ? insertErr.message : String(insertErr);
+        console.warn('[api/wallet-login] wallet insert failed (retrying lookup):', errMsg);
         user = await getUserByWalletAddress(env, address);
         if (!user) {
           // Si el lookup falla después del conflict, es un error real.
@@ -196,9 +215,17 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
         }
       }
     } catch (err) {
-      console.error('[api/wallet-login] create user error:', err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const errStack = err instanceof Error ? err.stack : '';
+      console.error('[api/wallet-login] create user error:', errMsg);
+      console.error('[api/wallet-login] stack:', errStack);
+      // Devolvemos el mensaje real al cliente (dev mode) para debuggear.
+      // En prod se loggea suficiente en server logs; devolvemos mensaje genérico.
+      const debugMsg = import.meta.env.PROD
+        ? 'No pudimos crear tu cuenta. Intentá de nuevo.'
+        : `No pudimos crear tu cuenta: ${errMsg}`;
       return new Response(
-        JSON.stringify({ ok: false, error: 'No pudimos crear tu cuenta. Intentá de nuevo.' }),
+        JSON.stringify({ ok: false, error: debugMsg }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
