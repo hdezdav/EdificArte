@@ -1,36 +1,42 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import {ERC721Pausable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 
 /**
  * @title EdificARteBadge
- * @notice ERC-721 NFT que representa una medalla obtenida por visitar un
- *         monumento del patrimonio cultural mexicano en la app EdificARTE.
+ * @notice ERC-721 NFT pausable que representa una medalla obtenida por
+ *         visitar un monumento del patrimonio cultural mexicano en la app
+ *         EdificARTE.
  *
  * @dev Una vez deployado en Polygon mainnet:
- *   - El owner (backend de EdificARTE) llama mintBadge(to, badgeId, tokenURI)
+ *   - El owner (backend de EdificARTE) llama safeMint(to, badgeId, tokenURI)
  *     cuando un usuario registrado visita un monumento por primera vez.
  *   - El badgeId off-chain (1, 2, 3, 4 = Bellas Artes, Catedral, Torre
  *     Latinoamericana, Templo Mayor) se mapea al tokenId on-chain.
- *   - El tokenURI apunta a metadata JSON con nombre, imagen y fecha de visita.
+ *   - El tokenURI apunta a metadata JSON con nombre, imagen y fecha de
+ *     visita.
+ *   - El owner puede pausar/reanudar los mints y transfers via Pausable
+ *     en caso de incidente (bug detectado, exploit, migración).
  *
- * Para deployar:
- *   1. foundry: `forge create --rpc-url $POLYGON_RPC --private-key $ADMIN_KEY
- *                src/EdificARteBadge.sol:EdificARteBadge --constructor-args <admin_addr>`
- *   2. hardhat: ver contracts/README.md
+ * Naming: usamos safeMint (no mintBadge) porque en OpenZeppelin Contracts
+ * v5.x `tokenURI` es virtual y nombrarlo igual al param causaba shadowing
+ * warning. safeMint es el nombre canónico del baseline generado por la CLI
+ * de OZ y no entra en conflicto.
  */
-contract EdificARteBadge is ERC721, ERC721URIStorage, Ownable {
-    /// @dev Próximo tokenId a asignar (auto-incremental).
+contract EdificARteBadge is ERC721, ERC721URIStorage, ERC721Pausable, Ownable {
+    /// @notice Contador auto-incremental para asignar tokenIds.
     uint256 private _nextTokenId;
 
-    /// @dev Mapping de badgeId off-chain → tokenId on-chain. Permite
-    ///      re-mint si el usuario pierde acceso a su wallet.
+    /// @notice Mapping de badgeId off-chain → último tokenId on-chain.
+    /// @dev Un mismo badgeId puede tener N tokens (uno por usuario distinto);
+    ///      el mapping guarda el último para indexación off-chain.
     mapping(uint256 => uint256) public badgeIdToTokenId;
 
-    /// @dev Mapping de wallet → badgeIds que ya minteó (anti-doble-mint).
+    /// @notice Mapping de wallet → set de badgeIds ya minteados (anti-doble-mint).
     mapping(address => mapping(uint256 => bool)) public hasMinted;
 
     event BadgeMinted(
@@ -49,13 +55,14 @@ contract EdificARteBadge is ERC721, ERC721URIStorage, Ownable {
      * @notice Mintea un badge NFT para un usuario que visitó un monumento.
      * @param to Address del destinatario (wallet del usuario).
      * @param badgeId ID del badge off-chain (1-4).
-     * @param tokenURI Metadata del NFT (JSON con nombre, imagen, etc).
+     * @param uri Metadata del NFT (JSON con nombre, imagen, etc).
+     * @return tokenId El ID del NFT recién minteado.
      */
-    function mintBadge(
+    function safeMint(
         address to,
         uint256 badgeId,
-        string calldata tokenURI
-    ) external onlyOwner returns (uint256) {
+        string memory uri
+    ) public onlyOwner returns (uint256) {
         require(!hasMinted[to][badgeId], "Badge ya minteado para este usuario");
         require(to != address(0), "Address invalida");
 
@@ -64,16 +71,31 @@ contract EdificARteBadge is ERC721, ERC721URIStorage, Ownable {
         hasMinted[to][badgeId] = true;
 
         _safeMint(to, tokenId);
-        _setTokenURI(tokenId, tokenURI);
+        _setTokenURI(tokenId, uri);
 
-        emit BadgeMinted(to, badgeId, tokenId, tokenURI);
+        emit BadgeMinted(to, badgeId, tokenId, uri);
         return tokenId;
     }
 
     /**
-     * @notice Devuelve el tokenURI de un tokenId. Override requerido por
-     *         la doble herencia ERC721 + ERC721URIStorage en Solidity 0.8+.
+     * @notice Pausa el contrato (mints, transfers). Solo el owner.
+     * @dev Útil en emergencias (bug detectado, exploit). Reentrable-safe.
      */
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @notice Reanuda el contrato después de pausar. Solo el owner.
+     */
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    // The following functions are overrides required by Solidity
+    // (multi-inheritance de ERC721 + ERC721URIStorage + ERC721Pausable).
+
+    /// @inheritdoc ERC721
     function tokenURI(uint256 tokenId)
         public
         view
@@ -83,9 +105,7 @@ contract EdificARteBadge is ERC721, ERC721URIStorage, Ownable {
         return super.tokenURI(tokenId);
     }
 
-    /**
-     * @notice Override requerido por la doble herencia.
-     */
+    /// @inheritdoc ERC721
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -93,5 +113,15 @@ contract EdificARteBadge is ERC721, ERC721URIStorage, Ownable {
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    /// @notice Hook de transferencia: respeta Pausable. Requerido por la
+    ///         herencia múltiple con ERC721Pausable.
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override(ERC721, ERC721Pausable)
+        returns (address)
+    {
+        return super._update(to, tokenId, auth);
     }
 }

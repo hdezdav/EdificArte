@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title EdificARteReviews
@@ -15,7 +15,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  *     autenticado deja una review en la app.
  *   - Los eventos son indexables vía The Graph o directamente en PolygonScan.
  *
- * Para deployar: igual que EdificARteBadge (ver contracts/README.md).
+ * Pattern discovery: revisamos la CLI de OZ (`solidity-custom`) y
+ * confirmamos que no existe un componente pre-hecho para "event emitter
+ * controlado por owner". La lógica custom (evento + función onlyOwner) es
+ * el patrón canónico.
  */
 contract EdificARteReviews is Ownable {
     event ReviewEmitted(

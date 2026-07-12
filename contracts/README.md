@@ -1,6 +1,6 @@
 # Contratos EdificARTE
 
-Estos son los contratos Solidity para los features on-chain de EdificARTE. **No están deployados** — el código está listo para que vos los deployes cuando quieras usando Foundry o Hardhat.
+Estos son los contratos Solidity para los features on-chain de EdificARTE. **No están deployados** — el código está listo para que vos los deployes cuando quieras usando Hardhat (recomendado) o Foundry.
 
 ## Contratos
 
@@ -11,80 +11,66 @@ Estos son los contratos Solidity para los features on-chain de EdificARTE. **No 
 
 ## Dependencias
 
-Ambos contratos dependen de OpenZeppelin Contracts v5.x.
+Ambos contratos dependen de OpenZeppelin Contracts **v5.1.0** (pinneado en `contracts/package.json`). No usar 4.x — los contratos usan `Ownable(initialOwner)` que es el patrón nuevo de v5.
+
+## Deploy con Hardhat (recomendado para este proyecto)
+
+El proyecto ya usa Node.js + pnpm; Hardhat se integra sin instalar binarios extra.
 
 ```bash
-# Con Foundry
-forge install OpenZeppelin/openzeppelin-contracts --no-commit
+cd contracts
 
-# Con Hardhat
-pnpm add @openzeppelin/contracts
+# 1. Instalar deps (incluye @openzeppelin/contracts 5.1.0 pinneado)
+pnpm install
+
+# 2. Compilar
+pnpm run build
+
+# 3. Test (opcional pero recomendado)
+pnpm run test
+
+# 4. Deployar en Polygon Amoy testnet (recomendado primero)
+ADMIN_ADDRESS=0xYourMultisigAddress \
+ADMIN_PRIVATE_KEY=0xYourDeployerKey \
+pnpm run deploy:amoy
+
+# 5. Cuando funcione en testnet, deployar en mainnet
+ADMIN_ADDRESS=0xYourMultisigAddress \
+ADMIN_PRIVATE_KEY=0xYourDeployerKey \
+pnpm run deploy:polygon
 ```
 
-## Deploy con Foundry (recomendado)
+El script de deploy imprime las addresses para que las copies a `wrangler.jsonc`.
+
+## Deploy con Foundry (alternativa)
 
 ```bash
-# 1. Inicializar proyecto Foundry si no está
-forge init --no-commit --no-git
-# Copiar los .sol acá y ajustar remappings
+forge install OpenZeppelin/openzeppelin-contracts@v5.1.0 --no-commit
 
-# 2. Configurar remappings en foundry.toml
-# cat > foundry.toml <<EOF
-# [profile.default]
-# src = "src"
-# out = "out"
-# libs = ["lib"]
-# remappings = [
-#     "@openzeppelin/=lib/openzeppelin-contracts/"
-# ]
-# EOF
-
-# 3. Compilar
-forge build
-
-# 4. Deployar EdificARteBadge en Polygon mainnet
-ADMIN_ADDRESS=0xYourAdminWallet
-forge create --rpc-url https://polygon-rpc.com \
-  --private-key $ADMIN_PRIVATE_KEY \
-  src/EdificARteBadge.sol:EdificARteBadge \
-  --constructor-args $ADMIN_ADDRESS
-
-# 5. Deployar EdificARteReviews
-forge create --rpc-url https://polygon-rpc.com \
-  --private-key $ADMIN_PRIVATE_KEY \
-  src/EdificARteReviews.sol:EdificARteReviews \
-  --constructor-args $ADMIN_ADDRESS
-```
-
-## Deploy con Hardhat
-
-```bash
-pnpm add --save-dev hardhat @nomicfoundation/hardhat-toolbox @openzeppelin/contracts
-npx hardhat init
-
-# Crear scripts/deploy.js con el contenido de abajo
-cat > scripts/deploy.js <<'EOF'
-const hre = require("hardhat");
-
-async function main() {
-  const [deployer] = await hre.ethers.getSigners();
-  console.log("Deploying with:", deployer.address);
-
-  const Badge = await hre.ethers.getContractFactory("EdificARteBadge");
-  const badge = await Badge.deploy(deployer.address);
-  await badge.waitForDeployment();
-  console.log("EdificARteBadge deployed to:", await badge.getAddress());
-
-  const Reviews = await hre.ethers.getContractFactory("EdificARteReviews");
-  const reviews = await Reviews.deploy(deployer.address);
-  await reviews.waitForDeployment();
-  console.log("EdificARteReviews deployed to:", await reviews.getAddress());
-}
-
-main().catch(console.error);
+cat > foundry.toml <<EOF
+[profile.default]
+src = "."
+out = "out"
+libs = ["lib"]
+remappings = [
+    "@openzeppelin/=lib/openzeppelin-contracts/",
+]
+solc = "0.8.24"
 EOF
 
-npx hardhat run scripts/deploy.js --network polygon
+forge build
+
+ADMIN_ADDRESS=0xYourAdminWallet \
+forge create --rpc-url https://polygon-rpc.com \
+  --private-key $ADMIN_PRIVATE_KEY \
+  EdificARteBadge.sol:EdificARteBadge \
+  --constructor-args $ADMIN_ADDRESS
+
+ADMIN_ADDRESS=0xYourAdminWallet \
+forge create --rpc-url https://polygon-rpc.com \
+  --private-key $ADMIN_PRIVATE_KEY \
+  EdificARteReviews.sol:EdificARteReviews \
+  --constructor-args $ADMIN_ADDRESS
 ```
 
 ## Configuración post-deploy

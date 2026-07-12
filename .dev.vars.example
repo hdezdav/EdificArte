@@ -1,6 +1,66 @@
-# Variables secretas para desarrollo local. NO commitear .dev.vars real.
-# Renombrar a .dev.vars y completar valores.
+# =============================================================================
+# EdificARTE — Variables de entorno (template para dev local)
+# =============================================================================
+#
+# ESTE ARCHIVO ES SEGURO DE COMMITITEAR. No tiene valores reales.
+# Para usarlo: copialo a `.dev.vars` y completá los valores que apliquen.
+#   cp .dev.vars.example .dev.vars
+#
+# Para producción: usá `pnpm wrangler secret put <NAME>` o declaralos en
+# `wrangler.jsonc` bajo `vars` (públicos) o en el dashboard de Cloudflare
+# (secrets).
+#
+# NOTA: Las vars públicas de wrangler.jsonc (USDC_CONTRACT_ADDRESS,
+# POLYGON_RPC_URL, EDIFICARTE_PAYMENT_ADDRESS, PUBLIC_BADGE_CONTRACT_ADDRESS,
+# PUBLIC_REVIEW_CONTRACT_ADDRESS) ya están declaradas ahí y NO necesitan
+# duplicarse acá. Las listamos como referencia comentada.
+# =============================================================================
 
-# Private key del admin wallet (la que deploya los contratos). SOLO dev —
-# en producción usar `pnpm wrangler secret put ADMIN_PRIVATE_KEY`.
+
+# === USDC Payments (Polygon) — declaradas en wrangler.jsonc vars ===
+
+# USDC nativo en Polygon mainnet (Circle).
+# Para Amoy testnet reemplazá por la address de USDC de prueba de Circle.
+# USDC_CONTRACT_ADDRESS=0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359
+
+# URL del RPC público de Polygon. En prod conviene un provider dedicado
+# (Alchemy / Infura / QuickNode) con API key — polygon-rpc.com tiene
+# rate limits agresivos.
+# POLYGON_RPC_URL=https://polygon-rpc.com
+
+# Address receptora de pagos USDC. DEBE ser una wallet que controle el
+# owner del proyecto (recomendado: multisig Gnosis Safe). VACÍA hasta
+# configurar.
+# EDIFICARTE_PAYMENT_ADDRESS=
+
+# Address receptora de donaciones USDC (free-form). Si querés que las
+# donaciones vayan a la misma wallet que los pagos, podés repetir el valor
+# de EDIFICARTE_PAYMENT_ADDRESS arriba. VACÍA hasta configurar.
+# EDIFICARTE_DONATION_ADDRESS=
+
+
+# === EdificARteBadge (ERC-721 NFT) — declarada en wrangler.jsonc vars ===
+# Address del contrato deployado. VACÍA hasta deploy.
+# Ver contracts/README.md para instrucciones.
+# PUBLIC_BADGE_CONTRACT_ADDRESS=
+
+# === EdificARteReviews (event-only) — declarada en wrangler.jsonc vars ===
+# Address del contrato deployado. VACÍA hasta deploy.
+# PUBLIC_REVIEW_CONTRACT_ADDRESS=
+
+
+# === Secrets (NO commitear valores reales — esto es solo el template) ===
+
+# Private key del admin wallet (la que deploya los contratos y firma los
+# mints/emits desde el server). SOLO server-side.
+# En prod esto DEBE ser la key de un multisig o una wallet dedicada con
+# fondos limitados para gas.
+# ⚠️  ESTO ES UN SECRET — en prod usá `wrangler secret put ADMIN_PRIVATE_KEY`.
+# Sin esta var: /api/unlock-badge y /api/reviews caen a modo MOCK
+# (los eventos no van on-chain, solo quedan registrados en D1).
 ADMIN_PRIVATE_KEY=0x0000000000000000000000000000000000000000000000000000000000000000
+
+# API key de Google Gemini (para el chat AI de monumentos).
+# ⚠️  ESTO ES UN SECRET — en prod usá `wrangler secret put GEMINI_API_KEY`.
+# Sin esta var: /api/chat tira 500 con mensaje claro.
+GEMINI_API_KEY=

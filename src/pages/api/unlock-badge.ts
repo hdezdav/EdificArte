@@ -31,7 +31,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
 
   let body: { badgeId?: number; monumentName?: string; monumentImage?: string; walletAddress?: string };
   try {
-    body = (await request.json()) as any;
+    body = (await request.json()) as typeof body;
   } catch {
     return new Response(JSON.stringify({ error: 'Body JSON inválido' }), {
       status: 400,
@@ -62,8 +62,8 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     let txHash: string | undefined;
     let mode: 'mock' | 'live' | undefined;
     try {
-      const minter = getBadgeMinter(env as any);
-      const result = await minter.mintBadge({
+      const minter = getBadgeMinter(env);
+      const result = await minter.safeMint({
         toAddress: body.walletAddress ?? '0x0000000000000000000000000000000000000000',
         badgeId,
         metadata: {

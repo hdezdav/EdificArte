@@ -129,9 +129,9 @@ export class BrowserWalletProvider implements WalletProvider {
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: '0x89' }],
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Si la chain no está agregada, intentar agregarla (código 4902).
-      if (err?.code === 4902) {
+      if ((err as { code?: number })?.code === 4902) {
         await eth.request({
           method: 'wallet_addEthereumChain',
           params: [

@@ -227,7 +227,7 @@ import Layout from '../layouts/Layout.astro';
   >
     <button
       id="btn-clear-route"
-      class="hidden flex h-10 w-auto items-center gap-1.5 rounded-full bg-rose-600 px-3.5 text-xs font-bold text-white shadow-lg transition-all hover:scale-105 hover:bg-rose-700 active:scale-90 sm:h-11 sm:px-4 sm:text-xs backdrop-blur-md"
+      class="hidden [&:not(.hidden)]:flex h-10 w-auto items-center gap-1.5 rounded-full bg-rose-600 px-3.5 text-xs font-bold text-white shadow-lg transition-all hover:scale-105 hover:bg-rose-700 active:scale-90 sm:h-11 sm:px-4 sm:text-xs backdrop-blur-md"
       aria-label="Quitar ruta"
       title="Quitar ruta activa"
     >
@@ -365,7 +365,7 @@ import Layout from '../layouts/Layout.astro';
         </p>
 
         <!-- Tour Promotion Card (Visible only when the monument has a tour) -->
-        <div id="tour-promo-card" class="mb-3 hidden rounded-2xl border border-[#3f043a]/20 dark:border-purple-500/20 bg-[#3f043a]/5 dark:bg-purple-950/10 p-3.5 flex flex-col gap-2">
+        <div id="tour-promo-card" class="mb-3 hidden rounded-2xl border border-[#3f043a]/20 dark:border-purple-500/20 bg-[#3f043a]/5 dark:bg-purple-950/10 p-3.5 [&:not(.hidden)]:flex flex-col gap-2">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0 flex-1">
               <span class="inline-flex items-center gap-1 rounded-full bg-[#3f043a]/10 dark:bg-purple-950/40 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#3f043a] dark:text-purple-300">
@@ -582,7 +582,7 @@ import Layout from '../layouts/Layout.astro';
   <!-- Language Selection Modal (Overlay) -->
   <div
     id="lang-modal"
-    class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
       class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/20 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300"
@@ -636,7 +636,7 @@ import Layout from '../layouts/Layout.astro';
   <!-- Welcome & Location Modal (Overlay) -->
   <div
     id="welcome-modal"
-    class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
       class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/20 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300"
@@ -666,7 +666,7 @@ import Layout from '../layouts/Layout.astro';
   <!-- Recinto histórico Modal (Overlay) -->
   <div
     id="recinto-modal"
-    class="fixed inset-0 z-[60] flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-5"
+    class="fixed inset-0 z-[60] [&:not(.hidden)]:flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-5"
     role="dialog"
     aria-modal="true"
     aria-labelledby="recinto-modal-title"
@@ -776,7 +776,7 @@ import Layout from '../layouts/Layout.astro';
   <!-- Tour Reservation Modal (Overlay) -->
   <div
     id="tour-modal"
-    class="fixed inset-0 z-[100] flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-4"
+    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-4"
     role="dialog"
     aria-modal="true"
     aria-labelledby="tour-modal-title"
@@ -1090,20 +1090,20 @@ import Layout from '../layouts/Layout.astro';
 <script is:inline>
   (function() {
     // Memory fallback para navegadores con localStorage bloqueado (Safari/Firefox ITP)
-    var memoryStore = {};
+    const memoryStore = {};
     function safeGet(key) {
       try { return localStorage.getItem(key); }
-      catch (e) { return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null; }
+      catch { return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null; }
     }
     function safeSet(key, value) {
       try { localStorage.setItem(key, value); }
-      catch (e) { memoryStore[key] = String(value); }
+      catch { memoryStore[key] = String(value); }
     }
 
-    var langModal = document.getElementById('lang-modal');
-    var welcomeModal = document.getElementById('welcome-modal');
-    var langButtons = document.querySelectorAll('.lang-btn');
-    var btnWelcomeStart = document.getElementById('btn-welcome-start');
+    const langModal = document.getElementById('lang-modal');
+    const welcomeModal = document.getElementById('welcome-modal');
+    const langButtons = document.querySelectorAll('.lang-btn');
+    const btnWelcomeStart = document.getElementById('btn-welcome-start');
 
     function showModal(modal) {
       if (!modal) return;
@@ -1127,8 +1127,8 @@ import Layout from '../layouts/Layout.astro';
     }
 
     // Entry logic — decide which modal to show
-    var hasLang = safeGet('edificarte_lang');
-    var hasWelcome = safeGet('edificarte_welcome_shown');
+    const hasLang = safeGet('edificarte_lang');
+    const hasWelcome = safeGet('edificarte_welcome_shown');
 
     if (!hasLang) {
       // No language chosen yet — show lang picker
@@ -1142,7 +1142,7 @@ import Layout from '../layouts/Layout.astro';
     // Language button clicks
     langButtons.forEach(function(btn) {
       btn.addEventListener('click', function() {
-        var selectedLang = btn.getAttribute('data-lang');
+        const selectedLang = btn.getAttribute('data-lang');
         if (!selectedLang) return;
         safeSet('edificarte_lang', selectedLang);
         hideModal(langModal, function() {
@@ -1182,9 +1182,9 @@ import Layout from '../layouts/Layout.astro';
   // Toast de bienvenida post-registro (cuando venís de /yo con ?welcome=1).
   // Lee el query param, muestra un toast verde y limpia la URL sin recargar.
   (function () {
-    var params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(window.location.search);
     if (params.get('welcome') === '1') {
-      var toast = document.createElement('div');
+      const toast = document.createElement('div');
       toast.setAttribute('role', 'status');
       toast.className =
         'fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-xl border border-emerald-200/50 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-200';
@@ -1193,7 +1193,7 @@ import Layout from '../layouts/Layout.astro';
         '<span>¡Bienvenido a EdificARTE! Tu cuenta está activa.</span>';
       document.body.appendChild(toast);
       // Limpia la URL para que un refresh no vuelva a mostrar el toast
-      var url = new URL(window.location.href);
+      const url = new URL(window.location.href);
       url.searchParams.delete('welcome');
       window.history.replaceState({}, '', url.toString());
       setTimeout(function () {

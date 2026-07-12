@@ -74,7 +74,12 @@ export interface UsdcVerifier {
  * registrado desbloquea un badge por primera vez.
  */
 export interface BadgeMinter {
-  mintBadge(params: MintBadgeParams): Promise<TxResult>;
+  /**
+   * Mint a badge NFT. Naming follows the OZ 5.x baseline
+   * (`safeMint`) — the legacy name `mintBadge` shadowed the
+   * virtual `tokenURI` function and was renamed.
+   */
+  safeMint(params: MintBadgeParams): Promise<TxResult>;
 }
 
 /**

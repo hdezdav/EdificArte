@@ -97,7 +97,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   let txHash = '';
   let mode: 'mock' | 'live' = 'mock';
   try {
-    const emitter = getReviewEmitter(env as any);
+    const emitter = getReviewEmitter(env);
     const result = await emitter.emitReview({
       toAddress: body.walletAddress ?? '0x0000000000000000000000000000000000000000',
       targetType: body.targetType as 'museum' | 'product' | 'tour',

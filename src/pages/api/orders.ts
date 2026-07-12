@@ -95,7 +95,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     );
   }
 
-  const paymentAddress = (env as any).EDIFICARTE_PAYMENT_ADDRESS as string | undefined;
+  const paymentAddress = env.EDIFICARTE_PAYMENT_ADDRESS;
   if (!paymentAddress) {
     return new Response(
       JSON.stringify({ ok: false, error: 'Pagos USDC no configurados en el servidor (EDIFICARTE_PAYMENT_ADDRESS).' }),
@@ -108,7 +108,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   // Verificar la tx on-chain (o confiar en mock si no hay RPC configurado).
   let verifier;
   try {
-    verifier = getUsdcVerifier(env as any);
+    verifier = getUsdcVerifier(env);
   } catch (err) {
     console.error('[api/orders] No se pudo crear el verificador USDC:', err);
     return new Response(
@@ -182,7 +182,11 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
       orderId,
       totalUSDC: body.totalUSDC,
       txHash,
-      mode: transfer.confirmations !== undefined ? 'verified' : 'mock',
+      // El verificador actual (`getUsdcVerifier`) siempre devuelve la
+      // implementación Live; no hay path mock para pagos. Por eso el
+      // campo es siempre 'verified' — la rama 'mock' quedó inalcanzable
+      // y se removió del contrato de respuesta.
+      mode: 'verified',
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } }
   );

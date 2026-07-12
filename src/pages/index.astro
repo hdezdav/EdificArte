@@ -1,9 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import AiLoader from '../components/ui/AiLoader.astro';
 import { MONUMENTS } from '../data/monuments';
 import tianquiztlisProducts from '../data/tianquiztlis_products.json';
-import { TOURS, TOUR_GUIDE } from '../data/tours';
+import { TOURS } from '../data/tours';
 import type { Tour } from '../data/tours';
 
 type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'tienda' | 'sitio-remoto';
@@ -542,7 +541,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <!-- Banner suave si no hay idioma elegido -->
   <div
     id="lang-soft-cta"
-    class="mb-4 flex hidden items-center justify-between gap-3 rounded-2xl border border-brand-200/50 bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:border-brand-800/50 dark:bg-brand-950/40 dark:text-brand-200"
+    class="mb-4 [&:not(.hidden)]:flex hidden items-center justify-between gap-3 rounded-2xl border border-brand-200/50 bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:border-brand-800/50 dark:bg-brand-950/40 dark:text-brand-200"
   >
     <span class="flex items-center gap-2">
       <span class="material-symbols-outlined text-[18px]">translate</span>
@@ -859,7 +858,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <!-- Museum/Guide Details Modal (Overlay) -->
   <div
     id="guide-modal"
-    class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
       class="w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100vh-32px)] sm:max-h-[90vh] overflow-hidden"
@@ -1010,7 +1009,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <button
     type="button"
     id="btn-cart-toggle"
-    class="fixed bottom-[76px] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg shadow-purple-500/30 backdrop-blur-md transition-all active:scale-90 hover:bg-purple-700 focus:outline-none border border-white/20 hidden"
+    class="fixed bottom-[76px] left-4 z-40 [&:not(.hidden)]:flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg shadow-purple-500/30 backdrop-blur-md transition-all active:scale-90 hover:bg-purple-700 focus:outline-none border border-white/20 hidden"
     aria-label="Abrir carrito de compras"
   >
     <span class="material-symbols-outlined text-[24px]">shopping_cart</span>
@@ -1025,7 +1024,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <!-- Cart Sidebar Drawer -->
   <div
     id="cart-drawer"
-    class="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity duration-300 opacity-0 hidden"
+    class="fixed inset-0 z-50 [&:not(.hidden)]:flex justify-end bg-black/60 backdrop-blur-sm transition-opacity duration-300 opacity-0 hidden"
   >
     <div
       id="cart-drawer-content"
@@ -1099,7 +1098,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <!-- Product Details Modal (Overlay) -->
   <div
     id="product-modal"
-    class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
   >
     <div
       class="w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100vh-32px)] sm:max-h-[90vh] overflow-hidden"
@@ -1218,7 +1217,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <!-- Tour Reservation Modal (Overlay) -->
   <div
     id="tour-modal"
-    class="fixed inset-0 z-50 flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-4"
+    class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-4"
     role="dialog"
     aria-modal="true"
     aria-labelledby="tour-modal-title"
@@ -1466,7 +1465,6 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   const langTabs = document.querySelectorAll<HTMLButtonElement>('.guide-lang-tab');
 
   let currentTranslations: any = null;
-  let activeGuideLang = 'es';
   let currentMuseumId = '';
   let currentIsVR = false;
   let currentVRUrl = '';
@@ -1521,7 +1519,6 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
         innerContent.classList.add('scale-100');
       }
     }
-    loadGuideReviews(currentMuseumId);
   }
 
   function closeGuideModal() {
@@ -1543,7 +1540,6 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   }
 
   function setGuideLanguage(lang: string) {
-    activeGuideLang = lang;
     if (!currentTranslations || !currentTranslations[lang]) return;
 
     const data = currentTranslations[lang];

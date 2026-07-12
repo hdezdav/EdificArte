@@ -6,7 +6,7 @@
  *
  * IMPORTANTE: Esta implementación NO firma transacciones del lado del server.
  * El usuario (cliente) firma con su propia wallet. El server solo:
- *   1. Llama a `mintBadge()` para acuñar NFTs cuando un usuario gana un badge.
+ *   1. Llama a `safeMint()` para acuñar NFTs cuando un usuario gana un badge.
  *      Esto requiere que el server tenga una wallet admin (PRIVATE_KEY +
  *      EDIFICARTE_ADMIN_ADDRESS) configurada. Si no está, la acuñación falla
  *      silenciosamente y se loguea — el usuario sigue teniendo su badge off-chain.
@@ -36,21 +36,24 @@ import type {
 } from './types';
 
 // ABI mínima del contrato ERC-721 EdificARteBadge.
+// Renombrado de mintBadge → safeMint (alineado con el baseline de OZ 5.x;
+// el nombre original hacía shadowing con la función tokenURI que también
+// es virtual en OZ 5.x).
 const BADGE_ABI = [
   {
-    name: 'mintBadge',
+    name: 'safeMint',
     type: 'function',
     stateMutability: 'nonpayable',
     inputs: [
       { name: 'to', type: 'address' },
       { name: 'badgeId', type: 'uint256' },
-      { name: 'tokenURI', type: 'string' },
+      { name: 'uri', type: 'string' },
     ],
     outputs: [{ name: 'tokenId', type: 'uint256' }],
   },
 ] as const;
 
-// ABI mínima del contrato de Reviews (solo evento).
+// ABI mínima del contrato de Reviews (evento + función emitReview).
 const REVIEW_ABI = [
   {
     name: 'ReviewEmitted',
@@ -62,6 +65,19 @@ const REVIEW_ABI = [
       { name: 'rating', type: 'uint8', indexed: false },
       { name: 'reviewId', type: 'string', indexed: false },
     ],
+  },
+  {
+    name: 'emitReview',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'author', type: 'address' },
+      { name: 'targetType', type: 'string' },
+      { name: 'targetId', type: 'string' },
+      { name: 'rating', type: 'uint8' },
+      { name: 'reviewId', type: 'string' },
+    ],
+    outputs: [],
   },
 ] as const;
 
@@ -97,14 +113,16 @@ export class LiveBadgeMinter implements BadgeMinter {
     private adminPrivateKey?: `0x${string}`
   ) {}
 
-  async mintBadge(params: MintBadgeParams): Promise<TxResult> {
+  async safeMint(params: MintBadgeParams): Promise<TxResult> {
     if (!this.adminPrivateKey) {
       console.warn(
         '[ONCHAIN LIVE] ADMIN_PRIVATE_KEY no configurada — saltando mint on-chain. ' +
           'El badge queda registrado off-chain en D1.'
       );
+      // Devolvemos string vacío en vez de un hash zero real para no
+      // persistir hashes engañosos en user_badges.tx_hash (D1).
       return {
-        txHash: '0x' + '0'.repeat(64),
+        txHash: '',
         mode: 'mock',
         emittedAt: new Date().toISOString(),
       };
@@ -123,15 +141,21 @@ export class LiveBadgeMinter implements BadgeMinter {
     });
 
     // Construimos un token URI con metadata inline (data URI JSON).
-    // Cuando se deploye el contrato, conviene apuntar a IPFS en su lugar.
+    // Cuando se deploye el contrato, conviene apuntar a IPFS en su lugar
+    // (un data URI JSON cuesta ~50k gas extra por mint).
+    //
+    // Usamos btoa() con escape para no depender de `Buffer` (no tipado
+    // en este proyecto y solo disponible en runtime por nodejs_compat,
+    // no en el type-check local).
+    const metadataJson = JSON.stringify(params.metadata);
     const tokenURI =
       'data:application/json;base64,' +
-      Buffer.from(JSON.stringify(params.metadata)).toString('base64');
+      btoa(unescape(encodeURIComponent(metadataJson)));
 
     const txHash = await client.writeContract({
       address: this.badgeContract,
       abi: BADGE_ABI,
-      functionName: 'mintBadge',
+      functionName: 'safeMint',
       args: [getAddress(params.toAddress), BigInt(params.badgeId), tokenURI],
     });
 
@@ -144,20 +168,55 @@ export class LiveBadgeMinter implements BadgeMinter {
 }
 
 export class LiveReviewEmitter implements ReviewEmitter {
-  constructor(private rpcUrl: string) {}
+  constructor(
+    private rpcUrl: string,
+    private reviewContract: `0x${string}`,
+    private adminPrivateKey?: `0x${string}`
+  ) {}
 
   async emitReview(params: EmitReviewParams): Promise<TxResult> {
-    // El evento ReviewEmitted se loguea desde el server cuando se crea
-    // una review. No requiere mintear nada nuevo — solo emite un evento
-    // indexable en el contrato de reviews.
-    //
-    // Para que esto funcione end-to-end sin admin key, dejamos el path mock
-    // activo cuando ADMIN_PRIVATE_KEY no está seteada. Cuando esté, agregar
-    // aquí la llamada writeContract.
-    console.warn('[ONCHAIN LIVE] ReviewEmitter.emitReview sin admin key — usando mock fallback');
+    // Si falta el contrato deployado o la admin key, caemos a mock
+    // (mismo patrón que LiveBadgeMinter). La review off-chain en D1 queda
+    // persistida — el cliente solo no recibe prueba on-chain.
+    if (!this.adminPrivateKey) {
+      console.warn(
+        '[ONCHAIN LIVE] ADMIN_PRIVATE_KEY no configurada — emit quedaría mock. ' +
+          'La review queda registrada off-chain en D1.'
+      );
+      return {
+        txHash: '',
+        mode: 'mock',
+        emittedAt: new Date().toISOString(),
+      };
+    }
+
+    // Import dinámico de viem/accounts (este código solo corre server-side).
+    const { privateKeyToAccount } = await import('viem/accounts');
+    const { createWalletClient } = await import('viem');
+    const account = privateKeyToAccount(this.adminPrivateKey);
+
+    const client = createWalletClient({
+      account,
+      chain: polygon,
+      transport: http(this.rpcUrl),
+    });
+
+    const txHash = await client.writeContract({
+      address: this.reviewContract,
+      abi: REVIEW_ABI,
+      functionName: 'emitReview',
+      args: [
+        getAddress(params.toAddress),
+        params.targetType,
+        params.targetId,
+        params.rating,
+        params.reviewId,
+      ],
+    });
+
     return {
-      txHash: '0x' + '0'.repeat(64),
-      mode: 'mock',
+      txHash,
+      mode: 'live',
       emittedAt: new Date().toISOString(),
     };
   }
@@ -168,6 +227,20 @@ export class LiveReviewEmitter implements ReviewEmitter {
  * log Transfer del contrato USDC y compara contra los valores esperados.
  */
 export class LiveUsdcVerifier implements UsdcVerifier {
+  /**
+   * Mínimo de confirmaciones requeridas para dar un pago por válido.
+   *
+   * Polygon mainnet tiene blocktime ~2s y reorgs pequeños son posibles.
+   * 64 confirmaciones ≈ 2 min, suficiente en la práctica para e-commerce
+   * (un usuario no espera 2 min en el checkout, pero el webhook/pedido
+   * puede confirmar de forma asíncrona).
+   *
+   * Si bajás este número, aumentás el riesgo de aceptar pagos que
+   * posteriormente se revierten (reorg). Si lo subís, aumentás la
+   * latencia de confirmación.
+   */
+  private static readonly MIN_CONFIRMATIONS = 64;
+
   constructor(private rpcUrl: string, private usdcContract: `0x${string}`) {}
 
   async verifyTransfer(args: {
@@ -177,6 +250,9 @@ export class LiveUsdcVerifier implements UsdcVerifier {
   }): Promise<UsdcTransfer | null> {
     const client = makePublicClient(this.rpcUrl);
 
+    // Distinguimos "tx no encontrada" (aún no minteada / hash inválido) de
+    // "RPC caído / error de red". El primero le dice al cliente "esperá";
+    // el segundo es un problema del server y debería ser 500, no 400.
     let receipt;
     try {
       receipt = await client.getTransactionReceipt({ hash: args.txHash as Hash });
@@ -186,6 +262,25 @@ export class LiveUsdcVerifier implements UsdcVerifier {
     }
 
     if (receipt.status !== 'success') return null;
+
+    // Chequeo de confirmaciones contra la chain actual. Polygon puede
+    // reorganizar bloques pequeños, así que exigir MIN_CONFIRMATIONS
+    // evita aceptar pagos que después se revierten.
+    let currentBlock: bigint;
+    try {
+      currentBlock = await client.getBlockNumber();
+    } catch (err) {
+      console.warn('[ONCHAIN LIVE] RPC error al obtener blockNumber:', err);
+      return null;
+    }
+    const confirmations = Number(currentBlock - receipt.blockNumber) + 1;
+    if (confirmations < LiveUsdcVerifier.MIN_CONFIRMATIONS) {
+      console.info(
+        `[ONCHAIN LIVE] tx ${args.txHash} tiene ${confirmations} confirmaciones, ` +
+          `esperando ${LiveUsdcVerifier.MIN_CONFIRMATIONS}.`
+      );
+      return null;
+    }
 
     const logs = parseEventLogs({
       abi: USDC_ABI,
@@ -214,7 +309,7 @@ export class LiveUsdcVerifier implements UsdcVerifier {
       from,
       to,
       rawAmount: value.toString(),
-      confirmations: 1,
+      confirmations,
     };
   }
 }

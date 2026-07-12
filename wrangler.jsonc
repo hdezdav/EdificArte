@@ -20,6 +20,8 @@
     "PUBLIC_BADGE_CONTRACT_ADDRESS": "",
     "PUBLIC_REVIEW_CONTRACT_ADDRESS": "",
     "EDIFICARTE_PAYMENT_ADDRESS": "",
+    // Single wallet that receives donations. May equal EDIFICARTE_PAYMENT_ADDRESS.
+    "EDIFICARTE_DONATION_ADDRESS": "",
   },
   "d1_databases": [
     {

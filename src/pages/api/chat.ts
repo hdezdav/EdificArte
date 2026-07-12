@@ -1,26 +1,32 @@
 import type { APIRoute } from 'astro';
 import { MONUMENTS } from '../../data/monuments';
 
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 export const POST: APIRoute = async ({ request, locals }) => {
-  const env = locals.runtime?.env;
-  const apiKey = env?.GEMINI_API_KEY;
+  const env = locals.runtime.env;
+  const apiKey = env.GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error('La variable de entorno GEMINI_API_KEY no está configurada.');
   }
 
-  let messages: any[] = [];
+  let messages: ChatMessage[] = [];
 
   try {
-    const body = await request.json();
-    messages = body.messages;
-    
-    if (!messages || !Array.isArray(messages)) {
+    const body = (await request.json()) as { messages?: unknown; userLocation?: { lat: number; lng: number } };
+    const rawMessages = body.messages;
+
+    if (!Array.isArray(rawMessages)) {
       return new Response(JSON.stringify({ error: 'Faltan los mensajes o el formato es incorrecto.' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    messages = rawMessages as ChatMessage[];
 
     const userLocation = body.userLocation;
 
@@ -91,7 +97,7 @@ FORMATO DE RESPUESTA (JSON estricto):
 
     // Construir los contents para la API de Gemini (formatear la historia de mensajes)
     // Nos interesa mantener los últimos mensajes para el contexto de chat
-    const formattedContents = messages.slice(-6).map((msg: any) => ({
+    const formattedContents = messages.slice(-6).map((msg: ChatMessage) => ({
       role: msg.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: msg.content }]
     }));
@@ -148,7 +154,7 @@ FORMATO DE RESPUESTA (JSON estricto):
       },
     });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error en /api/chat:', err);
     
     // Fallback amigable si la API falla o la key no es válida
@@ -168,7 +174,7 @@ FORMATO DE RESPUESTA (JSON estricto):
         reply: fallbackReply,
         route: fallbackRoute,
         isFallback: true,
-        errorMessage: err.message
+        errorMessage: err instanceof Error ? err.message : String(err)
       }),
       {
         status: 200,

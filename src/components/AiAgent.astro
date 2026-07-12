@@ -1,5 +1,4 @@
 ---
-import AiLoader from './ui/AiLoader.astro';
 ---
 
 <div class="fixed bottom-[76px] right-4 z-40" id="ai-agent-container">
@@ -19,7 +18,7 @@ import AiLoader from './ui/AiLoader.astro';
     <!-- AI Chat Popover -->
     <div
       id="ai-agent-popover"
-      class="hidden absolute bottom-16 right-0 mb-2 w-[calc(100vw-32px)] sm:w-80 h-[380px] sm:h-[420px] max-h-[calc(100vh-150px)] rounded-3xl border border-slate-200/50 bg-white/95 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-xl transition-all duration-300 text-slate-800 dark:border-slate-800/50 dark:bg-slate-900/95 dark:text-white flex flex-col overflow-hidden"
+      class="hidden absolute bottom-16 right-0 mb-2 w-[calc(100vw-32px)] sm:w-80 h-[380px] sm:h-[420px] max-h-[calc(100vh-150px)] rounded-3xl border border-slate-200/50 bg-white/95 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-xl transition-all duration-300 text-slate-800 dark:border-slate-800/50 dark:bg-slate-900/95 dark:text-white [&:not(.hidden)]:flex flex-col overflow-hidden"
     >
       <!-- Header -->
       <div class="bg-gradient-to-r from-brand-600 to-purple-600 text-white p-3.5 flex items-center justify-between shadow-sm">
@@ -130,6 +129,39 @@ import AiLoader from './ui/AiLoader.astro';
     content: string;
   }
 
+  // API mínima del Web Speech Recognition (no está en lib.dom por defecto en
+  // todos los targets; acá solo usamos el subset necesario para dictado de voz).
+  interface SpeechRecognitionAlternativeLike {
+    readonly transcript: string;
+  }
+  interface SpeechRecognitionResultLike {
+    readonly length: number;
+    readonly isFinal: boolean;
+    [index: number]: SpeechRecognitionAlternativeLike;
+  }
+  interface SpeechRecognitionResultListLike {
+    readonly length: number;
+    [index: number]: SpeechRecognitionResultLike;
+  }
+  interface SpeechRecognitionEventLike extends Event {
+    readonly results: SpeechRecognitionResultListLike;
+  }
+  interface SpeechRecognitionErrorEventLike extends Event {
+    readonly error: string;
+  }
+  interface SpeechRecognitionLike extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    maxAlternatives: number;
+    onstart: ((this: SpeechRecognitionLike, ev: Event) => unknown) | null;
+    onend: ((this: SpeechRecognitionLike, ev: Event) => unknown) | null;
+    onresult: ((this: SpeechRecognitionLike, ev: SpeechRecognitionEventLike) => unknown) | null;
+    onerror: ((this: SpeechRecognitionLike, ev: SpeechRecognitionErrorEventLike) => unknown) | null;
+    start(): void;
+    stop(): void;
+  }
+
   const aiBtn = document.getElementById('ai-agent-btn');
   const aiPopover = document.getElementById('ai-agent-popover');
   const aiClose = document.getElementById('ai-agent-close');
@@ -137,7 +169,7 @@ import AiLoader from './ui/AiLoader.astro';
   const aiInput = document.getElementById('ai-agent-input') as HTMLInputElement;
   const messagesContainer = document.getElementById('ai-agent-messages');
 
-  let history: ChatMessage[] = [];
+  const history: ChatMessage[] = [];
   let currentUtterance: SpeechSynthesisUtterance | null = null;
 
   // Ajustar posición si estamos en la página del mapa para evitar superposición
@@ -354,7 +386,7 @@ import AiLoader from './ui/AiLoader.astro';
     const el = document.getElementById(id);
     if (!el) return;
 
-    let formattedText = escapeHtml(text).replace(/\n/g, '<br/>');
+    const formattedText = escapeHtml(text).replace(/\n/g, '<br/>');
 
     // Botones de acción si tiene ruta o monumentos
     let actionsHtml = '';
@@ -458,12 +490,18 @@ import AiLoader from './ui/AiLoader.astro';
 
   // Speech Recognition (Dictado de voz)
   const micBtn = document.getElementById('ai-mic-btn') as HTMLButtonElement;
-  let recognition: any = null;
+  let recognition: SpeechRecognitionLike | null = null;
   let isListening = false;
 
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
+    const SpeechRecognitionCtor = (window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    }).SpeechRecognition ?? (window as unknown as {
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    }).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) return;
+    recognition = new SpeechRecognitionCtor();
     recognition.continuous = false;
     recognition.interimResults = false;
     // Lang: usar el del navegador si es español, sino fallback a es-MX
@@ -497,7 +535,7 @@ import AiLoader from './ui/AiLoader.astro';
       }
     };
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       const transcript = event.results[0][0].transcript;
       if (aiInput && transcript) {
         aiInput.value = transcript;
@@ -505,7 +543,7 @@ import AiLoader from './ui/AiLoader.astro';
       }
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
       console.error('Speech recognition error', event.error);
       // Feedback user-friendly según tipo de error
       const messages: Record<string, string> = {
@@ -533,6 +571,7 @@ import AiLoader from './ui/AiLoader.astro';
     micBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (!recognition) return;
       if (isListening) {
         recognition.stop();
       } else {

@@ -903,7 +903,7 @@ function startAudio() {
         if (res.ok) return res.json();
         throw new Error('Not logged in or error');
       })
-      .then((data: any) => {
+      .then((data: UnlockBadgeResponse) => {
         if (data.success) {
           showBadgeNotification(badgeId);
           if (data.isGuest) {
@@ -998,6 +998,18 @@ const geoText = $('geo-text');
 const geoStatusEl = $('geo-status');
 
 type GeoState = 'ok' | 'error' | 'loading';
+
+interface UnlockBadgeResponse {
+  success: boolean;
+  isGuest?: boolean;
+  badgeId?: number;
+  pointsEarned?: number;
+  totalPoints?: number;
+  txHash?: string;
+  mode?: 'mock' | 'live';
+  message?: string;
+  errorMessage?: string;
+}
 
 const setGeo = (state: GeoState, msg: string) => {
   if (!dot || !geoText) return;
@@ -1137,7 +1149,7 @@ function triggerLocationPrompt() {
   // Limpiar flag ANTES de pedir permiso para que el fallback polling
   // no vuelva a disparar el prompt si el evento se procesa tarde.
   safeSet('edificarte_request_gps_pending', 'false');
-  (window as any).__edificarteGpsPending = false;
+  window.__edificarteGpsPending = false;
 
   navigator.geolocation.getCurrentPosition(
     (pos) => {
@@ -1180,7 +1192,7 @@ window.addEventListener('edificarte-request-gps', () => {
 function checkPendingGpsRequest() {
   const pending =
     safeGet('edificarte_request_gps_pending') === 'true' ||
-    (window as any).__edificarteGpsPending === true;
+    window.__edificarteGpsPending === true;
   if (pending && !permissionDenied) {
     triggerLocationPrompt();
   }
@@ -1416,7 +1428,7 @@ async function drawRoute(ids: string[]) {
     if (err instanceof DOMException && err.name === 'AbortError') {
       return;
     }
-    if ((err as any)?.name === 'AbortError') {
+    if (err instanceof Error && err.name === 'AbortError') {
       return;
     }
     console.error('Error al obtener ruta peatonal real de OSRM, usando fallback rectilíneo:', err);
@@ -1453,16 +1465,16 @@ $('btn-clear-route')?.addEventListener('click', () => {
 });
 
 // Escuchar evento personalizado para trazar ruta
-window.addEventListener('ai-route-generated', (e: any) => {
-  const route = e.detail?.route;
+window.addEventListener('ai-route-generated', (e: Event) => {
+  const route = (e as CustomEvent<{ route?: unknown }>).detail?.route;
   if (Array.isArray(route)) {
     drawRoute(route);
   }
 });
 
 // Escuchar evento personalizado para reproducir audioguía
-window.addEventListener('ai-play-audio', (e: any) => {
-  const monumentId = e.detail?.monumentId;
+window.addEventListener('ai-play-audio', (e: Event) => {
+  const monumentId = (e as CustomEvent<{ monumentId?: string }>).detail?.monumentId;
   if (monumentId) {
     selectMonument(monumentId);
     setTimeout(() => {

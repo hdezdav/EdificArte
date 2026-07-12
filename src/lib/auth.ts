@@ -1,3 +1,5 @@
+import type { AstroCookies } from 'astro';
+
 const PASSWORD_SALT = "edificarte-app-salt-2026";
 
 export async function hashPassword(password: string): Promise<string> {
@@ -21,7 +23,7 @@ export interface User {
 }
 
 export async function getUserBySession(
-  cookies: any,
+  cookies: AstroCookies,
   env: Env
 ): Promise<User | null> {
   const sessionId = cookies.get('edificarte_session')?.value;
@@ -46,7 +48,7 @@ export async function getUserBySession(
 }
 
 export async function createSession(
-  cookies: any,
+  cookies: AstroCookies,
   env: Env,
   userId: string
 ): Promise<string> {
@@ -69,7 +71,7 @@ export async function createSession(
   return sessionId;
 }
 
-export async function deleteSession(cookies: any, env: Env): Promise<void> {
+export async function deleteSession(cookies: AstroCookies, env: Env): Promise<void> {
   const sessionId = cookies.get('edificarte_session')?.value;
   if (sessionId) {
     await env.SESSION.delete(sessionId);
@@ -84,7 +86,7 @@ export async function getUserBadges(env: Env, userId: string): Promise<number[]>
     )
       .bind(userId)
       .all();
-    return results.map((r: any) => r.badge_id);
+    return results.map((r: { badge_id: number }) => r.badge_id);
   } catch (err) {
     console.error('Error fetching user badges:', err);
     return [];

@@ -35,7 +35,7 @@ function fakeHash(seed: string): string {
 }
 
 export class MockBadgeMinter implements BadgeMinter {
-  async mintBadge(params: MintBadgeParams): Promise<TxResult> {
+  async safeMint(params: MintBadgeParams): Promise<TxResult> {
     const txHash = fakeHash(`badge:${params.toAddress}:${params.badgeId}:${params.metadata.visitedAt}`);
     console.log('[ONCHAIN MOCK] would mint badge', {
       contract: 'EdificARteBadge',
