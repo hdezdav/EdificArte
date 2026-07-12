@@ -47,6 +47,35 @@ export async function getUserBySession(
   }
 }
 
+/**
+ * Resuelve un user a partir de la address de su wallet verificada.
+ * Usado por /api/wallet-login. Joinea `users` con `user_wallets` por address.
+ *
+ * Devuelve el user SOLO si la address está registrada y verificada en
+ * `user_wallets`. No valida la firma acá — eso lo hace /api/wallet-login
+ * antes de llamar este helper.
+ */
+export async function getUserByWalletAddress(
+  env: Env,
+  address: string
+): Promise<User | null> {
+  const normalized = address.toLowerCase();
+  try {
+    const row = await env.DB.prepare(
+      `SELECT u.* FROM users u
+       INNER JOIN user_wallets w ON w.user_id = u.id
+       WHERE w.address = ?
+       LIMIT 1`
+    )
+      .bind(normalized)
+      .first<User>();
+    return row || null;
+  } catch (err) {
+    console.error('Error fetching user by wallet address:', err);
+    return null;
+  }
+}
+
 export async function createSession(
   cookies: AstroCookies,
   env: Env,

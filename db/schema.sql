@@ -48,6 +48,14 @@ CREATE TABLE IF NOT EXISTS user_wallets (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Una wallet solo puede estar asociada a UN user (previene que 2 users
+-- distintos se identifiquen con la misma address y dividan sus puntos/badges
+-- en D1 mientras gastan USDC desde la misma wallet on-chain).
+-- Aplicar también en prod con:
+--   pnpm wrangler d1 execute edificarte-db --file db/schema.sql
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_wallets_address
+ON user_wallets(address);
+
 -- Órdenes de compra de artesanías pagadas en USDC. La fuente de verdad
 -- del pago es la tx on-chain (validada en /api/orders); esta tabla solo
 -- registra el linkage entre la tx y los items.

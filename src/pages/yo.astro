@@ -433,15 +433,6 @@ const isEmoji = (str: string) => {
             </p>
           </div>
         </section>
-
-        <div class="rounded-2xl border border-slate-200/50 bg-slate-50 p-6 text-center dark:border-slate-800/50 dark:bg-slate-900/40">
-          <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">
-            Billetera Web3 Integrada
-          </h3>
-          <p class="mx-auto mt-2 max-w-md text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Tus logros están sincronizados en tiempo real en la base de datos de Cloudflare. Cada insignia que ganes representa un POAP coleccionable digital on-chain.
-          </p>
-        </div>
       </div>
 
       <!-- Modal de Edición de Perfil (Oculto) -->
@@ -652,6 +643,20 @@ const isEmoji = (str: string) => {
           >
             Registrarse
           </button>
+
+          {/* Link "¿Ya tienes cuenta? Inicia sesión" — solo visible en tab register */}
+          {activeTab === 'register' && (
+            <p class="text-center text-xs text-slate-500 dark:text-slate-400 pt-1">
+              ¿Ya tenés cuenta?{' '}
+              <button
+                type="button"
+                id="link-switch-to-login"
+                class="font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 transition-colors"
+              >
+                Iniciá sesión
+              </button>
+            </p>
+          )}
         </form>
 
         <!-- Separador -->
@@ -660,6 +665,19 @@ const isEmoji = (str: string) => {
           <span>o también</span>
           <div class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
         </div>
+
+        <!-- Botón de Conectar Wallet (EIP-191 / Sign-In with Ethereum) -->
+        <button
+          type="button"
+          id="btn-wallet-connect"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-brand-300 transition-all active:scale-[0.98] dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:border-brand-700"
+        >
+          <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+          <span id="btn-wallet-connect-label">Conectar Wallet</span>
+        </button>
+        <p id="btn-wallet-connect-help" class="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+          Inicia sesión firmando un mensaje. Sin gas, sin transacciones.
+        </p>
 
         <!-- Botón de Invitado -->
         <form method="POST" action="/yo" class="w-full">
@@ -700,6 +718,102 @@ const isEmoji = (str: string) => {
         formLogin.classList.add('hidden');
       });
     }
+
+    // 1b. Link "¿Ya tenés cuenta? Iniciá sesión" — switch a tab login
+    // desde el form de registro. Simula click en el tab login.
+    const linkSwitchToLogin = document.getElementById('link-switch-to-login');
+    if (linkSwitchToLogin && tabLogin) {
+      linkSwitchToLogin.addEventListener('click', () => {
+        tabLogin.click();
+        tabLogin.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    // 1c. Wallet Connect (EIP-191 / Sign-In with Ethereum)
+    // Flujo: connect() -> pedir nonce -> firmar -> POST /api/wallet-login.
+    // Reusa BrowserWalletProvider de src/lib/onchain/client.ts.
+    const btnWallet = document.getElementById('btn-wallet-connect') as HTMLButtonElement | null;
+    const btnWalletLabel = document.getElementById('btn-wallet-connect-label');
+    const btnWalletHelp = document.getElementById('btn-wallet-connect-help');
+
+    function setWalletStatus(text: string | null) {
+      if (!btnWalletHelp) return;
+      if (text === null) {
+        btnWalletHelp.textContent = 'Inicia sesión firmando un mensaje. Sin gas, sin transacciones.';
+        btnWalletHelp.classList.remove('text-rose-500', 'dark:text-rose-400');
+        btnWalletHelp.classList.add('text-slate-400', 'dark:text-slate-500');
+      } else {
+        btnWalletHelp.textContent = text;
+        btnWalletHelp.classList.add('text-rose-500', 'dark:text-rose-400');
+        btnWalletHelp.classList.remove('text-slate-400', 'dark:text-slate-500');
+      }
+    }
+
+    btnWallet?.addEventListener('click', async () => {
+      if (!btnWallet || !btnWalletLabel) return;
+
+      const originalLabel = btnWalletLabel.textContent || 'Conectar Wallet';
+      btnWallet.disabled = true;
+      btnWalletLabel.textContent = 'Conectando…';
+      setWalletStatus(null);
+
+      try {
+        // Dynamic import — mismo patrón que src/pages/index.astro.
+        const { BrowserWalletProvider } = await import('../lib/onchain/client');
+        const wallet = new BrowserWalletProvider();
+
+        // 1. connect() pide la address.
+        const address = await wallet.connect();
+        btnWalletLabel.textContent = 'Pidiendo nonce…';
+
+        // 2. Pedir nonce al server.
+        const nonceRes = await fetch(`/api/wallet-nonce?address=${encodeURIComponent(address)}`);
+        if (!nonceRes.ok) {
+          const data = await nonceRes.json().catch(() => ({}));
+          throw new Error(data.error || 'No pudimos generar el nonce.');
+        }
+        const { message, nonce } = (await nonceRes.json()) as { message: string; nonce: string };
+
+        btnWalletLabel.textContent = 'Esperando firma…';
+
+        // 3. Firmar mensaje con la wallet (EIP-191 / personal_sign).
+        let signature: string;
+        try {
+          signature = await wallet.signMessage(message);
+        } catch (signErr: unknown) {
+          const code = (signErr as { code?: number | string })?.code;
+          if (code === 4001 || code === 'ACTION_REJECTED') {
+            setWalletStatus('Cancelaste la firma.');
+          } else {
+            throw signErr;
+          }
+          btnWalletLabel.textContent = originalLabel;
+          btnWallet.disabled = false;
+          return;
+        }
+
+        // 4. POST /api/wallet-login.
+        btnWalletLabel.textContent = 'Verificando…';
+        const loginRes = await fetch('/api/wallet-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, nonce, signature }),
+        });
+
+        if (!loginRes.ok) {
+          const data = await loginRes.json().catch(() => ({}));
+          throw new Error(data.error || 'No pudimos verificar tu wallet.');
+        }
+
+        // 5. Éxito → redirect al perfil.
+        window.location.href = '/yo';
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Error desconocido.';
+        setWalletStatus(msg);
+        btnWalletLabel.textContent = originalLabel;
+        btnWallet.disabled = false;
+      }
+    });
 
     // 2. Opciones de Configuración (User View)
     const settingsBtn = document.getElementById('settings-btn');
