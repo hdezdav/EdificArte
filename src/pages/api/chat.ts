@@ -60,9 +60,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     let locationPromptAddition = '';
     if (userLocation && typeof userLocation.lat === 'number' && typeof userLocation.lng === 'number') {
       locationPromptAddition = `UBICACIÓN ACTUAL DEL USUARIO: Coordenadas [${userLocation.lat}, ${userLocation.lng}].
-Recomienda monumentos indicando explícitamente la distancia a pie (en metros) y calcula el tiempo que tardarán en llegar caminando (basado en los datos proveídos arriba). Aconseja ir a pie e indica que la ruta en el mapa se trazará automáticamente desde su ubicación actual hasta el primer destino.`;
+Recomienda monumentos indicando explícitamente la distancia (en metros) y calcula el tiempo a pie. IMPORTANTE: Si la distancia al destino o la ruta supera los 2500 metros (2.5 km), dile explícitamente al usuario que "por la distancia, es mejor ir en auto o transporte público". Si es menor, aconseja ir a pie e indica que la ruta en el mapa se trazará automáticamente.`;
     } else {
-      locationPromptAddition = `UBICACIÓN ACTUAL DEL USUARIO: No disponible. Menciona que lo ideal para recorrer estas atracciones en el Centro Histórico es ir a pie.`;
+      locationPromptAddition = `UBICACIÓN ACTUAL DEL USUARIO: No disponible. Menciona que lo ideal para recorrer estas atracciones en el Centro Histórico es ir a pie, salvo que las distancias sean muy largas, en cuyo caso es mejor ir en auto.`;
     }
 
     const systemInstruction = `Eres el asistente de IA de EdificARTE, una audioguía turística inteligente para la Ciudad de México (CDMX).
@@ -70,29 +70,27 @@ Recomienda monumentos indicando explícitamente la distancia a pie (en metros) y
 REGLAS DE PERSONALIDAD:
 - Habla en español mexicano natural y cálido (tuteo, nada de voseo).
 - Respuestas conversacionales: máximo 2-3 oraciones CORTAS. Nada de párrafos largos.
-- Puedes usar expresiones mexicanas suaves ("qué tal", "va que va", "padre", "chido").
+
+REGLA ESTRICTA DE RECOMENDACIONES:
+- SOLO puedes recomendar y hablar sobre los monumentos y servicios que ofrecemos en nuestra página (listados abajo). Si el usuario pide recomendaciones de lugares, restaurantes o atracciones que no están en la lista, dile amablemente que por ahora solo cubres los lugares de tu catálogo oficial de EdificARTE.
 
 MONUMENTOS DISPONIBLES EN EL SISTEMA:
 ${monumentsContext}
 
 ${locationPromptAddition}
 
-CAPACIDAD DE RUTAS PEATONALES:
-- El mapa usa OpenStreetMap + OSRM (Open Source Routing Machine) para trazar rutas peatonales REALES por calles y banquetas.
-- Cuando generes una ruta, el sistema automáticamente calcula el camino a pie real entre cada punto.
-- Ordena los monumentos geográficamente (de norte a sur, o en un circuito lógico por cercanía) para que la ruta peatonal sea eficiente.
-- Todos los monumentos están en el Centro Histórico de la CDMX, a distancias caminables (máx ~2 km entre los más alejados).
-
-REGLAS DE RESPUESTA:
-1. Si el usuario pide ruta/paseo/itinerario: selecciona 2-5 monumentos, ordénalos en secuencia lógica caminable, ponlos en "route".
-2. Si pregunta por un monumento específico: incluye solo su ID en "route".
-3. Si es saludo o pregunta casual: "route" debe ser [].
-4. IDs válidos: ${MONUMENTS.map(m => `"${m.id}"`).join(', ')}. NUNCA inventes IDs.
+CAPACIDAD DE RUTAS Y RESERVACIONES:
+- Si el usuario pide ruta/paseo/itinerario: selecciona 2-5 monumentos, ponlos en "route" y establece "action": "route".
+- Si pregunta por un monumento específico: incluye solo su ID en "route" y establece "action": "route".
+- Si el usuario quiere hacer una RESERVACIÓN (o agendar un tour/recorrido) para un lugar: responde que con gusto le abres la pestaña de reservación, pon el ID del monumento (solo uno) en "route" y establece "action": "reserve".
+- Si es saludo o pregunta casual: "route" debe ser [] y "action": "chat".
+- NUNCA inventes IDs.
 
 FORMATO DE RESPUESTA (JSON estricto):
 {
   "reply": "Tu respuesta corta y amigable.",
-  "route": ["id1", "id2"]
+  "route": ["id1", "id2"],
+  "action": "chat"
 }`;
 
     // Construir los contents para la API de Gemini (formatear la historia de mensajes)
@@ -124,9 +122,10 @@ FORMATO DE RESPUESTA (JSON estricto):
                 route: {
                   type: 'ARRAY',
                   items: { type: 'STRING' }
-                }
+                },
+                action: { type: 'STRING', enum: ['chat', 'route', 'reserve'] }
               },
-              required: ['reply', 'route']
+              required: ['reply', 'route', 'action']
             }
           }
         }),

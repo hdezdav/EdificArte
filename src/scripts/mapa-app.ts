@@ -1868,3 +1868,14 @@ $('btn-book-tour')?.addEventListener('click', () => {
   openTourModal(tour.id, tour.title, tour.meetingPoint || '');
 });
 
+// Listener para cuando el AI Agent decide abrir la reservación
+window.addEventListener('ai-reserve-tour', (e: Event) => {
+  const monumentId = (e as CustomEvent<{ monumentId?: string }>).detail?.monumentId;
+  if (!monumentId) return;
+  const m = MONUMENTS.find((x) => x.id === monumentId);
+  if (!m || !m.tourId) return;
+  const tour = TOURS.find((t) => t.id === m.tourId);
+  if (!tour) return;
+  openTourModal(tour.id, tour.title, tour.meetingPoint || '');
+});
+

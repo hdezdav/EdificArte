@@ -2536,6 +2536,23 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
     });
   });
 
+  // Listener para el AI Agent
+  window.addEventListener('ai-reserve-tour', (e: Event) => {
+    const monumentId = (e as CustomEvent<{ monumentId?: string }>).detail?.monumentId;
+    if (!monumentId) return;
+    const btn = document.querySelector(`[data-tour-id="${monumentId}"]`) as HTMLElement;
+    if (btn) {
+      openTourModal(
+        btn.dataset.tourId || '',
+        btn.dataset.tourTitle || 'Tour',
+        btn.dataset.tourMeeting || ''
+      );
+    } else {
+      // Fallback genérico si no se encuentra en el DOM actual
+      openTourModal(monumentId, 'Recorrido Especial', '');
+    }
+  });
+
   tourPeopleInput?.addEventListener('input', updateTourTotal);
 
   tourModalClose?.addEventListener('click', closeTourModal);

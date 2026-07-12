@@ -20,6 +20,16 @@ Este repositorio contiene la estructura base y el scaffolding inicial correspond
 
 ---
 
+## Contratos Inteligentes (Polygon Mainnet)
+
+La aplicación interactúa con contratos inteligentes desplegados en la red de Polygon (chainId: 137). Puedes verificar las transacciones y el código fuente en PolygonScan:
+
+- **Badge Contract (Insignias / POAPs)**: [`0xF3BFe6Fac28Fa7E17280fd74e9C52294686a5F25`](https://polygonscan.com/address/0xF3BFe6Fac28Fa7E17280fd74e9C52294686a5F25)
+- **Review Contract (Reseñas On-Chain)**: [`0x993362db73F57f3CbEBD310b31E42Bb21ED27538`](https://polygonscan.com/address/0x993362db73F57f3CbEBD310b31E42Bb21ED27538)
+- **USDC Contract (Token Nativo Polygon)**: [`0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359`](https://polygonscan.com/address/0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359)
+
+---
+
 ## Comenzando (Quickstart)
 
 Para levantar el entorno de desarrollo local, seguí estos pasos:

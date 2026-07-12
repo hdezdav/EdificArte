@@ -256,7 +256,7 @@ function appendAssistantLoader(): string {
   return id;
 }
 
-function updateAssistantMessage(id: string, text: string, route: string[] = []) {
+function updateAssistantMessage(id: string, text: string, route: string[] = [], action: string = 'chat') {
   const el = document.getElementById(id);
   if (!el) return;
 
@@ -270,7 +270,17 @@ function updateAssistantMessage(id: string, text: string, route: string[] = []) 
 
     actionsHtml += '<div class="flex flex-wrap gap-2 mt-3">';
 
-    if (isMapPage) {
+    if (action === 'reserve' && route.length === 1) {
+      actionsHtml += `
+        <button
+          class="ai-reserve-trigger flex items-center justify-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+          data-monument="${route[0]}"
+        >
+          <span class="material-symbols-outlined text-[14px]">calendar_month</span>
+          Reservar Recorrido
+        </button>
+      `;
+    } else if (isMapPage) {
       actionsHtml += `
         <button
           class="ai-route-trigger flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
@@ -346,17 +356,30 @@ function updateAssistantMessage(id: string, text: string, route: string[] = []) 
     });
   }
 
-  // Agregar event listeners para acciones de mapa/audio
-  if (route && route.length > 0 && window.location.pathname.startsWith('/mapa')) {
-    const routeBtn = el.querySelector('.ai-route-trigger');
-    routeBtn?.addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route } }));
-    });
+  // Agregar event listeners para acciones de mapa/audio/reserva
+  if (route && route.length > 0) {
+    if (action === 'reserve') {
+      const reserveBtn = el.querySelector('.ai-reserve-trigger');
+      reserveBtn?.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('ai-reserve-tour', { detail: { monumentId: route[0] } }));
+        // Cerrar el popover después de apretar
+        const aiPopover = document.getElementById('ai-agent-popover');
+        if (aiPopover) {
+          aiPopover.classList.add('hidden');
+          stopSpeaking();
+        }
+      });
+    } else if (window.location.pathname.startsWith('/mapa')) {
+      const routeBtn = el.querySelector('.ai-route-trigger');
+      routeBtn?.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route } }));
+      });
 
-    const audioBtn = el.querySelector('.ai-audio-trigger');
-    audioBtn?.addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('ai-play-audio', { detail: { monumentId: route[0] } }));
-    });
+      const audioBtn = el.querySelector('.ai-audio-trigger');
+      audioBtn?.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('ai-play-audio', { detail: { monumentId: route[0] } }));
+      });
+    }
   }
 
   scrollToBottom();
@@ -516,12 +539,13 @@ aiForm?.addEventListener('submit', async (e) => {
     const data = await response.json();
     const botReply = data.reply || 'Disculpa, se me complicó procesar la respuesta en este momento.';
     const botRoute = data.route || [];
+    const botAction = data.action || 'chat';
 
     chatHistory.push({ role: 'assistant', content: botReply });
-    updateAssistantMessage(loaderId, botReply, botRoute);
+    updateAssistantMessage(loaderId, botReply, botRoute, botAction);
 
     // Si estamos en la página del mapa, trazar la ruta automáticamente al recibirla
-    if (botRoute.length > 0 && window.location.pathname.startsWith('/mapa')) {
+    if (botAction === 'route' && botRoute.length > 0 && window.location.pathname.startsWith('/mapa')) {
       window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route: botRoute } }));
     }
 
