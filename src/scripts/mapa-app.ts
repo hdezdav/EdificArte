@@ -1187,35 +1187,84 @@ $('btn-locate')?.addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Auto-start GPS cuando el permiso ya está 'granted'
 // ---------------------------------------------------------------------------
-// navigator.permissions.query() permite consultar el estado del permiso SIN
-// disparar el prompt. Si ya está 'granted', podemos llamar watchPosition con
-// seguridad — no se abrirá ningún diálogo y el navegador devolverá la posición
-// directamente. Esto resuelve el caso donde el usuario ya otorgó permiso (en
-// una visita previa o desde el candado) pero el welcome modal no se volvió a
-// mostrar, dejando el GPS "Inactivo" eternamente.
+// En la mayoría de visitas el welcome modal ya no se muestra (queda persistido
+// en localStorage), entonces el único disparador del GPS — el botón "Activar
+// GPS y Comenzar" — nunca se ejecuta y el indicador queda "Inactivo" para
+// siempre aunque el navegador ya tenga el permiso otorgado.
 //
-// Si el estado es 'prompt' o 'denied', no hacemos nada — mantenemos el
-// comportamiento existente que exige gesto explícito del usuario, y respetamos
-// el caso iOS Safari documentado arriba (líneas 1130-1134) donde un
-// watchPosition sin gesto rechaza el prompt silenciosamente.
+// Resolvemos esto intentando iniciar el GPS automáticamente al cargar. La
+// estrategia depende del soporte del navegador:
+//
+// 1. navigator.permissions.query() (Chrome/Edge): consulta el estado del
+//    permiso SIN disparar el prompt. Si devuelve 'granted', arrancamos
+//    watchPosition directo — es seguro porque no se abrirá ningún diálogo.
+//
+// 2. Fallback con getCurrentPosition (Firefox, Safari): la Permissions API no
+//    está expuesta para 'geolocation'. Probamos un getCurrentPosition con
+//    timeout muy corto (1.5s). Si el permiso ya está granted, devuelve la
+//    posición en milisegundos. Si timeout, asumimos que el navegador necesita
+//    gesto explícito (caso iOS Safari con estado 'prompt') y no hacemos nada.
+//
+// Si el estado es 'prompt' o 'denied', mantenemos el comportamiento existente
+// que exige gesto del usuario. Esto preserva el workaround de iOS Safari
+// documentado arriba (líneas 1130-1134) donde un watchPosition sin gesto
+// rechaza el prompt silenciosamente y deja permissionDenied sticky.
 function tryAutoStartGps() {
   if (permissionDenied) return;
   if (!('geolocation' in navigator)) return;
-  if (!navigator.permissions?.query) return;
 
-  navigator.permissions
-    .query({ name: 'geolocation' })
-    .then((status) => {
-      if (status.state === 'granted') {
-        startWatching();
-      }
-      // 'prompt' o 'denied': no hacer nada, esperar gesto explícito.
-    })
-    .catch(() => {
-      // Algunos navegadores (o modos privados) no soportan permissions.query
-      // para geolocation. Salir silenciosamente — el usuario puede activar
-      // el GPS manualmente con #geo-status o #btn-locate.
-    });
+  // Estrategia 1: Permissions API (Chrome/Edge)
+  if (navigator.permissions?.query) {
+    navigator.permissions
+      .query({ name: 'geolocation' })
+      .then((status) => {
+        if (status.state === 'granted') {
+          startWatching();
+        }
+        // 'prompt' o 'denied': esperar gesto explícito del usuario.
+      })
+      .catch(() => {
+        // Permissions API falló para geolocation → probar fallback
+        tryAutoStartGpsFallback();
+      });
+    return;
+  }
+
+  // Estrategia 2: Fallback para navegadores sin Permissions API
+  tryAutoStartGpsFallback();
+}
+
+function tryAutoStartGpsFallback() {
+  // Si el permiso ya está 'granted', getCurrentPosition devuelve en <100ms.
+  // Si está 'prompt', el navegador puede abrir el diálogo o colgar — usamos
+  // un timeout corto para detectarlo y abandonar silenciosamente.
+  // Si está 'denied', llega PERMISSION_DENIED inmediatamente.
+  let settled = false;
+
+  const timeoutId = setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    // Timeout: probablemente iOS Safari con estado 'prompt'. No marcar
+    // permissionDenied — ese flag solo debe reflejar un rechazo explícito
+    // del usuario vía la UI.
+  }, 1500);
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      onPos(pos);
+      startWatching();
+    },
+    (_err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      // Mismo razonamiento que arriba: no setear permissionDenied en auto-start.
+    },
+    { enableHighAccuracy: false, timeout: 1400, maximumAge: 60000 }
+  );
 }
 tryAutoStartGps();
 
