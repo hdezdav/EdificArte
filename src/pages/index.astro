@@ -350,7 +350,7 @@ function toExperience(tour: Tour): Experience {
   };
 }
 
-const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDRESS as string | undefined;
+const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDIFICARTE_PAYMENT_ADDRESS as string | undefined;
 ---
 
 <Layout title="EdificARTE - Explorar">
@@ -376,7 +376,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
             window.location.href = '/mapa';
           }
         }
-      } catch (e) {
+      } catch (_) {
         // localStorage/sessionStorage no disponible: continuar sin bienvenida.
       }
     })();
@@ -455,7 +455,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
     (function setupWelcome() {
       try {
         if (localStorage.getItem('edificarte_welcome_shown') === 'true') return;
-      } catch (e) {
+      } catch (_) {
         return; // localStorage no disponible → no insistir
       }
 
@@ -524,7 +524,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
           localStorage.setItem('edificarte_guest_name', name);
           localStorage.setItem('edificarte_welcome_shown', 'true');
           localStorage.removeItem('edificarte_guest_avatar');
-        } catch (err) {
+        } catch (_) {
           showError('No pudimos guardar tu nombre. Recargá la página e intentá de nuevo.');
           return;
         }
@@ -542,7 +542,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
             showError(data.error || 'No pudimos registrar tu nombre en el servidor.');
             return;
           }
-        } catch (err) {
+        } catch (_) {
           showError('Error de conexión. Verificá tu internet e intentá de nuevo.');
           return;
         }
@@ -1500,8 +1500,6 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
     </div>
   </div>
 
-  </Layout>
-
 <style>
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -1692,7 +1690,8 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
 
   const langTabs = document.querySelectorAll<HTMLButtonElement>('.guide-lang-tab');
 
-  let currentTranslations: any = null;
+  type TranslationData = { name: string; desc: string; category: string; cta: string; guide: string; videoUrl?: string };
+  let currentTranslations: Record<string, TranslationData> | null = null;
   let currentMuseumId = '';
   let currentIsVR = false;
   let currentVRUrl = '';
@@ -1763,10 +1762,10 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
       );
     }
 
-    if (guideTitle) guideTitle.textContent = currentTranslations.es.name;
+    if (guideTitle) guideTitle.textContent = currentTranslations?.es?.name || '';
     if (guideImage) {
       guideImage.src = imageSrc;
-      guideImage.alt = currentTranslations.es.name;
+      guideImage.alt = currentTranslations?.es?.name || '';
     }
     if (guideRating) guideRating.textContent = parseFloat(rating).toFixed(2);
 
@@ -2140,7 +2139,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
 
     try {
       productImages = rawImages ? JSON.parse(rawImages) : [defaultImage];
-    } catch (e) {
+    } catch (_) {
       productImages = [defaultImage];
     }
 
@@ -2386,9 +2385,9 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
         btnCheckoutLabel.textContent = 'Conectando…';
         await ensureWallet();
         return; // el próximo click paga
-      } catch (err: any) {
+      } catch (err: unknown) {
         btnCheckoutLabel.textContent = originalLabel;
-        alert(err?.message || 'No se pudo conectar la wallet. ¿Tenés MetaMask o Rabby instalado?');
+        alert((err as Error)?.message || 'No se pudo conectar la wallet. ¿Tenés MetaMask o Rabby instalado?');
         return;
       }
     }
@@ -2453,9 +2452,9 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
 
       window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
       btnCheckoutLabel.textContent = originalLabel;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error en checkout USDC:', err);
-      alert(err?.message || 'No se pudo completar el pago.');
+      alert((err as Error)?.message || 'No se pudo completar el pago.');
       btnCheckoutLabel.textContent = originalLabel;
     }
   });
@@ -2572,7 +2571,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
     const tourImage = tourCard?.dataset.tourImage || '';
 
     const formData = new FormData(tourForm);
-    const data: any = {
+    const data: Record<string, unknown> = {
       tourId,
       name: formData.get('name'),
       email: formData.get('email'),
@@ -2590,19 +2589,19 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
     // 1. Conectar wallet
     let walletAddress = '';
     try {
-      if (typeof (window as any).ethereum === 'undefined') {
+      if (typeof (window as unknown as { ethereum?: unknown }).ethereum === 'undefined') {
         alert('MetaMask o un navegador Web3 es requerido para pagar con USDC.');
         return;
       }
-      const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+      const accounts = await (window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } }).ethereum.request({ method: 'eth_requestAccounts' });
       walletAddress = accounts[0];
-    } catch (err: any) {
-      alert(err?.message || 'No se pudo conectar la wallet.');
+    } catch (err: unknown) {
+      alert((err as Error)?.message || 'No se pudo conectar la wallet.');
       return;
     }
 
     // 2. Calcular total USDC y firmar la tx
-    const totalMXN = data.people * TOUR_PRICE;
+    const totalMXN = (data.people as number) * TOUR_PRICE;
     const totalUSDC = mxnToUsdc(totalMXN);
     const rawAmount = rawUsdc(totalUSDC);
 
@@ -2670,9 +2669,9 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
       if (tourForm) tourForm.classList.add('hidden');
       tourForm.reset();
       if (tourPeopleInput) tourPeopleInput.value = '2';
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al realizar el pago del tour:', err);
-      alert(err?.message || 'Hubo un error al procesar el pago con USDC.');
+      alert((err as Error)?.message || 'Hubo un error al procesar el pago con USDC.');
     } finally {
       tourPayUsdcBtn.disabled = false;
       tourPayUsdcLabel.textContent = originalLabel;
@@ -2757,3 +2756,4 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
     }
   });
 </script>
+</Layout>

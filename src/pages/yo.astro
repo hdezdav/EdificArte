@@ -1406,7 +1406,7 @@ const isEmoji = (str: string) => {
     // Para una solución robusta leemos una tabla embebida al final del script.
     const knownExp: Record<string, { title: string; image: string; category: string }> = {};
     try {
-      const raw = (window as any).__EDIFICARTE_EXPERIENCES__;
+      const raw = (window as unknown as { __EDIFICARTE_EXPERIENCES__?: Record<string, { title: string; image: string; category: string }> }).__EDIFICARTE_EXPERIENCES__;
       if (raw) Object.assign(knownExp, raw);
     } catch {}
 
