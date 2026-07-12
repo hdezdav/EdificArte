@@ -96,21 +96,7 @@ const experiencias: Experience[] = [
     reviewCount: 342,
     price: 'Gratis',
   },
-  {
-    id: 'cdmx-walks',
-    title: 'CDMX Heritage Walks',
-    description:
-      'Recorridos guiados a pie por el Centro Histórico: arquitectura virreinal, murales contemporáneos y leyendas populares.',
-    image:
-      'https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?auto=format&fit=crop&w=800&h=500&q=80',
-    category: 'turismo',
-    tagColor: 'emerald',
-    url: 'https://cdmxheritage.com/',
-    cta: 'Reservar tour',
-    rating: 4.97,
-    reviewCount: 88,
-    price: '$180 MXN',
-  },
+  
   {
     id: 'museo-anahuacalli',
     title: 'Museo Anahuacalli',
@@ -616,7 +602,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
               ? todasLasExperiencias.filter(exp => exp.category === 'sitio-remoto' || exp.category === 'cultura' || exp.category === 'patrimonio')
               : todasLasExperiencias.filter(exp => exp.category === cat);
           if (catExp.length === 0) return null;
-          
+
           return (
             <section
               data-category={cat}
@@ -727,7 +713,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
                             href={exp.videoUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-purple-600 text-white shadow-md backdrop-blur-md transition-all hover:bg-purple-700 active:scale-95"
+                            class="absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-white shadow-md backdrop-blur-md transition-all hover:from-purple-600 hover:to-purple-800 active:scale-95"
                             title="Ver en VR"
                             aria-label="Ver experiencia en Realidad Virtual"
                             onclick="event.stopPropagation()"
@@ -986,7 +972,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
           </form>
         </div>
       </div>
-      
+
       <!-- Modal Footer -->
       <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
         <div class="flex items-center gap-1">
@@ -1009,7 +995,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   <button
     type="button"
     id="btn-cart-toggle"
-    class="fixed bottom-[76px] left-4 z-40 [&:not(.hidden)]:flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg shadow-purple-500/30 backdrop-blur-md transition-all active:scale-90 hover:bg-purple-700 focus:outline-none border border-white/20 hidden"
+    class="fixed bottom-24 left-4 z-40 [&:not(.hidden)]:flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-white shadow-lg shadow-purple-500/30 backdrop-blur-md transition-all active:scale-90 hover:from-purple-600 hover:to-purple-800 focus:outline-none border border-white/20 hidden"
     aria-label="Abrir carrito de compras"
   >
     <span class="material-symbols-outlined text-[24px]">shopping_cart</span>
@@ -1083,7 +1069,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
         <button
           type="button"
           id="btn-checkout"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold py-3.5 text-xs shadow-md transition-all active:scale-[0.98]"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white font-bold py-3.5 text-xs shadow-md transition-all active:scale-[0.98]"
         >
           <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
           <span id="btn-checkout-label">Conectar wallet para pagar</span>
@@ -1179,7 +1165,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
           <span>100% Artesanal / Hecho a mano</span>
         </div>
       </div>
-      
+
       <!-- Modal Footer / Add to Cart Controls -->
       <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-3">
         <!-- Quantity Selector -->
@@ -1205,7 +1191,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
         <button
           type="button"
           id="btn-add-to-cart"
-          class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 text-xs shadow-sm transition-all active:scale-[0.97]"
+          class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white font-bold py-2.5 text-xs shadow-sm transition-all active:scale-[0.97]"
         >
           <span class="material-symbols-outlined text-[16px]">add_shopping_cart</span>
           <span>Añadir al Carrito</span>
@@ -1453,7 +1439,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   const guideModal = document.getElementById('guide-modal');
   const btnCloseGuide = document.getElementById('btn-close-guide');
   const btnGoToMapRoute = document.getElementById('btn-go-to-map-route');
-  
+
   const guideTitle = document.getElementById('guide-modal-title');
   const guideBadge = document.getElementById('guide-modal-badge');
   const guideImage = document.getElementById('guide-modal-image') as HTMLImageElement;
@@ -1461,7 +1447,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   const guideRating = document.getElementById('guide-modal-rating');
   const guideVideoContainer = document.getElementById('guide-modal-video-container');
   const guideVideo = document.getElementById('guide-modal-video') as HTMLIFrameElement;
-  
+
   const langTabs = document.querySelectorAll<HTMLButtonElement>('.guide-lang-tab');
 
   let currentTranslations: any = null;
@@ -1556,7 +1542,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
       tab.classList.toggle('shadow-sm', isSelected);
       tab.classList.toggle('text-brand-700', isSelected);
       tab.classList.toggle('dark:text-brand-300', isSelected);
-      
+
       tab.classList.toggle('text-slate-500', !isSelected);
       tab.classList.toggle('dark:text-slate-400', !isSelected);
       tab.classList.toggle('hover:text-slate-700', !isSelected);
@@ -1623,7 +1609,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   });
 
   btnCloseGuide?.addEventListener('click', closeGuideModal);
-  
+
   // Cerrar haciendo clic afuera del modal de guía
   guideModal?.addEventListener('click', (e) => {
     if (e.target === guideModal) {
@@ -1651,7 +1637,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
   const productImageDots = document.getElementById('product-image-dots');
   const btnProductPrevImg = document.getElementById('btn-product-prev-img');
   const btnProductNextImg = document.getElementById('btn-product-next-img');
-  
+
   const btnQtyMinus = document.getElementById('btn-qty-minus');
   const btnQtyPlus = document.getElementById('btn-qty-plus');
   const qtyValueEl = document.getElementById('product-qty-value');
@@ -1985,9 +1971,9 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
 
     // Feedback visual breve del botón de carrito flotante (animación de rebote)
     if (btnCartToggle) {
-      btnCartToggle.classList.add('scale-110', 'bg-purple-700');
+      btnCartToggle.classList.add('scale-110');
       setTimeout(() => {
-        btnCartToggle.classList.remove('scale-110', 'bg-purple-700');
+        btnCartToggle.classList.remove('scale-110');
       }, 300);
     }
   });
@@ -2028,7 +2014,7 @@ const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDR
 
   btnCartToggle?.addEventListener('click', openCartDrawer);
   btnCloseCart?.addEventListener('click', closeCartDrawer);
-  
+
   cartDrawer?.addEventListener('click', (e) => {
     if (e.target === cartDrawer) {
       closeCartDrawer();

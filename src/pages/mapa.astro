@@ -352,6 +352,7 @@ import Layout from '../layouts/Layout.astro';
           <button
             id="btn-close-detail"
             class="rounded-full p-1.5 text-[#a0a0a0] transition-colors hover:bg-black/5"
+            aria-label="Cerrar detalle"
           >
             <span class="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -440,7 +441,7 @@ import Layout from '../layouts/Layout.astro';
               </div>
             </div>
             <div class="flex items-center justify-center gap-6">
-              <button id="btn-player-rw" class="text-[#5c5c5c] active:scale-90"
+              <button id="btn-player-rw" class="text-[#5c5c5c] active:scale-90" aria-label="Retroceder 10 segundos"
                 ><span class="material-symbols-outlined text-[20px]"
                   >replay_10</span
                 ></button
@@ -448,13 +449,14 @@ import Layout from '../layouts/Layout.astro';
               <button
                 id="btn-player-toggle"
                 class="flex h-10 w-10 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a] transition-all active:scale-90"
+                aria-label="Pausar"
               >
                 <span
                   class="material-symbols-outlined text-[22px]"
                   id="player-toggle-icon">pause</span
                 >
               </button>
-              <button id="btn-player-ff" class="text-[#5c5c5c] active:scale-90"
+              <button id="btn-player-ff" class="text-[#5c5c5c] active:scale-90" aria-label="Avanzar 10 segundos"
                 ><span class="material-symbols-outlined text-[20px]"
                   >forward_10</span
                 ></button
@@ -583,6 +585,9 @@ import Layout from '../layouts/Layout.astro';
   <div
     id="lang-modal"
     class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="lang-modal-title"
   >
     <div
       class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/20 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300"
@@ -592,7 +597,7 @@ import Layout from '../layouts/Layout.astro';
       >
         <span class="material-symbols-outlined text-[30px]">translate</span>
       </div>
-      <h2 class="text-xl font-extrabold text-slate-900">Bienvenido a EdificARTE</h2>
+      <h2 id="lang-modal-title" class="text-xl font-extrabold text-slate-900">Bienvenido a EdificARTE</h2>
       <p class="mt-2 text-[13px] leading-relaxed text-slate-500">
         Selecciona tu idioma para explorar la historia y arquitectura
         de la CDMX.
@@ -637,6 +642,9 @@ import Layout from '../layouts/Layout.astro';
   <div
     id="welcome-modal"
     class="fixed inset-0 z-50 [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="welcome-modal-heading"
   >
     <div
       class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/20 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300"
@@ -646,7 +654,7 @@ import Layout from '../layouts/Layout.astro';
       >
         <span class="material-symbols-outlined text-[30px]">explore</span>
       </div>
-      <h2 class="text-xl font-extrabold text-slate-900">¡Bienvenido a EdificARTE!</h2>
+      <h2 id="welcome-modal-heading" class="text-xl font-extrabold text-slate-900">¡Bienvenido a EdificARTE!</h2>
       <p class="mt-2 text-[13px] leading-relaxed text-slate-500">
         Descubre monumentos históricos de la CDMX, escucha sus audioguías interactivas y colecciona insignias exclusivas. Activa tu GPS para ubicarte en el mapa.
       </p>
@@ -1111,6 +1119,8 @@ import Layout from '../layouts/Layout.astro';
       // Force reflow for transition
       void modal.offsetHeight;
       modal.classList.remove('opacity-0');
+      // Oculta header y BottomNav mientras el modal está abierto
+      document.body.classList.add('modal-open');
     }
 
     function hideModal(modal, cb) {
@@ -1118,6 +1128,7 @@ import Layout from '../layouts/Layout.astro';
       modal.classList.add('opacity-0');
       setTimeout(function() {
         modal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
         if (cb) cb();
       }, 300);
     }

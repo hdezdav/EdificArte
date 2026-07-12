@@ -370,6 +370,7 @@ function openRecintoModal(id: string) {
     modal.classList.remove('hidden');
     void modal.offsetHeight;
     modal.classList.remove('opacity-0');
+    document.body.classList.add('modal-open');
   }
 }
 
@@ -377,6 +378,7 @@ function closeRecintoModal() {
   const modal = $('recinto-modal');
   if (modal) {
     modal.classList.add('opacity-0');
+    document.body.classList.remove('modal-open');
     setTimeout(() => modal.classList.add('hidden'), 250);
   }
 }
