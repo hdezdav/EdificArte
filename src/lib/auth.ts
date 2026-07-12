@@ -59,7 +59,9 @@ export async function createSession(
   cookies.set('edificarte_session', sessionId, {
     path: '/',
     httpOnly: true,
-    secure: true,
+    // secure: true en dev (http://localhost) hace que el navegador rechace
+    // la cookie silenciosamente. Solo marcar secure en producción.
+    secure: import.meta.env.PROD,
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7 // 1 semana
   });

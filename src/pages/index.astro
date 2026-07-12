@@ -289,18 +289,29 @@ const tagStyles: Record<
   },
 };
 
+// Orden visual de los chips (izquierda → derecha) y de las secciones
+// en el feed. La sección 'sitio-remoto' absorbe también las experiencias
+// con category 'patrimonio' y 'cultura' (ver categorias.map); ambas se
+// mantienen como filtros de chip pero no renderizan secciones propias
+// para evitar duplicados.
 const categoryLabel: Record<Category, string> = {
   todos: 'Todos',
   turismo: 'Turismo',
+  'sitio-remoto': 'Sitios Turísticos',
   patrimonio: 'Patrimonio',
   cultura: 'Cultura',
-  gastronomia: 'Gastronomía',
   museo: 'Museos',
-  tienda: 'Tienda Artesanal',
-  'sitio-remoto': 'Sitios Turísticos',
+  gastronomia: 'Gastronomía',
+  tienda: 'Artesanías',
 };
 
-const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cultura', 'gastronomia', 'museo', 'tienda', 'sitio-remoto'];
+const categories: Exclude<Category, 'todos'>[] = [
+  'turismo',
+  'sitio-remoto',
+  'museo',
+  'gastronomia',
+  'tienda',
+];
 
 // Helper: convierte un Tour en Experience para mezclarlo en el carousel de Turismo
 function toExperience(tour: Tour): Experience {
@@ -310,7 +321,7 @@ function toExperience(tour: Tour): Experience {
     description: tour.description,
     image: tour.image,
     category: 'turismo',
-    tagColor: 'amber',
+    tagColor: 'brand',
     url: '#',
     cta: 'Reservar',
     rating: 4.98,
@@ -423,12 +434,15 @@ function toExperience(tour: Tour): Experience {
         categories.map((cat) => {
           const catExp = cat === 'turismo'
             ? [...todasLasExperiencias.filter(exp => exp.category === cat), ...TOURS.map(toExperience)]
-            : todasLasExperiencias.filter(exp => exp.category === cat);
+            : cat === 'sitio-remoto'
+              ? todasLasExperiencias.filter(exp => exp.category === 'sitio-remoto' || exp.category === 'cultura' || exp.category === 'patrimonio')
+              : todasLasExperiencias.filter(exp => exp.category === cat);
           if (catExp.length === 0) return null;
           
           return (
             <section
               data-category={cat}
+              data-render-categories={cat === 'sitio-remoto' ? "sitio-remoto,cultura,patrimonio" : cat}
               class="category-section w-full py-2 border-b border-slate-100/60 dark:border-slate-800/60 last:border-0"
             >
               <div class="mb-3 flex items-center justify-between">
@@ -577,7 +591,7 @@ function toExperience(tour: Tour): Experience {
                         {exp.isTour && exp.highlights && (
                           <div class="px-3 pt-2 pb-1 flex flex-wrap gap-1">
                             {exp.highlights.slice(0, 2).map((h) => (
-                              <span class="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200/50 font-semibold">
+                              <span class="text-[9px] bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded-full border border-brand-200/50 font-semibold">
                                 {h.length > 30 ? h.substring(0, 30) + '…' : h}
                               </span>
                             ))}
@@ -607,7 +621,7 @@ function toExperience(tour: Tour): Experience {
                             exp.isTour ? (
                               <button
                                 type="button"
-                                class="ml-auto inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97] tour-reserve-btn"
+                                class="ml-auto inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97] tour-reserve-btn"
                               >
                                 <span class="material-symbols-outlined text-[12px]">event_available</span>
                                 {exp.cta}
@@ -981,16 +995,16 @@ function toExperience(tour: Tour): Experience {
   >
     <div class="w-full max-w-md scale-100 transform rounded-t-3xl border border-white/20 bg-white/95 p-5 shadow-2xl backdrop-blur-2xl transition-all duration-300 sm:rounded-[2rem] dark:border-slate-800/60 dark:bg-slate-900/95 max-h-[90vh] overflow-y-auto">
       <!-- Header -->
-      <div class="flex items-start justify-between gap-3 pb-3 border-b border-amber-100 dark:border-amber-900/40">
+      <div class="flex items-start justify-between gap-3 pb-3 border-b border-brand-100 dark:border-brand-900/40">
         <div class="flex-1 min-w-0">
-          <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 border border-amber-200/50">
+          <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-950/30 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300 border border-brand-200/50">
             <span class="material-symbols-outlined text-[12px]">tour</span>
             Recorrido guiado
           </span>
           <h2 id="tour-modal-title" class="mt-2 text-base font-extrabold text-slate-900 dark:text-white leading-tight">
             Reservar tour
           </h2>
-          <p id="tour-modal-subtitle" class="mt-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+          <p id="tour-modal-subtitle" class="mt-0.5 text-[11px] font-medium text-brand-700 dark:text-brand-300">
             —
           </p>
         </div>
@@ -1000,8 +1014,8 @@ function toExperience(tour: Tour): Experience {
       </div>
 
       <!-- Tour summary -->
-      <div class="mt-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 p-3">
-        <p class="text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed">
+      <div class="mt-3 rounded-2xl bg-brand-50/60 dark:bg-brand-950/20 border border-brand-100 dark:border-brand-900/40 p-3">
+        <p class="text-[11px] text-brand-900 dark:text-brand-200 leading-relaxed">
           <strong>Incluye:</strong> guía e intérprete para los acompañantes.<br/>
           <strong>Precio:</strong> $480 MXN por persona.<br/>
           <strong>Guía:</strong> Mtro. Henryk Karol Kocyba (Universidad de Varsovia).
@@ -1014,43 +1028,43 @@ function toExperience(tour: Tour): Experience {
 
         <div>
           <label for="tour-name" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre completo</label>
-          <input type="text" id="tour-name" name="name" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" placeholder="Tu nombre" />
+          <input type="text" id="tour-name" name="name" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" placeholder="Tu nombre" />
         </div>
 
         <div>
           <label for="tour-email" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Email</label>
-          <input type="email" id="tour-email" name="email" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" placeholder="tu@email.com" />
+          <input type="email" id="tour-email" name="email" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" placeholder="tu@email.com" />
         </div>
 
         <div>
           <label for="tour-phone" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Teléfono</label>
-          <input type="tel" id="tour-phone" name="phone" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" placeholder="+52 55 1234 5678" />
+          <input type="tel" id="tour-phone" name="phone" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" placeholder="+52 55 1234 5678" />
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label for="tour-date" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Fecha preferida</label>
-            <input type="date" id="tour-date" name="date" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" />
+            <input type="date" id="tour-date" name="date" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" />
           </div>
           <div>
             <label for="tour-people" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Personas</label>
-            <input type="number" id="tour-people" name="people" required min="1" max="20" value="2" class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" />
+            <input type="number" id="tour-people" name="people" required min="1" max="20" value="2" class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" />
           </div>
         </div>
 
         <div>
           <label for="tour-notes" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Notas (opcional)</label>
-          <textarea id="tour-notes" name="notes" rows="2" class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 resize-none" placeholder="Algún requerimiento especial..."></textarea>
+          <textarea id="tour-notes" name="notes" rows="2" class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400 resize-none" placeholder="Algún requerimiento especial..."></textarea>
         </div>
 
         <!-- Total -->
         <div class="flex items-center justify-between rounded-xl bg-slate-100 dark:bg-slate-800 p-3">
           <span class="text-[12px] font-bold text-slate-700 dark:text-slate-300">Total estimado</span>
-          <span id="tour-total" class="text-lg font-extrabold text-amber-700 dark:text-amber-400">$960 MXN</span>
+          <span id="tour-total" class="text-lg font-extrabold text-brand-700 dark:text-brand-400">$960 MXN</span>
         </div>
 
         <!-- Submit -->
-        <button type="submit" id="tour-submit-btn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-3 text-sm shadow-sm transition-all active:scale-[0.97]">
+        <button type="submit" id="tour-submit-btn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white font-bold py-3 text-sm shadow-sm transition-all active:scale-[0.97]">
           <span class="material-symbols-outlined text-[18px]">send</span>
           Enviar solicitud de reserva
         </button>
@@ -1122,6 +1136,7 @@ function toExperience(tour: Tour): Experience {
 
     sections.forEach((section) => {
       const sectionCategory = section.dataset.category || '';
+      const renderCats = (section.dataset.renderCategories || sectionCategory).split(',');
       const cards = section.querySelectorAll<HTMLElement>('.exp-card');
       let visibleCardsInSection = 0;
 
@@ -1129,7 +1144,7 @@ function toExperience(tour: Tour): Experience {
         const title = card.querySelector('h2')?.textContent?.toLowerCase() || '';
         const desc = card.querySelector('p')?.textContent?.toLowerCase() || '';
 
-        const matchesCategory = activeCategory === 'todos' || sectionCategory === activeCategory;
+        const matchesCategory = activeCategory === 'todos' || renderCats.includes(activeCategory);
         const matchesSearch = title.includes(searchQuery) || desc.includes(searchQuery);
 
         const isVisible = matchesCategory && matchesSearch;
@@ -1139,8 +1154,8 @@ function toExperience(tour: Tour): Experience {
         }
       });
 
-      // Si la categoría de la sección no coincide con la activa, o si no hay cartas visibles en ella, ocultamos toda la sección
-      const isSectionVisible = (activeCategory === 'todos' || sectionCategory === activeCategory) && (visibleCardsInSection > 0);
+      // Si la categoría activa no aplica a esta sección, o si no hay cartas visibles, ocultamos la sección
+      const isSectionVisible = renderCats.includes(activeCategory) && (visibleCardsInSection > 0);
       section.classList.toggle('hidden-section', !isSectionVisible);
 
       totalVisibleCount += visibleCardsInSection;
@@ -1267,6 +1282,7 @@ function toExperience(tour: Tour): Experience {
       // Forzar reflow
       void guideModal.offsetHeight;
       guideModal.classList.remove('opacity-0');
+      document.body.classList.add('modal-open');
       const innerContent = guideModal.querySelector('div');
       if (innerContent) {
         innerContent.classList.remove('scale-95');
@@ -1286,6 +1302,7 @@ function toExperience(tour: Tour): Experience {
       setTimeout(() => {
         guideModal.classList.add('hidden');
         if (guideVideo) guideVideo.src = ''; // Detener video si se está reproduciendo
+        document.body.classList.remove('modal-open');
         currentIsVR = false;
         currentVRUrl = '';
       }, 300);
@@ -1630,6 +1647,7 @@ function toExperience(tour: Tour): Experience {
       productModal.classList.remove('hidden');
       void productModal.offsetHeight;
       productModal.classList.remove('opacity-0');
+      document.body.classList.add('modal-open');
       const innerContent = productModal.querySelector('div');
       if (innerContent) {
         innerContent.classList.remove('scale-95');
@@ -1649,6 +1667,7 @@ function toExperience(tour: Tour): Experience {
       }
       setTimeout(() => {
         productModal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
       }, 300);
     }
   }
@@ -1762,6 +1781,7 @@ function toExperience(tour: Tour): Experience {
       cartDrawer.classList.remove('opacity-0');
       cartDrawerContent.classList.remove('translate-x-full');
       cartDrawerContent.classList.add('translate-x-0');
+      document.body.classList.add('modal-open');
     }
   }
 
@@ -1772,6 +1792,7 @@ function toExperience(tour: Tour): Experience {
       cartDrawerContent.classList.add('translate-x-full');
       setTimeout(() => {
         cartDrawer.classList.add('hidden');
+        document.body.classList.remove('modal-open');
       }, 300);
     }
   }
@@ -1841,6 +1862,7 @@ function toExperience(tour: Tour): Experience {
     tourModal.classList.remove('hidden');
     void tourModal.offsetHeight;
     tourModal.classList.remove('opacity-0');
+    document.body.classList.add('modal-open');
     if (tourPeopleInput) tourPeopleInput.value = '2';
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1851,7 +1873,10 @@ function toExperience(tour: Tour): Experience {
   function closeTourModal() {
     if (!tourModal) return;
     tourModal.classList.add('opacity-0');
-    setTimeout(() => tourModal.classList.add('hidden'), 250);
+    setTimeout(() => {
+      tourModal.classList.add('hidden');
+      document.body.classList.remove('modal-open');
+    }, 250);
   }
 
   function updateTourTotal() {

@@ -36,6 +36,7 @@ const tabs = [
 ---
 
 <nav
+  id="bottom-nav"
   class="glassmorphism fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/50 shadow-lg dark:border-slate-800/50 transition-transform duration-300 ease-in-out"
   style="padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));"
 >
@@ -81,3 +82,42 @@ const tabs = [
     }
   </div>
 </nav>
+
+<script>
+  // Hide-on-scroll-down / show-on-scroll-up para el BottomNav en mobile.
+  // Throttle con requestAnimationFrame para no saturar el hilo principal.
+  const nav = document.getElementById('bottom-nav');
+  if (nav) {
+    let lastY = window.scrollY;
+    let ticking = false;
+    const THRESHOLD = 8; // px mínimos de scroll para activar
+
+    const update = () => {
+      const y = window.scrollY;
+      const delta = y - lastY;
+      // Siempre mostrar cuando estamos cerca del top
+      if (y < 64) {
+        nav.classList.remove('translate-y-full');
+      } else if (delta > THRESHOLD) {
+        // scroll hacia abajo → ocultar
+        nav.classList.add('translate-y-full');
+      } else if (delta < -THRESHOLD) {
+        // scroll hacia arriba → mostrar
+        nav.classList.remove('translate-y-full');
+      }
+      lastY = y;
+      ticking = false;
+    };
+
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (!ticking) {
+          requestAnimationFrame(update);
+          ticking = true;
+        }
+      },
+      { passive: true }
+    );
+  }
+</script>

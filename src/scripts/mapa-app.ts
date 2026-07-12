@@ -1041,16 +1041,32 @@ const onErr = (err: GeolocationPositionError) => {
 
 function startWatching() {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-  if ('geolocation' in navigator) {
-    setGeo('loading', 'Localizando...');
-    watchId = navigator.geolocation.watchPosition(onPos, onErr, {
-      enableHighAccuracy: true,
-      maximumAge: 5000,
-      timeout: 10000,
-    });
-  } else {
+  if (!('geolocation' in navigator)) {
     setGeo('error', 'GPS no soportado');
+    return;
   }
+  setGeo('loading', 'Localizando...');
+
+  // Primer intento: alta precisión con timeout corto.
+  // Si falla por timeout (no por permiso denegado), reintentamos con
+  // enableHighAccuracy:false y timeout más largo — funciona mejor en interiores.
+  const tryWatch = (highAccuracy: boolean) => {
+    watchId = navigator.geolocation.watchPosition(onPos, (err) => {
+      if (err.code === 3 /* TIMEOUT */ && highAccuracy && watchId !== null) {
+        // Fallback: reintentar con menor precisión
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        tryWatch(false);
+        return;
+      }
+      onErr(err);
+    }, {
+      enableHighAccuracy: highAccuracy,
+      maximumAge: 5000,
+      timeout: highAccuracy ? 10000 : 20000,
+    });
+  };
+  tryWatch(true);
 }
 
 function showPermissionInstructions() {
@@ -1090,6 +1106,11 @@ function requestLocationPermission() {
 
 function triggerLocationPrompt() {
   setGeo('loading', 'Localizando...');
+  // Limpiar flag ANTES de pedir permiso para que el fallback polling
+  // no vuelva a disparar el prompt si el evento se procesa tarde.
+  safeSet('edificarte_request_gps_pending', 'false');
+  (window as any).__edificarteGpsPending = false;
+
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       onPos(pos);
@@ -1106,10 +1127,11 @@ function triggerLocationPrompt() {
 // Modal logic is handled by an inline script in mapa.astro (independent of Leaflet).
 // mapa-app.ts only listens for custom events to start geolocation.
 
-// If modals are already done (user has lang + welcome), start geolocation immediately
-if (safeGet('edificarte_lang') && safeGet('edificarte_welcome_shown')) {
-  startWatching();
-}
+// NO auto-start: navigator.geolocation en iOS Safari requiere gesto de usuario
+// para abrir el prompt de permiso. Arrancar watchPosition on-load hace que
+// el prompt se rechace silenciosamente (code 1) y permissionDenied queda
+// sticky para toda la sesión. El GPS se inicia únicamente cuando el usuario
+// hace click en un botón o el welcome modal lo pide.
 
 // Listen for the inline modal script to signal modals are done
 window.addEventListener('edificarte-request-gps', () => {
@@ -1117,30 +1139,26 @@ window.addEventListener('edificarte-request-gps', () => {
   if (permissionDenied) return;
   triggerLocationPrompt();
 });
-window.addEventListener('edificarte-modals-done', () => {
-  if (safeGet('edificarte_welcome_shown')) {
-    startWatching();
-  }
-});
+// El listener de 'edificarte-modals-done' se registra más abajo (después
+// de definir notifyRemoteSites). NO auto-arrancamos el watch aquí:
+// navigator.geolocation requiere user gesture en iOS Safari, y este evento
+// se dispara desde el flujo de modales sin gesto cuando el welcome modal
+// ya fue visto en visitas previas. El GPS se inicia únicamente cuando el
+// usuario clickea explícitamente #geo-status o #btn-locate.
 
 // Fallback anti-race-condition: el inline script de mapa.astro puede dispatchar
 // el evento ANTES de que este módulo ESM registre el listener. Chequeamos
-// el flag en localStorage O en window global (defensa en profundidad).
+// el flag UNA sola vez al cargar para no generar prompts duplicados.
 function checkPendingGpsRequest() {
   const pending =
     safeGet('edificarte_request_gps_pending') === 'true' ||
     (window as any).__edificarteGpsPending === true;
-  if (pending) {
-    safeSet('edificarte_request_gps_pending', 'false');
-    (window as any).__edificarteGpsPending = false;
-    // Respetar decisión previa del usuario — no reabrir prompt si ya rechazó
-    if (permissionDenied) return;
+  if (pending && !permissionDenied) {
     triggerLocationPrompt();
   }
 }
-// El inline script setea este flag antes de dispatchar el evento
-setTimeout(checkPendingGpsRequest, 100);
-setTimeout(checkPendingGpsRequest, 500);
+// Esperar a que el evento sea procesado por el listener; si llegó antes,
+// el flag se limpió en triggerLocationPrompt() y este check es no-op.
 setTimeout(checkPendingGpsRequest, 1500);
 
 geoStatusEl?.addEventListener('click', (e) => {
@@ -1150,12 +1168,13 @@ geoStatusEl?.addEventListener('click', (e) => {
     map.setView(userMarker.getLatLng(), 17, { animate: true });
     return;
   }
-  // Si ya rechazaron el permiso, no volver a pedir — mostrar instrucciones
+  // Si la última vez el usuario rechazó, igual le damos la oportunidad
+  // de reintentar: reseteamos el flag y dejamos que requestLocationPermission
+  // consulte el estado real del navegador. Si la denegación persiste, el
+  // navegador NO abrirá el prompt otra vez y caemos en el flujo de instrucciones.
   if (permissionDenied) {
-    showPermissionInstructions();
-    return;
+    permissionDenied = false;
   }
-  // Si todavía no hay decisión del usuario, pedir permiso
   requestLocationPermission();
 });
 

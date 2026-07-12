@@ -54,7 +54,7 @@ const {
   >
     {
       !fullScreen && (
-        <header class="sticky top-0 z-40 w-full border-b border-slate-200/50 bg-white/70 backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-900/70">
+        <header id="site-header" class="sticky top-0 z-40 w-full border-b border-slate-200/50 bg-white/70 backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-900/70">
           <div class="mx-auto flex h-14 max-w-screen-md items-center justify-between px-4">
             <div class="flex items-center gap-2">
               <span class="text-xl font-extrabold text-[#3f043a] tracking-tight">
@@ -76,6 +76,15 @@ const {
 
     <AiAgent />
     <BottomNav />
+
+    <style is:global>
+      /* Cuando hay un modal abierto, ocultamos header + BottomNav
+         para que no tapen parte del contenido del modal. */
+      body.modal-open #site-header,
+      body.modal-open #bottom-nav {
+        display: none;
+      }
+    </style>
   </body>
 </html>
 

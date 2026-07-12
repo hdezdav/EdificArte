@@ -1049,5 +1049,32 @@ import Layout from '../layouts/Layout.astro';
 <script>
   import '../scripts/mapa-app.ts';
 </script>
+
+<script is:inline>
+  // Toast de bienvenida post-registro (cuando venís de /yo con ?welcome=1).
+  // Lee el query param, muestra un toast verde y limpia la URL sin recargar.
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('welcome') === '1') {
+      var toast = document.createElement('div');
+      toast.setAttribute('role', 'status');
+      toast.className =
+        'fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-xl border border-emerald-200/50 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-200';
+      toast.innerHTML =
+        '<span class="material-symbols-outlined text-[18px]">check_circle</span>' +
+        '<span>¡Bienvenido a EdificARTE! Tu cuenta está activa.</span>';
+      document.body.appendChild(toast);
+      // Limpia la URL para que un refresh no vuelva a mostrar el toast
+      var url = new URL(window.location.href);
+      url.searchParams.delete('welcome');
+      window.history.replaceState({}, '', url.toString());
+      setTimeout(function () {
+        toast.style.transition = 'opacity 300ms';
+        toast.style.opacity = '0';
+        setTimeout(function () { toast.remove(); }, 350);
+      }, 4500);
+    }
+  })();
+</script>
 <!-- Lógica del mapa extraída a src/scripts/mapa-app.ts para mantener tipos
      estrictos y poder testearla en aislamiento cuando se introduzca Vitest. -->
