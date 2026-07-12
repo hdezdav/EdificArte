@@ -466,7 +466,10 @@ import AiLoader from './ui/AiLoader.astro';
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'es-MX';
+    // Lang: usar el del navegador si es español, sino fallback a es-MX
+    const userLang = navigator.language || 'es-MX';
+    recognition.lang = ['es-MX', 'es-ES', 'es-AR', 'es'].includes(userLang) ? userLang : 'es-MX';
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       isListening = true;
@@ -504,6 +507,24 @@ import AiLoader from './ui/AiLoader.astro';
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error', event.error);
+      // Feedback user-friendly según tipo de error
+      const messages: Record<string, string> = {
+        'not-allowed': 'Permiso de micrófono denegado. Activalo en Configuración del navegador.',
+        'no-speech': 'No detecté voz. Probá de nuevo.',
+        'audio-capture': 'No encontré micrófono disponible.',
+        'network': 'Error de red. Verificá tu conexión.',
+        'service-not-allowed': 'Servicio de reconocimiento no disponible en este dispositivo.',
+        'aborted': 'Reconocimiento cancelado.',
+      };
+      const msg = messages[event.error] || `Error: ${event.error || 'desconocido'}`;
+      // Mostrar feedback en la UI en vez de alert() invasivo
+      if (aiInput) {
+        const originalPlaceholder = aiInput.placeholder;
+        aiInput.placeholder = msg;
+        setTimeout(() => {
+          if (aiInput) aiInput.placeholder = originalPlaceholder;
+        }, 4000);
+      }
       if (recognition && isListening) {
         recognition.stop();
       }
@@ -511,10 +532,22 @@ import AiLoader from './ui/AiLoader.astro';
 
     micBtn?.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       if (isListening) {
         recognition.stop();
       } else {
-        recognition.start();
+        try {
+          recognition.start();
+        } catch (err) {
+          console.error('Failed to start recognition:', err);
+          if (aiInput) {
+            const original = aiInput.placeholder;
+            aiInput.placeholder = 'No pude iniciar el micrófono. Reintentá.';
+            setTimeout(() => {
+              if (aiInput) aiInput.placeholder = original;
+            }, 3000);
+          }
+        }
       }
     });
   } else {

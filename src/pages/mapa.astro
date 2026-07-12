@@ -1032,6 +1032,11 @@ import Layout from '../layouts/Layout.astro';
       btnWelcomeStart.addEventListener('click', function() {
         safeSet('edificarte_welcome_shown', 'true');
         hideModal(welcomeModal, function() {
+          // Setear flag ANTES de dispatchar (para fallback anti-race-condition).
+          // Usar safeSet (con memoryStore fallback) + window global como respaldo,
+          // porque en Safari ITP localStorage puede estar bloqueado.
+          safeSet('edificarte_request_gps_pending', 'true');
+          window.__edificarteGpsPending = true;
           // Signal to mapa-app to start geolocation
           window.dispatchEvent(new CustomEvent('edificarte-modals-done'));
           window.dispatchEvent(new CustomEvent('edificarte-request-gps'));

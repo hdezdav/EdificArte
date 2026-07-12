@@ -984,10 +984,14 @@ const setGeo = (state: GeoState, msg: string) => {
 };
 
 let firstLocationFetched = false;
+let permissionDenied = false; // true si el usuario rechazó permisos permanentemente
 
 const onPos = (pos: GeolocationPosition) => {
   const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-  
+
+  // Si obtuvimos posición, el usuario claramente autorizó — resetear flag
+  permissionDenied = false;
+
   // Guardar ubicación en localStorage para que la use el chat de IA
   safeSet('edificarte_user_lat', lat.toString());
   safeSet('edificarte_user_lng', lng.toString());
@@ -1026,7 +1030,13 @@ const onPos = (pos: GeolocationPosition) => {
 };
 
 const onErr = (err: GeolocationPositionError) => {
-  setGeo('error', err.code === 1 ? 'Permiso denegado' : 'Sin señal');
+  if (err.code === 1) {
+    // Permiso denegado — no volver a pedir automáticamente
+    permissionDenied = true;
+    setGeo('error', 'Permiso denegado — tocá para ver cómo activarlo');
+  } else {
+    setGeo('error', 'Sin señal');
+  }
 };
 
 function startWatching() {
@@ -1056,6 +1066,12 @@ function showPermissionInstructions() {
 function requestLocationPermission() {
   if (!('geolocation' in navigator)) {
     alert('Tu dispositivo o navegador no soporta geolocalización.');
+    return;
+  }
+
+  // Si ya rechazaron permiso, no volver a abrir el prompt — mostrar instrucciones
+  if (permissionDenied) {
+    showPermissionInstructions();
     return;
   }
 
@@ -1097,6 +1113,8 @@ if (safeGet('edificarte_lang') && safeGet('edificarte_welcome_shown')) {
 
 // Listen for the inline modal script to signal modals are done
 window.addEventListener('edificarte-request-gps', () => {
+  // Respetar decisión previa del usuario — no reabrir prompt si ya rechazó
+  if (permissionDenied) return;
   triggerLocationPrompt();
 });
 window.addEventListener('edificarte-modals-done', () => {
@@ -1105,13 +1123,45 @@ window.addEventListener('edificarte-modals-done', () => {
   }
 });
 
+// Fallback anti-race-condition: el inline script de mapa.astro puede dispatchar
+// el evento ANTES de que este módulo ESM registre el listener. Chequeamos
+// el flag en localStorage O en window global (defensa en profundidad).
+function checkPendingGpsRequest() {
+  const pending =
+    safeGet('edificarte_request_gps_pending') === 'true' ||
+    (window as any).__edificarteGpsPending === true;
+  if (pending) {
+    safeSet('edificarte_request_gps_pending', 'false');
+    (window as any).__edificarteGpsPending = false;
+    // Respetar decisión previa del usuario — no reabrir prompt si ya rechazó
+    if (permissionDenied) return;
+    triggerLocationPrompt();
+  }
+}
+// El inline script setea este flag antes de dispatchar el evento
+setTimeout(checkPendingGpsRequest, 100);
+setTimeout(checkPendingGpsRequest, 500);
+setTimeout(checkPendingGpsRequest, 1500);
+
 geoStatusEl?.addEventListener('click', (e) => {
   e.stopPropagation();
+  // Si ya tenemos marcador de usuario (gps activo), centrar el mapa
+  if (userMarker) {
+    map.setView(userMarker.getLatLng(), 17, { animate: true });
+    return;
+  }
+  // Si ya rechazaron el permiso, no volver a pedir — mostrar instrucciones
+  if (permissionDenied) {
+    showPermissionInstructions();
+    return;
+  }
+  // Si todavía no hay decisión del usuario, pedir permiso
   requestLocationPermission();
 });
 
 $('btn-locate')?.addEventListener('click', () => {
   if (userMarker) map.setView(userMarker.getLatLng(), 18, { animate: true });
+  else if (permissionDenied) showPermissionInstructions();
   else requestLocationPermission();
 });
 
