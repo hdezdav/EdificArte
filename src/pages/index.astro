@@ -578,7 +578,7 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
     </button>
   </div>
 
-  <div class="space-y-6">
+  <div class="flex flex-col gap-6">
     <!-- Header -->
     <div
       class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-6 text-white shadow-xl"
@@ -629,7 +629,7 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
     </div>
 
     <!-- Experience Sections (Horizontal Carousels) -->
-    <div id="experiences-sections-container" class="space-y-6">
+    <div id="experiences-sections-container" class="flex flex-col gap-6">
       {
         categories.map((cat) => {
           const catExp = cat === 'turismo'
