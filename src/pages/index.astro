@@ -136,7 +136,7 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
       category: m.id === 'el-rule' ? 'Exposición / Evento' : m.category,
       cta: m.id === 'el-rule' ? 'Ver Evento' : 'Ver guía',
       guide: m.id === 'el-rule'
-        ? '¡Bienvenido al Centro Cultural El Rule! Te invitamos a la exposición multilingüe y multisensorial "Nombrar el Orgullo Neo" auspiciada por la UNESCO. Esta exhibición celebra la identidad y la diversidad cultural a través del arte contemporáneo, el diálogo social y la inclusión.'
+        ? '¡Bienvenido al Centro Cultural El Rule! Te invitamos a la exposición multilingüe y multisensorial "Nombrar el Orgullo Neo". Esta exhibición, presentada por Metalingua en alianza con Edificarte y Unesco, celebra la identidad y la diversidad cultural a través del arte contemporáneo, el diálogo social y la inclusión.'
         : `¡Bienvenido al ${m.name}! Este emblemático espacio es parte fundamental del patrimonio histórico de la Ciudad de México. Aquí podrás contemplar una arquitectura imponente y aprender sobre su evolución artística, social e histórica a través del tiempo. Disfrutá del recorrido detallado por sus salas principales y descubrí los secretos que sus paredes guardan.`,
     },
     en: {
@@ -145,7 +145,7 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
       category: m.id === 'el-rule' ? 'Exhibition / Event' : (m.category === 'Museo / Teatro' ? 'Museum / Theater' : (m.category === 'Museo / Castillo' ? 'Museum / Castle' : (m.category === 'Museo Histórico' ? 'Historical Museum' : 'Historical Monument'))),
       cta: m.id === 'el-rule' ? 'View Event' : 'View guide',
       guide: m.id === 'el-rule'
-        ? 'Welcome to El Rule Cultural Center! We invite you to the UNESCO-sponsored multilingual and multisensorial exhibition "Nombrar el Orgullo Neo". This exhibition celebrates identity and cultural diversity through contemporary art, social dialogue, and inclusion.'
+        ? 'Welcome to El Rule Cultural Center! We invite you to the multilingual and multisensorial exhibition "Nombrar el Orgullo Neo". This exhibition, presented by Metalingua in partnership with Edificarte and Unesco, celebrates identity and cultural diversity through contemporary art, social dialogue, and inclusion.'
         : `Welcome to the ${m.name}! This emblematic site is a key piece of Mexico City's historical heritage. Here, you can contemplate stunning architecture and learn about its artistic, social, and historical evolution through time. Enjoy the detailed self-guided tour through its main halls and uncover the secrets written in its walls.`,
     },
     señas: {
@@ -159,10 +159,10 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
     ...(m.id === 'el-rule' ? {
       native: {
         name: 'El Rule (Lenguas Originarias)',
-        desc: 'Traducción multilingüe y multisensorial de la exposición "Nombrar el Orgullo Neo" de la UNESCO en lenguas originarias.',
-        category: 'Multilingüe / UNESCO',
+        desc: 'Traducción multilingüe y multisensorial de la exposición "Nombrar el Orgullo Neo" en lenguas originarias.',
+        category: 'Multilingüe',
         cta: 'Ver Trad.',
-        guide: 'Esta guía y exposición de la UNESCO cuenta con traducción a lenguas indígenas mexicanas.\n\nPodés acceder a la página traducida a las lenguas indígenas visitando el portal oficial de MetaLingua: https://www.metalinguamx.org/\n\nLeé la nota de prensa de la exposición "Nombrar el Orgullo Neo" en SinEmbargo: https://www.sinembargo.mx/4810195/nombrar-el-orgullo-neo-exposicion-multilingue-y-multisensorial-de-la-unesco/',
+        guide: 'Esta guía y exposición cuenta con traducción a lenguas originarias mexicanas.\n\nPodés acceder a la página traducida a las lenguas originarias visitando el portal oficial de MetaLingua: https://www.metalinguamx.org/\n\nLeé la nota de prensa de la exposición "Nombrar el Orgullo Neo" en SinEmbargo: https://www.sinembargo.mx/4810195/nombrar-el-orgullo-neo-exposicion-multilingue-y-multisensorial-de-la-unesco/',
       }
     } : {})
   };
