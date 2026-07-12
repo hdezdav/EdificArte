@@ -5,7 +5,7 @@ import tianquiztlisProducts from '../data/tianquiztlis_products.json';
 import { TOURS } from '../data/tours';
 import type { Tour } from '../data/tours';
 
-type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'tienda' | 'sitio-remoto' | 'eventos';
+type Category = 'todos' | 'turismo' | 'patrimonio' | 'voluntariado' | 'cultura' | 'gastronomia' | 'museo' | 'tienda' | 'sitio-remoto' | 'eventos';
 
 interface Experience {
   id: string;
@@ -61,7 +61,7 @@ const experiencias: Experience[] = [
       'Preservamos el patrimonio arquitectónico y cultural de México a través de la educación y la tecnología.',
     image:
       'https://www.fundacionedificate.org/wp-content/uploads/2025/01/Edificate.jpg',
-    category: 'patrimonio',
+    category: 'voluntariado',
     tagColor: 'brand',
     url: 'https://www.fundacionedificate.org/',
     cta: 'Visitar sitio',
@@ -311,6 +311,7 @@ const categoryLabel: Record<Category, string> = {
   turismo: 'Turismo',
   'sitio-remoto': 'Sitios Turísticos',
   patrimonio: 'Patrimonio',
+  voluntariado: 'Voluntariado',
   cultura: 'Cultura',
   museo: 'Museos',
   gastronomia: 'Gastronomía',
