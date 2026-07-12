@@ -13,6 +13,7 @@ export interface Monument {
   // Opcionales para experiencias especiales:
   videoUrl?: string;       // VR / 360 video link
   isVRAvailable?: boolean; // Si tiene experiencia VR
+  tourId?: string;         // ID de recorrido guiado adquirible
 }
 
 export const MONUMENTS: Monument[] = [
@@ -56,7 +57,8 @@ export const MONUMENTS: Monument[] = [
     audioDuration: '6:45',
     type: 'arqueologia',
     image:
-      'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=400&h=250&q=80',
+      'https://content-historia.nationalgeographic.com.es/medio/2024/04/04/imagen-de-las-ruinas-del-templo-mayor-de-la-antigua-tenochtitlan-y-al-fondo-la-catedral-metropolitana-de-ciudad-de-mexico_513eb790_240404143954_1280x853.jpg',
+    tourId: 'templo-mayor',
   },
   {
     id: 'palacio-nacional',

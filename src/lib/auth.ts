@@ -108,3 +108,30 @@ export async function unlockUserBadge(
     return false;
   }
 }
+
+/**
+ * Suma puntos a un usuario y devuelve los puntos totales actualizados.
+ * Usado por /api/reviews (5 puntos) y /api/orders (potencialmente).
+ */
+export async function addPoints(
+  env: Env,
+  userId: string,
+  points: number
+): Promise<number> {
+  try {
+    await env.DB.prepare(
+      'UPDATE users SET points = points + ? WHERE id = ?'
+    )
+      .bind(points, userId)
+      .run();
+    const row = await env.DB.prepare(
+      'SELECT points FROM users WHERE id = ?'
+    )
+      .bind(userId)
+      .first<{ points: number }>();
+    return row?.points ?? 0;
+  } catch (err) {
+    console.error('Error adding points:', err);
+    return 0;
+  }
+}

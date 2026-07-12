@@ -334,18 +334,88 @@ function toExperience(tour: Tour): Experience {
     isTour: true,
   };
 }
+
+const paymentAddress = (Astro.locals.runtime.env as any).EDIFICARTE_PAYMENT_ADDRESS as string | undefined;
 ---
 
 <Layout title="EdificARTE — Explorar">
-  <script is:inline>
-    // Distinguir entre la primera carga del sitio (inicio de sesión) y navegación interna
-    if (!sessionStorage.getItem('edificarte_session_active')) {
-      sessionStorage.setItem('edificarte_session_active', 'true');
-      if (localStorage.getItem('edificarte_welcome_shown') === 'true') {
-        window.location.href = '/mapa';
-      }
-    }
+  <script is:inline define:vars={{ paymentAddress }}>
+    // Inyectado server-side: address receptora de pagos USDC. Si no está
+    // configurada en wrangler.jsonc vars, queda como string vacío y el botón
+    // de checkout muestra error explicando qué falta.
+    window.__EDIFICARTE_PAYMENT_ADDRESS__ = paymentAddress || '';
   </script>
+  <script is:inline>
+    // Primera carga del navegador: si nunca se mostró la bienvenida, la
+    // mostramos ahora. Una vez aceptada, redirigimos a /mapa en próximas
+    // cargas nuevas del sitio.
+    (function () {
+      try {
+        if (!sessionStorage.getItem('edificarte_session_active')) {
+          sessionStorage.setItem('edificarte_session_active', 'true');
+          if (localStorage.getItem('edificarte_welcome_shown') === 'true') {
+            window.location.href = '/mapa';
+          }
+        }
+      } catch (e) {
+        // localStorage/sessionStorage no disponible: continuar sin bienvenida.
+      }
+    })();
+  </script>
+
+  <!-- Modal de Bienvenida: pide nombre y crea cuenta local (no DB).
+       Aparece una sola vez por navegador. El nombre queda en localStorage y
+       se copia a la cookie edificarte_guest para que /yo lo detecte como
+       invitado con nombre. Cuando el usuario se registre formalmente en /yo
+       conservará ese nombre automáticamente. -->
+  <div
+    id="welcome-modal"
+    class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="welcome-modal-title"
+  >
+    <div class="w-full max-w-md scale-95 transform rounded-[2rem] border border-white/20 bg-white/95 p-7 shadow-2xl backdrop-blur-2xl transition-all duration-300 dark:border-slate-800/60 dark:bg-slate-900/95">
+      <div class="text-center mb-5">
+        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-500 to-purple-600 text-white shadow-lg mb-4">
+          <span class="material-symbols-outlined text-[30px]">account_balance</span>
+        </div>
+        <h2 id="welcome-modal-title" class="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">¡Bienvenido a EdificARTE!</h2>
+        <p class="mt-1.5 text-sm text-slate-500 dark:text-slate-400">Decinos tu nombre para empezar a explorar el patrimonio de la CDMX.</p>
+      </div>
+
+      <form id="welcome-form" class="space-y-4" novalidate>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">person</span>
+          <input
+            type="text"
+            id="welcome-name-input"
+            name="name"
+            required
+            autocomplete="given-name"
+            placeholder="Tu nombre"
+            class="w-full rounded-2xl border border-slate-200/60 bg-white/60 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+          />
+        </div>
+
+        <div id="welcome-error" class="hidden items-center gap-2 rounded-xl bg-rose-50 border border-rose-100 p-3 text-xs font-semibold text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400">
+          <span class="material-symbols-outlined text-[16px]">error</span>
+          <span id="welcome-error-text">Necesitamos tu nombre para continuar.</span>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full rounded-2xl bg-gradient-to-r from-brand-500 to-purple-600 py-3.5 text-sm font-semibold text-white shadow-lg hover:from-brand-600 hover:to-purple-700 transition-all active:scale-[0.98]"
+        >
+          Comenzar a explorar
+        </button>
+
+        <p class="text-center text-[11px] text-slate-400 dark:text-slate-500">
+          Tu progreso se guarda en este dispositivo. Podés crear una cuenta formal más tarde desde <span class="font-semibold text-brand-600 dark:text-brand-400">Yo</span> para conservarlo en la nube.
+        </p>
+      </form>
+    </div>
+  </div>
 
   <script>
     const lang = localStorage.getItem('edificarte_lang');
@@ -358,6 +428,115 @@ function toExperience(tour: Tour): Experience {
           window.location.href = '/mapa';
         });
     }
+
+    // ─── Modal de Bienvenida ──────────────────────────────────────────────
+    // Solo aparece si edificarte_welcome_shown no está marcado en localStorage.
+    // Al enviar el nombre: persiste en localStorage (edificarte_guest_name)
+    // y setea cookie edificarte_guest=true para que /yo lo detecte.
+    (function setupWelcome() {
+      try {
+        if (localStorage.getItem('edificarte_welcome_shown') === 'true') return;
+      } catch (e) {
+        return; // localStorage no disponible → no insistir
+      }
+
+      const modal = document.getElementById('welcome-modal');
+      const form = document.getElementById('welcome-form') as HTMLFormElement | null;
+      const input = document.getElementById('welcome-name-input') as HTMLInputElement | null;
+      const errorBox = document.getElementById('welcome-error');
+      const errorText = document.getElementById('welcome-error-text');
+
+      if (!modal || !form || !input) return;
+
+      // Mostrar modal (flex hidden → flex)
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      // Forzar reflow para activar la animación scale-100
+      void modal.offsetHeight;
+      const inner = modal.querySelector('div');
+      if (inner) {
+        inner.classList.remove('scale-95');
+        inner.classList.add('scale-100');
+      }
+
+      // Bloquear scroll del body mientras el modal está abierto
+      document.body.classList.add('modal-open');
+
+      // Bloquear cierre por click fuera o Escape: el nombre es obligatorio
+      // para empezar (no queremos un "invitado sin nombre" que después no
+      // sepamos cómo etiquetar).
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          showError('Necesitamos tu nombre para continuar.');
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+          showError('Necesitamos tu nombre para continuar.');
+        }
+      });
+
+      function showError(msg: string) {
+        if (!errorBox || !errorText) return;
+        errorText.textContent = msg;
+        errorBox.classList.remove('hidden');
+        errorBox.classList.add('flex');
+        input?.focus();
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = input.value.trim();
+
+        if (!name) {
+          showError('Necesitamos tu nombre para continuar.');
+          return;
+        }
+
+        if (name.length < 2) {
+          showError('Tu nombre debe tener al menos 2 caracteres.');
+          return;
+        }
+
+        try {
+          // Persistir nombre del invitado local (sobra como redundancia; la
+          // fuente de verdad son las cookies que setea el endpoint).
+          localStorage.setItem('edificarte_guest_name', name);
+          localStorage.setItem('edificarte_welcome_shown', 'true');
+          localStorage.removeItem('edificarte_guest_avatar');
+        } catch (err) {
+          showError('No pudimos guardar tu nombre. Recargá la página e intentá de nuevo.');
+          return;
+        }
+
+        // Setear cookies server-side vía endpoint. Si falla, mostrar error
+        // (sin las cookies el registro en /yo no va a pre-rellenar el nombre).
+        try {
+          const res = await fetch('/api/welcome', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showError(data.error || 'No pudimos registrar tu nombre en el servidor.');
+            return;
+          }
+        } catch (err) {
+          showError('Error de conexión. Verificá tu internet e intentá de nuevo.');
+          return;
+        }
+
+        // Cerrar modal y avanzar al mapa
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+          document.body.classList.remove('modal-open');
+          window.location.href = '/mapa?welcome=1';
+        }, 250);
+      });
+    })();
   </script>
 
   <!-- Banner suave si no hay idioma elegido -->
@@ -768,6 +947,45 @@ function toExperience(tour: Tour): Experience {
             ></iframe>
           </div>
         </div>
+
+        <!-- Reviews section: lista de reviews existentes + form para dejar una -->
+        <div class="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-[11px] text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              Reseñas de visitantes
+            </h3>
+            <span id="guide-modal-reviews-meta" class="text-[10px] text-slate-400 dark:text-slate-500"></span>
+          </div>
+
+          <div id="guide-modal-reviews-list" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar"></div>
+
+          <form id="guide-modal-review-form" class="space-y-2 pt-1">
+            <input type="hidden" name="targetId" />
+            <input type="hidden" name="targetType" value="museum" />
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tu rating</span>
+              <div id="guide-modal-rating-stars" class="flex items-center gap-0.5" data-rating="0">
+                <!-- estrellas se renderizan por JS -->
+              </div>
+            </div>
+            <textarea
+              name="text"
+              rows="2"
+              maxlength="500"
+              placeholder="Contá tu experiencia (opcional, máx 500 caracteres)"
+              class="w-full rounded-xl border border-slate-200 bg-white/60 px-3 py-2 text-xs outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-900/40 resize-none"
+            ></textarea>
+            <div class="flex items-center justify-between gap-2">
+              <span id="guide-modal-review-feedback" class="text-[10px] text-slate-400"></span>
+              <button
+                type="submit"
+                class="rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-95"
+              >
+                Publicar (+5 pts)
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
       
       <!-- Modal Footer -->
@@ -852,6 +1070,15 @@ function toExperience(tour: Tour): Experience {
             <span>Total</span>
             <span id="cart-total">$0.00 MXN</span>
           </div>
+          <!-- Equivalente en USDC (Polygon mainnet). Tasa fija por ahora —
+               reemplazar por oracle cuando esté listo. -->
+          <div class="flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 pt-1">
+            <span>≈ <span id="cart-total-usdc">$0.00 USDC</span></span>
+            <span class="inline-flex items-center gap-1">
+              <span class="material-symbols-outlined text-[12px]">account_balance_wallet</span>
+              Polygon · USDC
+            </span>
+          </div>
         </div>
 
         <button
@@ -859,9 +1086,12 @@ function toExperience(tour: Tour): Experience {
           id="btn-checkout"
           class="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold py-3.5 text-xs shadow-md transition-all active:scale-[0.98]"
         >
-          <span class="material-symbols-outlined text-[18px]">chat</span>
-          <span>Pedir por WhatsApp</span>
+          <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+          <span id="btn-checkout-label">Conectar wallet para pagar</span>
         </button>
+        <p id="btn-checkout-help" class="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+          Pagás directo desde tu wallet. Sin intermediarios.
+        </p>
       </div>
     </div>
   </div>
@@ -1253,6 +1483,8 @@ function toExperience(tour: Tour): Experience {
     }
 
     currentMuseumId = card.getAttribute('data-id') || '';
+    const reviewTargetInput = document.querySelector<HTMLInputElement>('#guide-modal-review-form input[name="targetId"]');
+    if (reviewTargetInput) reviewTargetInput.value = currentMuseumId;
     const rating = card.getAttribute('data-rating') || '4.8';
     const imageSrc = card.getAttribute('data-image') || '';
 
@@ -1289,6 +1521,7 @@ function toExperience(tour: Tour): Experience {
         innerContent.classList.add('scale-100');
       }
     }
+    loadGuideReviews(currentMuseumId);
   }
 
   function closeGuideModal() {
@@ -1806,30 +2039,132 @@ function toExperience(tour: Tour): Experience {
     }
   });
 
-  // Realizar Pedido por WhatsApp
-  btnCheckout?.addEventListener('click', () => {
+  // Checkout USDC + WhatsApp post-pago
+  // Tipo de cambio hardcoded por simplicidad — reemplazar por oracle cuando
+  // exista la necesidad (ej. Chainlink MATIC/USD o API tipo CoinGecko).
+  const MXN_PER_USDC = 17; // 1 USDC ≈ 17 MXN
+  const btnCheckoutLabel = document.getElementById('btn-checkout-label');
+  const btnCheckoutHelp = document.getElementById('btn-checkout-help');
+  const cartTotalUsdcEl = document.getElementById('cart-total-usdc');
+
+  function mxnToUsdc(mxn: number): number {
+    return Math.round((mxn / MXN_PER_USDC) * 100) / 100;
+  }
+
+  function rawUsdc(usdc: number): string {
+    // 12.50 USDC → "12500000" (6 decimales)
+    const [w, d = ''] = String(usdc).split('.');
+    const decPadded = (d + '0'.repeat(6)).slice(0, 6);
+    const raw = BigInt(w) * BigInt(1000000) + BigInt(decPadded || '0');
+    return raw.toString();
+  }
+
+  // Mantener visible el equivalente USDC en el cart drawer
+  const usdcObserver = new MutationObserver(() => {
+    const mxnText = cartTotalEl?.textContent ?? '$0.00 MXN';
+    const mxn = parseFloat(mxnText.replace(/[^\d.]/g, '') || '0');
+    if (cartTotalUsdcEl) {
+      const usdc = mxnToUsdc(mxn);
+      cartTotalUsdcEl.textContent = `$${usdc.toFixed(2)} USDC`;
+    }
+  });
+  if (cartTotalEl) usdcObserver.observe(cartTotalEl, { childList: true, characterData: true, subtree: true });
+
+  let walletAddress: string | null = null;
+
+  async function ensureWallet(): Promise<string | null> {
+    const { BrowserWalletProvider } = await import('../lib/onchain/client');
+    const wallet = new BrowserWalletProvider();
+    walletAddress = await wallet.connect();
+    if (btnCheckoutLabel) btnCheckoutLabel.textContent = 'Pagar con USDC';
+    if (btnCheckoutHelp) btnCheckoutHelp.textContent = `Wallet: ${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)} · Polygon`;
+    return walletAddress;
+  }
+
+  btnCheckout?.addEventListener('click', async () => {
     if (cart.length === 0) return;
+    if (!btnCheckoutLabel) return;
 
-    // Número de teléfono de Fundación EdificARTE (simulado)
-    const phoneNumber = '5215512345678';
-    
-    // Crear el mensaje detallado del pedido
-    let message = '¡Hola! Me interesa comprar los siguientes productos artesanales de Tianquiztlis Mercado:\n\n';
-    
-    cart.forEach((item, index) => {
-      message += `${index + 1}. *${item.name}* (Cant: ${item.qty}) - $${(item.price * item.qty).toFixed(2)} MXN\n\n`;
-    });
+    const originalLabel = btnCheckoutLabel.textContent;
 
-    const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-    message += `*Total del Pedido:* $${total.toFixed(2)} MXN\n`;
-    message += `*Envío:* Gratis\n\n`;
-    message += '¿Me podrían indicar los pasos para completar mi compra y acordar la entrega? ¡Muchas gracias!';
+    // 1. Si no hay wallet, conectar primero.
+    if (!walletAddress) {
+      try {
+        btnCheckoutLabel.textContent = 'Conectando…';
+        await ensureWallet();
+        return; // el próximo click paga
+      } catch (err: any) {
+        btnCheckoutLabel.textContent = originalLabel;
+        alert(err?.message || 'No se pudo conectar la wallet. ¿Tenés MetaMask o Rabby instalado?');
+        return;
+      }
+    }
 
-    const encodedText = encodeURIComponent(message);
-    const waUrl = `https://wa.me/${phoneNumber}?text=${encodedText}`;
+    // 2. Calcular total USDC y abrir MetaMask para firmar la tx.
+    const totalMXN = cart.reduce((acc, item) => acc + item.price * item.qty, 0);
+    const totalUSDC = mxnToUsdc(totalMXN);
+    const rawAmount = rawUsdc(totalUSDC);
 
-    // Abrir enlace en pestaña nueva
-    window.open(waUrl, '_blank');
+    btnCheckoutLabel.textContent = 'Esperando firma…';
+
+    try {
+      const { BrowserWalletProvider } = await import('../lib/onchain/client');
+      const wallet = new BrowserWalletProvider();
+
+      const txHash = await wallet.sendUsdcTransfer({
+        to: window.__EDIFICARTE_PAYMENT_ADDRESS__ || '0x0000000000000000000000000000000000000000',
+        rawAmount,
+      });
+
+      btnCheckoutLabel.textContent = 'Confirmando pago…';
+
+      // 3. Server valida y registra la orden.
+      const orderRes = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          txHash,
+          walletAddress,
+          totalUSDC,
+          items: cart.map((item) => ({
+            sku: item.sku,
+            name: item.name,
+            qty: item.qty,
+            priceMXN: item.price,
+            priceUSDC: mxnToUsdc(item.price),
+          })),
+        }),
+      });
+
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        alert(orderData.error || 'No pudimos registrar el pago. Contactanos por WhatsApp.');
+        btnCheckoutLabel.textContent = originalLabel;
+        return;
+      }
+
+      // 4. Pago OK: limpiar carrito y mandar WhatsApp con resumen + txHash.
+      cart = [];
+      saveCart();
+      closeCartDrawer();
+
+      const phoneNumber = '5215512345678';
+      let message = '¡Hola! Acabo de pagar mi pedido de Tianquiztlis Mercado en USDC:\n\n';
+      cart.forEach((item, index) => {
+        message += `${index + 1}. ${item.name} (Cant: ${item.qty}) - ${item.qty * item.price} MXN\n`;
+      });
+      message += `\n*Total:* ${totalMXN.toFixed(2)} MXN (${totalUSDC.toFixed(2)} USDC)\n`;
+      message += `*Order ID:* ${orderData.orderId}\n`;
+      message += `*Tx Hash:* ${txHash}\n\n`;
+      message += '¿Coordinamos la entrega?';
+
+      window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+      btnCheckoutLabel.textContent = originalLabel;
+    } catch (err: any) {
+      console.error('Error en checkout USDC:', err);
+      alert(err?.message || 'No se pudo completar el pago.');
+      btnCheckoutLabel.textContent = originalLabel;
+    }
   });
 
   // Inicializar carrito en la carga

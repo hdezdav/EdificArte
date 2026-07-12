@@ -1,0 +1,6 @@
+# Variables secretas para desarrollo local. NO commitear .dev.vars real.
+# Renombrar a .dev.vars y completar valores.
+
+# Private key del admin wallet (la que deploya los contratos). SOLO dev —
+# en producción usar `pnpm wrangler secret put ADMIN_PRIVATE_KEY`.
+ADMIN_PRIVATE_KEY=0x0000000000000000000000000000000000000000000000000000000000000000

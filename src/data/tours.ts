@@ -92,6 +92,28 @@ export const TOURS: Tour[] = [
     },
     category: 'tour',
   },
+  {
+    id: 'templo-mayor',
+    title: 'Recorrido Histórico: Templo Mayor y Centro Mexica',
+    subtitle: 'Templo Mayor y Alrededores',
+    duration: '3 horas',
+    pricePerPerson: 480,
+    currency: 'MXN',
+    image: 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=1200&q=80',
+    highlights: [
+      'Recorrido por las ruinas del Templo Mayor',
+      'Visita guiada al Museo del Templo Mayor',
+      'Explicación de la cosmogonía mexica y monolitos sagrados',
+    ],
+    description: 'Un viaje al corazón del imperio azteca. Explora el recinto sagrado de Tenochtitlan de la mano de un arqueólogo experto.',
+    meetingPoint: 'Entrada principal del Templo Mayor (Plaza del Seminario)',
+    guide: {
+      name: 'Mtro. Henryk Karol Kocyba',
+      title: 'Antropólogo y arqueólogo',
+      bio: 'Egresado de la Universidad de Varsovia. Especialista en Historia de México, sus investigaciones destacan en religión, cosmovisión y arte.',
+    },
+    category: 'tour',
+  },
 ];
 
 // El guía es el mismo para los 3 tours

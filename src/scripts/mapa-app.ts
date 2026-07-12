@@ -6,6 +6,8 @@ import type {
   Circle as LCircle,
 } from 'leaflet';
 
+console.log('[GPS DEBUG] MODULE TOP - mapa-app.ts started loading');
+
 // ---------------------------------------------------------------------------
 // Tipos
 // ---------------------------------------------------------------------------
@@ -25,6 +27,7 @@ interface Monument {
   audioDuration: string;
   type: MonumentType;
   image: string;
+  tourId?: string;
 }
 
 interface VisitRecord {
@@ -41,6 +44,7 @@ interface VisitRecord {
 import { MONUMENTS } from '../data/monuments';
 import { RECINTOS, RECINTO_TYPES, RECINTO_DEFAULT_RADIUS } from '../data/recintos';
 import type { Recinto } from '../data/recintos';
+import { TOURS } from '../data/tours';
 
 // Todos los monumentos son visibles en el mapa (incluyendo Pirámides del Sol
 // en Teotihuacán, que aparece FUERA del zoom inicial — el usuario debe hacer
@@ -170,6 +174,8 @@ let tileLayer = L.tileLayer(TILES[TILE_ORDER[tileIdx]], {
 }).addTo(map);
 
 const markers: { id: string; emoji: string; inst: LMarker }[] = [];
+const recintoMarkers: LMarker[] = [];
+const recintoPolygons: (L.Circle | L.Polygon)[] = [];
 let activeRouteLine: L.Polyline | null = null;
 
 function addMarkers(list: Monument[]) {
@@ -244,9 +250,6 @@ bottomSheet?.addEventListener('click', (e) => e.stopPropagation());
 // ---------------------------------------------------------------------------
 // Recintos históricos (capa secundaria, no interactúan con el bottom sheet)
 // ---------------------------------------------------------------------------
-
-const recintoMarkers: LMarker[] = [];
-const recintoPolygons: (L.Circle | L.Polygon)[] = [];
 
 function addRecintoMarkers() {
   recintoMarkers.forEach((m) => map.removeLayer(m));
@@ -586,6 +589,31 @@ function selectMonument(id: string) {
   stopAudio();
   markers.forEach((x) => x.inst.setIcon(pinIcon(x.id, x.emoji, x.id === id)));
   updateVisitSection(m);
+
+  // Mostrar / ocultar promo de recorrido guiado
+  const tourPromoCard = $('tour-promo-card');
+  if (tourPromoCard) {
+    if (m.tourId) {
+      const tour = TOURS.find((t) => t.id === m.tourId);
+      if (tour) {
+        const titleEl = $('tour-promo-title');
+        const descEl = $('tour-promo-desc');
+        const priceEl = $('tour-promo-price');
+        if (titleEl) titleEl.textContent = tour.title;
+        if (descEl) descEl.textContent = tour.description;
+        if (priceEl) priceEl.textContent = `$${tour.pricePerPerson} MXN`;
+        
+        tourPromoCard.classList.remove('hidden');
+        tourPromoCard.classList.add('flex');
+      } else {
+        tourPromoCard.classList.add('hidden');
+        tourPromoCard.classList.remove('flex');
+      }
+    } else {
+      tourPromoCard.classList.add('hidden');
+      tourPromoCard.classList.remove('flex');
+    }
+  }
 
   viewList?.classList.add('hidden');
   viewDetail?.classList.remove('hidden');
@@ -1163,6 +1191,7 @@ setTimeout(checkPendingGpsRequest, 1500);
 
 geoStatusEl?.addEventListener('click', (e) => {
   e.stopPropagation();
+  console.log('[GPS DEBUG] geo-status clicked, userMarker:', !!userMarker, 'permissionDenied:', permissionDenied);
   // Si ya tenemos marcador de usuario (gps activo), centrar el mapa
   if (userMarker) {
     map.setView(userMarker.getLatLng(), 17, { animate: true });
@@ -1179,92 +1208,53 @@ geoStatusEl?.addEventListener('click', (e) => {
 });
 
 $('btn-locate')?.addEventListener('click', () => {
+  console.log('[GPS DEBUG] btn-locate clicked, userMarker:', !!userMarker, 'permissionDenied:', permissionDenied);
   if (userMarker) map.setView(userMarker.getLatLng(), 18, { animate: true });
   else if (permissionDenied) showPermissionInstructions();
   else requestLocationPermission();
 });
 
 // ---------------------------------------------------------------------------
-// Auto-start GPS cuando el permiso ya está 'granted'
+// Auto-start GPS cuando el usuario ya pasó por los modales de bienvenida
 // ---------------------------------------------------------------------------
-// En la mayoría de visitas el welcome modal ya no se muestra (queda persistido
+// En la mayoría de visitas el welcome modal no se muestra (queda persistido
 // en localStorage), entonces el único disparador del GPS — el botón "Activar
 // GPS y Comenzar" — nunca se ejecuta y el indicador queda "Inactivo" para
 // siempre aunque el navegador ya tenga el permiso otorgado.
 //
-// Resolvemos esto intentando iniciar el GPS automáticamente al cargar. La
-// estrategia depende del soporte del navegador:
+// Si el usuario ya eligió idioma y ya vio el welcome, significa que en una
+// visita previa completó el flujo de opt-in al GPS. Llamamos startWatching()
+// directamente: si el permiso sigue granted, el navegador devuelve la posición
+// sin abrir ningún prompt. Si fue revocado entre visitas, el browser maneja
+// el error de forma estándar (el usuario verá "Permiso denegado" en el
+// indicador y podrá tocarlo para ver instrucciones de rehabilitación).
 //
-// 1. navigator.permissions.query() (Chrome/Edge): consulta el estado del
-//    permiso SIN disparar el prompt. Si devuelve 'granted', arrancamos
-//    watchPosition directo — es seguro porque no se abrirá ningún diálogo.
-//
-// 2. Fallback con getCurrentPosition (Firefox, Safari): la Permissions API no
-//    está expuesta para 'geolocation'. Probamos un getCurrentPosition con
-//    timeout muy corto (1.5s). Si el permiso ya está granted, devuelve la
-//    posición en milisegundos. Si timeout, asumimos que el navegador necesita
-//    gesto explícito (caso iOS Safari con estado 'prompt') y no hacemos nada.
-//
-// Si el estado es 'prompt' o 'denied', mantenemos el comportamiento existente
-// que exige gesto del usuario. Esto preserva el workaround de iOS Safari
-// documentado arriba (líneas 1130-1134) donde un watchPosition sin gesto
-// rechaza el prompt silenciosamente y deja permissionDenied sticky.
+// Esto preserva el workaround de iOS Safari: el flag `permissionDenied`
+// protege contra el bug documentado en líneas 1130-1134 (prompt rechazado
+// silenciosamente sin gesto). Si en esta sesión ya rechazaste explícitamente,
+// no auto-iniciamos.
 function tryAutoStartGps() {
-  if (permissionDenied) return;
-  if (!('geolocation' in navigator)) return;
-
-  // Estrategia 1: Permissions API (Chrome/Edge)
-  if (navigator.permissions?.query) {
-    navigator.permissions
-      .query({ name: 'geolocation' })
-      .then((status) => {
-        if (status.state === 'granted') {
-          startWatching();
-        }
-        // 'prompt' o 'denied': esperar gesto explícito del usuario.
-      })
-      .catch(() => {
-        // Permissions API falló para geolocation → probar fallback
-        tryAutoStartGpsFallback();
-      });
+  console.log('[GPS DEBUG] tryAutoStartGps running');
+  console.log('[GPS DEBUG] permissionDenied:', permissionDenied);
+  console.log('[GPS DEBUG] geolocation in navigator:', 'geolocation' in navigator);
+  console.log('[GPS DEBUG] hasLang:', safeGet('edificarte_lang'));
+  console.log('[GPS DEBUG] hasWelcome:', safeGet('edificarte_welcome_shown'));
+  if (permissionDenied) {
+    console.log('[GPS DEBUG] skipped: permissionDenied is true');
     return;
   }
-
-  // Estrategia 2: Fallback para navegadores sin Permissions API
-  tryAutoStartGpsFallback();
-}
-
-function tryAutoStartGpsFallback() {
-  // Si el permiso ya está 'granted', getCurrentPosition devuelve en <100ms.
-  // Si está 'prompt', el navegador puede abrir el diálogo o colgar — usamos
-  // un timeout corto para detectarlo y abandonar silenciosamente.
-  // Si está 'denied', llega PERMISSION_DENIED inmediatamente.
-  let settled = false;
-
-  const timeoutId = setTimeout(() => {
-    if (settled) return;
-    settled = true;
-    // Timeout: probablemente iOS Safari con estado 'prompt'. No marcar
-    // permissionDenied — ese flag solo debe reflejar un rechazo explícito
-    // del usuario vía la UI.
-  }, 1500);
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      onPos(pos);
-      startWatching();
-    },
-    (_err) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      // Mismo razonamiento que arriba: no setear permissionDenied en auto-start.
-    },
-    { enableHighAccuracy: false, timeout: 1400, maximumAge: 60000 }
-  );
+  if (!('geolocation' in navigator)) {
+    console.log('[GPS DEBUG] skipped: no geolocation API');
+    return;
+  }
+  const hasLang = safeGet('edificarte_lang');
+  const hasWelcome = safeGet('edificarte_welcome_shown');
+  if (hasLang && hasWelcome) {
+    console.log('[GPS DEBUG] calling startWatching()');
+    startWatching();
+  } else {
+    console.log('[GPS DEBUG] skipped: lang/welcome not set');
+  }
 }
 tryAutoStartGps();
 
@@ -1497,4 +1487,153 @@ if (urlRoute) {
     }
   }, 600);
 }
+
+// ---------------------------------------------------------------------------
+// Gestión de Reserva de Recorridos Guiados
+// ---------------------------------------------------------------------------
+
+const tourModal = $('tour-modal');
+const tourModalClose = $('tour-modal-close');
+const tourModalTitle = $('tour-modal-title');
+const tourModalSubtitle = $('tour-modal-subtitle');
+const tourIdInput = $<HTMLInputElement>('tour-id-input');
+const tourForm = $<HTMLFormElement>('tour-reservation-form');
+const tourTotalEl = $('tour-total');
+const tourSuccess = $('tour-success-state');
+const tourSuccessClose = $('tour-success-close');
+const tourPeopleInput = $<HTMLInputElement>('tour-people');
+const tourSubmitBtn = $<HTMLButtonElement>('tour-submit-btn');
+
+const TOUR_PRICE = 480;
+
+function openTourModal(tourId: string, title: string, subtitle: string) {
+  if (!tourModal) return;
+  if (tourIdInput) tourIdInput.value = tourId;
+  if (tourModalTitle) tourModalTitle.textContent = title;
+  if (tourModalSubtitle) tourModalSubtitle.textContent = subtitle;
+  updateTourTotal();
+  if (tourSuccess) tourSuccess.classList.add('hidden');
+  if (tourForm) tourForm.classList.remove('hidden');
+  
+  tourModal.classList.remove('hidden');
+  void tourModal.offsetHeight;
+  tourModal.classList.remove('opacity-0');
+  document.body.classList.add('modal-open');
+  if (tourPeopleInput) tourPeopleInput.value = '2';
+  
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dateInput = $<HTMLInputElement>('tour-date');
+  if (dateInput) dateInput.min = tomorrow.toISOString().split('T')[0];
+}
+
+function closeTourModal() {
+  if (!tourModal) return;
+  tourModal.classList.add('opacity-0');
+  setTimeout(() => {
+    tourModal.classList.add('hidden');
+    document.body.classList.remove('modal-open');
+  }, 250);
+}
+
+function updateTourTotal() {
+  const n = parseInt(tourPeopleInput?.value || '1', 10) || 1;
+  if (tourTotalEl) {
+    tourTotalEl.textContent = `$${(n * TOUR_PRICE).toLocaleString('es-MX')} MXN`;
+  }
+}
+
+tourPeopleInput?.addEventListener('input', updateTourTotal);
+tourModalClose?.addEventListener('click', closeTourModal);
+tourSuccessClose?.addEventListener('click', closeTourModal);
+tourModal?.addEventListener('click', (e) => {
+  if (e.target === tourModal) closeTourModal();
+});
+
+tourForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!tourSubmitBtn || !tourForm) return;
+
+  const tourId = tourIdInput?.value || '';
+  const tour = TOURS.find((t) => t.id === tourId);
+  const tourTitle = tour?.title || 'Tour';
+  const tourImage = tour?.image || '';
+
+  const formData = new FormData(tourForm);
+  const data = {
+    tourId,
+    name: formData.get('name'),
+    email: formData.get('email'),
+    phone: formData.get('phone'),
+    date: formData.get('date'),
+    people: parseInt(formData.get('people') as string, 10) || 1,
+    notes: formData.get('notes') || '',
+  };
+
+  if (!data.name || !data.email || !data.phone || !data.date || !data.people) {
+    alert('Por favor completá todos los campos obligatorios.');
+    return;
+  }
+
+  tourSubmitBtn.disabled = true;
+  const originalText = tourSubmitBtn.innerHTML;
+  tourSubmitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Enviando...';
+
+  try {
+    const response = await fetch('/api/reservar-tour', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) throw new Error('Error en el servidor');
+
+    const result = await response.json();
+
+    // Guardar la reserva en localStorage edificarte_reservations
+    try {
+      const STORAGE_KEY = 'edificarte_reservations';
+      const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<Record<string, unknown>>;
+      const reservation = {
+        id: result.reservationId || `RES-${Date.now()}`,
+        tourId: data.tourId,
+        tourTitle,
+        tourImage,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        date: data.date,
+        people: data.people,
+        totalMXN: result.totalMXN || 0,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+      existing.push(reservation);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+    } catch (storageErr) {
+      console.warn('No se pudo guardar la reserva en localStorage:', storageErr);
+    }
+
+    if (tourSuccess) tourSuccess.classList.remove('hidden');
+    if (tourForm) tourForm.classList.add('hidden');
+    tourForm.reset();
+    if (tourPeopleInput) tourPeopleInput.value = '2';
+  } catch (err) {
+    console.error('Error al reservar:', err);
+    alert('Hubo un error al enviar la solicitud. Por favor intentá de nuevo o contactanos por WhatsApp.');
+  } finally {
+    tourSubmitBtn.disabled = false;
+    tourSubmitBtn.innerHTML = originalText;
+  }
+});
+
+// Click en el botón de reservar de la tarjeta de promoción en el panel
+$('btn-book-tour')?.addEventListener('click', () => {
+  if (!selectedId) return;
+  const m = MONUMENTS.find((x) => x.id === selectedId);
+  if (!m || !m.tourId) return;
+  const tour = TOURS.find((t) => t.id === m.tourId);
+  if (!tour) return;
+  openTourModal(tour.id, tour.title, tour.meetingPoint || '');
+});
 

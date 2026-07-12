@@ -17,6 +17,14 @@ let activeTab = 'login'; // login | register
 // Verificar si tiene cookie de invitado activa
 const isGuest = Astro.cookies.get('edificarte_guest')?.value === 'true';
 
+// Si es guest, leer su nombre desde una cookie sibling que setea el modal
+// de bienvenida (src/pages/index.astro). Esto permite pre-rellenar el
+// formulario de registro para que conserve su identidad al crear la cuenta.
+let guestPrefillName = '';
+if (isGuest) {
+  guestPrefillName = Astro.cookies.get('edificarte_guest_name')?.value || '';
+}
+
 if (!user && isGuest) {
   user = {
     id: 'guest',
@@ -70,6 +78,7 @@ if (Astro.request.method === 'POST') {
 
           // Eliminar cookie de invitado si existía
           Astro.cookies.delete('edificarte_guest', { path: '/' });
+          Astro.cookies.delete('edificarte_guest_name', { path: '/' });
 
           // Crear sesión
           await createSession(Astro.cookies, env, userId);
@@ -104,10 +113,12 @@ if (Astro.request.method === 'POST') {
       }
     } else if (action === 'guest') {
       // Iniciar sesión como invitado temporal
+      // NOTA: NO httpOnly — el cliente (modal de bienvenida, botón "registrarse")
+      // necesita poder escribir/leer esta cookie. La cookie real de sesión
+      // (edificarte_session) SÍ es httpOnly, así que la seguridad sigue cubierta.
       Astro.cookies.set('edificarte_guest', 'true', {
         path: '/',
-        httpOnly: true,
-        // secure: true en dev hace que el navegador rechace la cookie silenciosamente.
+        httpOnly: false,
         secure: import.meta.env.PROD,
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 365 // 1 año
@@ -606,6 +617,7 @@ const isEmoji = (str: string) => {
               name="name"
               required
               placeholder="Nombre completo"
+              value={guestPrefillName}
               class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
             />
           </div>
@@ -824,13 +836,20 @@ const isEmoji = (str: string) => {
         }
       });
 
-      // Registrarse / Crear cuenta: borrar cookie de invitado para volver a ver el formulario
+      // Registrarse / Crear cuenta: limpiar cookies de guest server-side
+      // antes de recargar para que /yo renderice el form de login/register
+      // (en vez del panel de guest).
       const registerBtns = ['btn-guest-register', 'btn-guest-register-cta'];
       registerBtns.forEach(id => {
         const btn = document.getElementById(id);
         if (btn) {
-          btn.addEventListener('click', () => {
-            document.cookie = 'edificarte_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+          btn.addEventListener('click', async () => {
+            btn.setAttribute('disabled', 'true');
+            try {
+              await fetch('/api/exit-guest', { method: 'POST' });
+            } catch (err) {
+              console.warn('No se pudo limpiar guest en el servidor, recargando igual:', err);
+            }
             window.location.reload();
           });
         }

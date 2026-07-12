@@ -10,6 +10,17 @@
   "build": {
     "command": "pnpm build",
   },
+  "vars": {
+    // USDC nativo en Polygon mainnet. Si querés apuntar a Amoy testnet,
+    // reemplazá por la dirección de USDC de prueba de Circle.
+    "USDC_CONTRACT_ADDRESS": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+    "POLYGON_RPC_URL": "https://polygon-rpc.com",
+    // Los siguientes quedan VACÍOS hasta que se deployen los contratos.
+    // Ver contracts/README.md para instrucciones.
+    "PUBLIC_BADGE_CONTRACT_ADDRESS": "",
+    "PUBLIC_REVIEW_CONTRACT_ADDRESS": "",
+    "EDIFICARTE_PAYMENT_ADDRESS": "",
+  },
   "d1_databases": [
     {
       "binding": "DB",

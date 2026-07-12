@@ -14,6 +14,7 @@ const TOURS_INFO: Record<string, { title: string; pricePerPerson: number }> = {
   'coyoacan-anahuacalli': { title: 'Recorrido 1: Centro Histórico de Coyoacán y Museo Anahuacalli', pricePerPerson: 480 },
   'san-angel-chimalistac': { title: 'Recorrido 2: San Ángel y Chimalistac', pricePerPerson: 480 },
   'xochimilco': { title: 'Recorrido 3: Xochimilco', pricePerPerson: 480 },
+  'templo-mayor': { title: 'Recorrido Histórico: Templo Mayor y Centro Mexica', pricePerPerson: 480 },
 };
 
 export const POST: APIRoute = async ({ request }) => {
