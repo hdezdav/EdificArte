@@ -1022,7 +1022,7 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
   <!-- Museum/Guide Details Modal (Overlay) -->
   <div
     id="guide-modal"
-    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-[200] [&:not(.hidden)]:flex hidden items-center justify-center bg-slate-900/80 p-4 backdrop-blur-md"
   >
     <div
       class="w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100vh-32px)] sm:max-h-[90vh] overflow-hidden"
@@ -1204,7 +1204,7 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
   <!-- Cart Sidebar Drawer -->
   <div
     id="cart-drawer"
-    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex justify-end bg-black/60 backdrop-blur-sm transition-opacity duration-300 opacity-0 hidden"
+    class="fixed inset-0 z-[200] [&:not(.hidden)]:flex justify-end bg-slate-900/80 backdrop-blur-sm hidden"
   >
     <div
       id="cart-drawer-content"
@@ -1278,7 +1278,7 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
   <!-- Product Details Modal (Overlay) -->
   <div
     id="product-modal"
-    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity duration-300 opacity-0"
+    class="fixed inset-0 z-[200] [&:not(.hidden)]:flex hidden items-center justify-center bg-slate-900/80 p-4 backdrop-blur-md"
   >
     <div
       class="w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100vh-32px)] sm:max-h-[90vh] overflow-hidden"
@@ -1356,7 +1356,7 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
 
         <!-- Metadata -->
         <div class="flex justify-center text-[10px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800/60 pt-3">
-          <span>100% Artesanal / Hecho a mano</span>
+          <span>Con tu compra, un artesano vende a precio justo, sin intermediarios</span>
         </div>
       </div>
 
@@ -1397,7 +1397,7 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
   <!-- Tour Reservation Modal (Overlay) -->
   <div
     id="tour-modal"
-    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-4"
+    class="fixed inset-0 z-[200] [&:not(.hidden)]:flex hidden items-end justify-center bg-slate-900/80 backdrop-blur-md sm:items-center sm:p-4"
     role="dialog"
     aria-modal="true"
     aria-labelledby="tour-modal-title"
@@ -1797,9 +1797,6 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
 
     if (guideModal) {
       guideModal.classList.remove('hidden');
-      // Forzar reflow
-      void guideModal.offsetHeight;
-      guideModal.classList.remove('opacity-0');
       document.body.classList.add('modal-open');
       const innerContent = guideModal.querySelector('div');
       if (innerContent) {
@@ -1811,19 +1808,11 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
 
   function closeGuideModal() {
     if (guideModal) {
-      guideModal.classList.add('opacity-0');
-      const innerContent = guideModal.querySelector('div');
-      if (innerContent) {
-        innerContent.classList.remove('scale-100');
-        innerContent.classList.add('scale-95');
-      }
-      setTimeout(() => {
-        guideModal.classList.add('hidden');
-        if (guideVideo) guideVideo.src = ''; // Detener video si se está reproduciendo
-        document.body.classList.remove('modal-open');
-        currentIsVR = false;
-        currentVRUrl = '';
-      }, 300);
+      guideModal.classList.add('hidden');
+      if (guideVideo) guideVideo.src = ''; // Detener video si se está reproduciendo
+      document.body.classList.remove('modal-open');
+      currentIsVR = false;
+      currentVRUrl = '';
     }
   }
 
@@ -2172,8 +2161,6 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
 
     if (productModal) {
       productModal.classList.remove('hidden');
-      void productModal.offsetHeight;
-      productModal.classList.remove('opacity-0');
       document.body.classList.add('modal-open');
       const innerContent = productModal.querySelector('div');
       if (innerContent) {
@@ -2186,16 +2173,8 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
   // Cerrar Modal de Producto
   function closeProductModal() {
     if (productModal) {
-      productModal.classList.add('opacity-0');
-      const innerContent = productModal.querySelector('div');
-      if (innerContent) {
-        innerContent.classList.remove('scale-100');
-        innerContent.classList.add('scale-95');
-      }
-      setTimeout(() => {
-        productModal.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-      }, 300);
+      productModal.classList.add('hidden');
+      document.body.classList.remove('modal-open');
     }
   }
 
@@ -2304,8 +2283,6 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
   function openCartDrawer() {
     if (cartDrawer && cartDrawerContent) {
       cartDrawer.classList.remove('hidden');
-      void cartDrawer.offsetHeight;
-      cartDrawer.classList.remove('opacity-0');
       cartDrawerContent.classList.remove('translate-x-full');
       cartDrawerContent.classList.add('translate-x-0');
       document.body.classList.add('modal-open');
@@ -2314,13 +2291,10 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
 
   function closeCartDrawer() {
     if (cartDrawer && cartDrawerContent) {
-      cartDrawer.classList.add('opacity-0');
       cartDrawerContent.classList.remove('translate-x-0');
       cartDrawerContent.classList.add('translate-x-full');
-      setTimeout(() => {
-        cartDrawer.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-      }, 300);
+      cartDrawer.classList.add('hidden');
+      document.body.classList.remove('modal-open');
     }
   }
 
@@ -2492,8 +2466,6 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
     if (tourSuccess) tourSuccess.classList.add('hidden');
     if (tourForm) tourForm.classList.remove('hidden');
     tourModal.classList.remove('hidden');
-    void tourModal.offsetHeight;
-    tourModal.classList.remove('opacity-0');
     document.body.classList.add('modal-open');
     if (tourPeopleInput) tourPeopleInput.value = '2';
     const tomorrow = new Date();
@@ -2504,11 +2476,8 @@ const paymentAddress = (Astro.locals.runtime.env as Record<string, unknown>).EDI
 
   function closeTourModal() {
     if (!tourModal) return;
-    tourModal.classList.add('opacity-0');
-    setTimeout(() => {
-      tourModal.classList.add('hidden');
-      document.body.classList.remove('modal-open');
-    }, 250);
+    tourModal.classList.add('hidden');
+    document.body.classList.remove('modal-open');
   }
 
   function updateTourTotal() {

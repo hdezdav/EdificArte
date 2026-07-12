@@ -135,6 +135,9 @@ body.modal-open {
    para que no queden visibles ni interactivos por encima del blur. */
 body.modal-open #bottom-nav,
 body.modal-open #ai-agent-container,
-body.modal-open #proximity-toast {
+body.modal-open #proximity-toast,
+body.modal-open #site-header,
+body.modal-open header,
+body.modal-open nav {
   display: none !important;
 }
