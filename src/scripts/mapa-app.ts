@@ -1042,18 +1042,40 @@ function stopAudio() {
 btnPlay?.addEventListener('click', startAudio);
 toggleBtn?.addEventListener('click', toggleAudio);
 
-$('btn-player-rw')?.addEventListener('click', () => {
-  sec = Math.max(0, sec - 10);
+/**
+ * Helpers para los controles del player (rw / ff / seek). Los controles
+ * afectan el audio REAL cuando hay audioUrl; cuando no, caen al counter
+ * fake (sec). Esto evita el bug donde la UI mostraba un seek que el
+ * audio real no seguía.
+ */
+function currentPosition(): number {
+  // Posición actual en segundos: real si hay audio, fake si no.
+  const m = MONUMENTS.find((x) => x.id === selectedId);
+  if (m?.audioUrl && isFinite(audioEl.currentTime)) {
+    return audioEl.currentTime;
+  }
+  return sec;
+}
+
+function setCurrentPosition(newSec: number): void {
+  const m = MONUMENTS.find((x) => x.id === selectedId);
+  if (m?.audioUrl && audioEl.src) {
+    audioEl.currentTime = Math.max(0, Math.min(dur, newSec));
+  } else {
+    sec = Math.max(0, Math.min(dur, newSec));
+  }
   updateAudioUI();
+}
+
+$('btn-player-rw')?.addEventListener('click', () => {
+  setCurrentPosition(currentPosition() - 10);
 });
 $('btn-player-ff')?.addEventListener('click', () => {
-  sec = Math.min(dur, sec + 10);
-  updateAudioUI();
+  setCurrentPosition(currentPosition() + 10);
 });
 progressContainer?.addEventListener('click', (e) => {
   const r = progressContainer.getBoundingClientRect();
-  sec = Math.round(((e.clientX - r.left) / r.width) * dur);
-  updateAudioUI();
+  setCurrentPosition(Math.round(((e.clientX - r.left) / r.width) * dur));
 });
 
 // ---------------------------------------------------------------------------

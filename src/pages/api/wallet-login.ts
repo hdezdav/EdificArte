@@ -193,7 +193,23 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   if (!user) {
     // 4a. Crear user nuevo + asociar wallet.
     try {
-      const newUser = await createUserFromWallet(env, address);
+      // Antes de crear un user nuevo, verificar si ya existe un user
+      // huérfano con el email sintético `0x{address}@wallet...`. Esto
+      // pasa cuando un login previo falló entre INSERT users y INSERT
+      // user_wallets (queda el user sin wallet linkeada). Recover: usar
+      // el user existente y solo agregar el link.
+      const syntheticEmail = `${address.toLowerCase()}@wallet.edificarte.app`;
+      const orphan = await env.DB.prepare('SELECT * FROM users WHERE email = ?')
+        .bind(syntheticEmail)
+        .first<User>();
+
+      let newUser: User;
+      if (orphan) {
+        newUser = orphan;
+      } else {
+        newUser = await createUserFromWallet(env, address);
+      }
+
       try {
         await env.DB.prepare(
           'INSERT INTO user_wallets (user_id, address, chain_id) VALUES (?, ?, 137)'
@@ -201,7 +217,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
           .bind(newUser.id, address)
           .run();
         user = newUser;
-        isNew = true;
+        isNew = orphan === null;
       } catch (insertErr) {
         // Race condition: otro request creó la misma wallet en paralelo.
         // UNIQUE constraint en address hace fallar el INSERT. Hacemos retry
