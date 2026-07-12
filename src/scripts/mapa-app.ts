@@ -1184,6 +1184,41 @@ $('btn-locate')?.addEventListener('click', () => {
   else requestLocationPermission();
 });
 
+// ---------------------------------------------------------------------------
+// Auto-start GPS cuando el permiso ya está 'granted'
+// ---------------------------------------------------------------------------
+// navigator.permissions.query() permite consultar el estado del permiso SIN
+// disparar el prompt. Si ya está 'granted', podemos llamar watchPosition con
+// seguridad — no se abrirá ningún diálogo y el navegador devolverá la posición
+// directamente. Esto resuelve el caso donde el usuario ya otorgó permiso (en
+// una visita previa o desde el candado) pero el welcome modal no se volvió a
+// mostrar, dejando el GPS "Inactivo" eternamente.
+//
+// Si el estado es 'prompt' o 'denied', no hacemos nada — mantenemos el
+// comportamiento existente que exige gesto explícito del usuario, y respetamos
+// el caso iOS Safari documentado arriba (líneas 1130-1134) donde un
+// watchPosition sin gesto rechaza el prompt silenciosamente.
+function tryAutoStartGps() {
+  if (permissionDenied) return;
+  if (!('geolocation' in navigator)) return;
+  if (!navigator.permissions?.query) return;
+
+  navigator.permissions
+    .query({ name: 'geolocation' })
+    .then((status) => {
+      if (status.state === 'granted') {
+        startWatching();
+      }
+      // 'prompt' o 'denied': no hacer nada, esperar gesto explícito.
+    })
+    .catch(() => {
+      // Algunos navegadores (o modos privados) no soportan permissions.query
+      // para geolocation. Salir silenciosamente — el usuario puede activar
+      // el GPS manualmente con #geo-status o #btn-locate.
+    });
+}
+tryAutoStartGps();
+
 // Toast reusable para mensajes informativos al usuario
 function showToast(message: string, variant: 'info' | 'success' | 'warn' = 'info') {
   const colorMap = {
