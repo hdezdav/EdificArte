@@ -13,7 +13,10 @@
 
 require("@nomicfoundation/hardhat-toolbox");
 
-const POLYGON_RPC_URL = process.env.POLYGON_RPC_URL || "https://polygon-rpc.com";
+// Default Polygon RPC: polygon-rpc.com y drpc.org están intermitentes.
+// publicnode.com verificado estable. En prod conviene un provider dedicado
+// (Alchemy / Infura / QuickNode) con API key.
+const POLYGON_RPC_URL = process.env.POLYGON_RPC_URL || "https://polygon-bor-rpc.publicnode.com";
 const AMOY_RPC_URL = process.env.AMOY_RPC_URL || "https://rpc-amoy.polygon.technology";
 const PRIVATE_KEY = process.env.ADMIN_PRIVATE_KEY || "";
 
