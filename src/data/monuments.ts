@@ -14,6 +14,7 @@ export interface Monument {
   videoUrl?: string;       // VR / 360 video link
   isVRAvailable?: boolean; // Si tiene experiencia VR
   tourId?: string;         // ID de recorrido guiado adquirible
+  audioUrl?: string;       // Path del audio (en /public/audio/) si está disponible
 }
 
 export const MONUMENTS: Monument[] = [
@@ -168,7 +169,8 @@ export const MONUMENTS: Monument[] = [
     lng: -99.141775,
     emoji: '🏨',
     desc: 'Hotel boutique ubicado en Avenida José María Izazaga 8, colonia Roma, alcaldía Cuauhtémoc, Ciudad de México. Un refugio de diseño contemporáneo que rinde homenaje a la historia y la cultura mexicana, con habitaciones temáticas inspiradas en los grandes artistas y arquitectos del país.',
-    audioDuration: '3:30',
+    audioDuration: '1:50',
+    audioUrl: '/audio/hotel.mp3',
     type: 'museo',
     image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVgXWGNBg6LC5gaZ1rmUXpQAGgDntOWI5TTClkJJirEquxSwry7wYM1pY&s=10',
   },

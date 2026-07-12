@@ -822,6 +822,13 @@ const timeLabel = $('player-time');
 const toggleBtn = $('btn-player-toggle');
 const toggleIcon = $('player-toggle-icon');
 
+// Singleton <audio> element. Reusado entre monumentos (cuando cambiás de
+// pin mid-playback, hacemos .pause() y cambiamos src).
+// Si el monumento no tiene audioUrl, este element queda sin src y la
+// reproducción usa el timer fake como fallback.
+const audioEl = new Audio();
+audioEl.preload = 'none'; // No descargar hasta que el user haga play explícito.
+
 function updateAudioUI() {
   const m = MONUMENTS.find((x) => x.id === selectedId);
   if (!m || !progressFill || !timeLabel) return;
@@ -893,6 +900,30 @@ function startAudio() {
   playing = true;
   if (toggleIcon) toggleIcon.textContent = 'pause';
 
+  // Si el monumento tiene audioUrl, reproducir el archivo real y dejar
+  // que el timeupdate event sincronice el progress bar. Si no, fallback
+  // al timer fake de 1 segundo que ya existía.
+  if (m.audioUrl) {
+    audioEl.src = m.audioUrl;
+    audioEl.currentTime = 0;
+    const playPromise = audioEl.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch((err) => {
+        console.warn('[startAudio] audio.play() failed, falling back to timer:', err);
+      });
+    }
+  } else {
+    if (timer) clearInterval(timer);
+    timer = setInterval(() => {
+      if (sec < dur) {
+        sec++;
+        updateAudioUI();
+      } else {
+        stopAudio();
+      }
+    }, 1000);
+  }
+
   // Desbloquear logro al reproducir audioguía si está logueado
   const badgeId = MONUMENT_BADGE_MAP[m.id];
   if (badgeId) {
@@ -931,36 +962,69 @@ function startAudio() {
         // Ignoramos silenciosamente si no está autenticado ni como invitado
       });
   }
-
-  timer = setInterval(() => {
-    if (sec < dur) {
-      sec++;
-      updateAudioUI();
-    } else {
-      stopAudio();
-    }
-  }, 1000);
 }
+
+// Sync del progress bar con el audio real. Se dispara cuando el <audio>
+// element actualiza su tiempo de reproducción.
+audioEl.addEventListener('timeupdate', () => {
+  if (!playing) return;
+  const m = MONUMENTS.find((x) => x.id === selectedId);
+  if (!m || !m.audioUrl) return;
+  const realDur = audioEl.duration;
+  if (isFinite(realDur) && realDur > 0) {
+    dur = realDur;
+  }
+  const fmtDur = (s: number) => {
+    const total = Math.floor(s);
+    const mm = Math.floor(total / 60);
+    const ss = total % 60;
+    return `${mm}:${ss.toString().padStart(2, '0')}`;
+  };
+  if (progressFill && isFinite(dur) && dur > 0) {
+    progressFill.style.width = `${(audioEl.currentTime / dur) * 100}%`;
+  }
+  if (timeLabel) {
+    timeLabel.textContent = `${fmtDur(audioEl.currentTime)} / ${m.audioDuration}`;
+  }
+});
+
+// Audio termina naturalmente → reset UI.
+audioEl.addEventListener('ended', () => {
+  stopAudio();
+});
 
 function toggleAudio() {
   if (playing) {
     if (timer) clearInterval(timer);
+    timer = null;
     playing = false;
     if (toggleIcon) toggleIcon.textContent = 'play_arrow';
+    audioEl.pause();
   } else {
     playing = true;
     if (toggleIcon) toggleIcon.textContent = 'pause';
     const m = MONUMENTS.find((x) => x.id === selectedId);
     if (!m) return;
     dur = parseDur(m.audioDuration);
-    timer = setInterval(() => {
-      if (sec < dur) {
-        sec++;
-        updateAudioUI();
-      } else {
-        stopAudio();
+
+    // Si hay audio real cargado, lo reproducimos. Si no, fallback al timer.
+    if (m.audioUrl && audioEl.src) {
+      const playPromise = audioEl.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch((err) => {
+          console.warn('[toggleAudio] audio.play() failed:', err);
+        });
       }
-    }, 1000);
+    } else {
+      timer = setInterval(() => {
+        if (sec < dur) {
+          sec++;
+          updateAudioUI();
+        } else {
+          stopAudio();
+        }
+      }, 1000);
+    }
   }
 }
 
@@ -972,6 +1036,7 @@ function stopAudio() {
   if (progressFill) progressFill.style.width = '0%';
   btnPlay?.classList.remove('hidden');
   playerUI?.classList.add('hidden');
+  audioEl.pause();
 }
 
 btnPlay?.addEventListener('click', startAudio);
