@@ -31,15 +31,21 @@ function abbrevAddress(addr: string): string {
 }
 
 async function createUserFromWallet(env: Env, address: string, phone: string | null): Promise<User> {
-  // Email sintético único derivado de la address. No se puede usar para
-  // login con password (password random), solo para identificar el user
-  // en queries internas.
   const email = `${address.toLowerCase()}@wallet.edificarte.app`;
   const name = `Wallet ${abbrevAddress(address)}`;
-  const randomPassword = crypto.randomUUID();
+  
+  const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  };
+
+  const randomPassword = generateUUID();
   const hashedPassword = await hashPassword(randomPassword);
 
-  const userId = crypto.randomUUID();
+  const userId = generateUUID();
   await env.DB.prepare(
     'INSERT INTO users (id, email, password, name, avatar_url, bio, points, likes, visits, phone) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, ?)'
   )
@@ -315,9 +321,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         console.error('[api/wallet-login] create user error:', errMsg);
-        const debugMsg = import.meta.env.PROD
-          ? 'No pudimos crear tu cuenta. Intentá de nuevo.'
-          : `No pudimos crear tu cuenta: ${errMsg}`;
+        const debugMsg = `No pudimos crear tu cuenta: ${errMsg}`;
         return new Response(
           JSON.stringify({ ok: false, error: debugMsg }),
           { status: 500, headers: { 'Content-Type': 'application/json' } }
