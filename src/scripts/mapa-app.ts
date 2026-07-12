@@ -39,13 +39,13 @@ interface VisitRecord {
 // ---------------------------------------------------------------------------
 
 import { MONUMENTS } from '../data/monuments';
+import { RECINTOS, RECINTO_TYPES, RECINTO_DEFAULT_RADIUS } from '../data/recintos';
+import type { Recinto } from '../data/recintos';
 
-// En el mapa NO mostramos monumentos remotos (sitios arqueológicos fuera de CDMX
-// con experiencia VR). Solo aparecen en Explorar. Mantenemos MONUMENTS completo
-// para que `.find()` siga resolviendo por id al abrir detail / reproducir audio / trazar ruta.
-const MAPPABLE_MONUMENTS: typeof MONUMENTS = MONUMENTS.filter(
-  (m) => m.type !== 'sitio-remoto'
-);
+// Todos los monumentos son visibles en el mapa (incluyendo Pirámides del Sol
+// en Teotihuacán, que aparece FUERA del zoom inicial — el usuario debe hacer
+// zoom-out para verla). MONUMENTS se itera completo en markers/listas.
+const MAPPABLE_MONUMENTS: typeof MONUMENTS = [...MONUMENTS];
 
 const CDMX: LatLngTuple = [19.4326, -99.1332];
 
@@ -103,14 +103,48 @@ function safeSet(key: string, value: string): void {
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T | null =>
   document.getElementById(id) as T | null;
 
-const pinIcon = (emoji: string, selected = false): L.DivIcon =>
-  L.divIcon({
-    html: `<div class="monument-pin ${selected ? 'selected' : ''}"><span style="font-size:20px;line-height:1">${emoji}</span></div>`,
+// SVG silhouette icons por monumento de CDMX (custom, 24x24 viewBox).
+// Solo se usan en el pin del mapa; el resto del UI sigue mostrando el emoji.
+const MONUMENT_ICONS: Record<string, string> = {
+  'bellas-artes': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L3 13 L8 13 L8 22"/><path d="M16 22 L16 13 L21 13 L21 22"/><path d="M3 13 L21 13"/><path d="M7 13 L7 9 M10 13 L10 9 M14 13 L14 9 M17 13 L17 9"/><path d="M4 9 L20 9"/><path d="M4 9 A 8 4 0 0 1 20 9"/><path d="M10 5 L10 2 M14 5 L14 2"/><path d="M11 2 L13 2"/><path d="M12 2 L12 1"/></svg>`,
+  'catedral': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L3 6 L7 6 L7 22"/><path d="M17 22 L17 6 L21 6 L21 22"/><path d="M3 6 L7 6 L5 2 L7 2"/><path d="M17 6 L21 6 L19 2 L17 2"/><path d="M7 8 L17 8"/><path d="M8 22 L8 12"/><path d="M16 22 L16 12"/><path d="M8 12 Q12 12 16 12"/><path d="M9 12 A 3 4 0 0 1 15 12 Z"/><path d="M12 8 L12 6"/><path d="M10.5 4 L13.5 4 M11 2 L13 2 M12 1 L12 2"/></svg>`,
+  'templo-mayor': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L21 22 L19 18 L5 18 Z"/><path d="M5 18 L19 18 L17 14 L7 14 Z"/><path d="M7 14 L17 14 L15 10 L9 10 Z"/><path d="M9 10 L15 10 L13 6 L11 6 Z"/><path d="M11 6 L13 6 L12 4 Z"/><path d="M12 22 L12 4"/></svg>`,
+  'palacio-nacional': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L3 10 L21 10 L21 22"/><path d="M5 22 L5 14 L9 14 L9 22"/><path d="M11 22 L11 14 L13 14 L13 22"/><path d="M15 22 L15 14 L19 14 L19 22"/><path d="M3 10 L12 4 L21 10"/><path d="M11 4 L13 4 L13 8 L11 8 Z"/></svg>`,
+  'torre-latino': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M5 22 L5 14 L19 14 L19 22"/><path d="M7 14 L7 8 L17 8 L17 14"/><path d="M9 8 L9 4 L15 4 L15 8"/><path d="M6 18 L8 18 M10 18 L14 18 M16 18 L18 18"/><path d="M11 4 L13 4 L13 2 L11 2 Z"/><path d="M12 2 L12 1"/></svg>`,
+  'revolucion': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M4 22 L4 8"/><path d="M20 22 L20 8"/><path d="M8 22 L8 10"/><path d="M16 22 L16 10"/><path d="M4 8 Q12 4 20 8"/><path d="M8 10 L16 10"/><path d="M10 10 L10 6 Q12 4 14 6 L14 10"/><path d="M12 4 L12 2"/></svg>`,
+  'angel': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M6 22 L6 18 L18 18 L18 22"/><path d="M9 18 L9 14 L15 14 L15 18"/><path d="M10 14 L10 8 L14 8 L14 14"/><path d="M10 8 L14 8 L14 5 Q12 3 10 5 Z"/><path d="M12 5 L12 3"/><path d="M9 3 L9 2 M15 3 L15 2"/><path d="M8 3 Q10 1 12 1 Q14 1 16 3"/><path d="M11 1 L13 1"/><path d="M9 1 Q7 0 5 1 M15 1 Q17 0 19 1"/></svg>`,
+  'chapultepec': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L3 9 L21 9 L21 22"/><path d="M3 9 L3 7 L5 7 L5 9"/><path d="M7 9 L7 5 L9 5 L9 9"/><path d="M11 9 L11 4 L13 4 L13 9"/><path d="M15 9 L15 5 L17 5 L17 9"/><path d="M19 9 L19 7 L21 7 L21 9"/><path d="M5 9 L5 22"/><path d="M9 9 L9 22"/><path d="M11 9 L11 22"/><path d="M13 9 L13 22"/><path d="M15 9 L15 22"/><path d="M17 9 L17 22"/><path d="M19 9 L19 22"/><path d="M11 18 L13 18 L13 22 L11 22 Z"/></svg>`,
+  'tres-culturas': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M2 22 L2 18 L6 18 L6 22"/><path d="M2 18 L6 18 L5 14 L3 14 Z"/><path d="M3 14 L5 14 L4.5 11 L3.5 11 Z"/><path d="M4 11 L4 10"/><path d="M8 22 L8 14 L13 14 L13 22"/><path d="M10 14 L10 6 L11 6 L11 14"/><path d="M9 6 L12 6"/><path d="M10.5 4 L10.5 2 L11.5 2 L11.5 4"/><path d="M9 14 L9 11 A 2 1.5 0 0 1 13 11 L13 14"/><path d="M15 22 L15 8 L21 8 L21 22"/><path d="M16 10 L17 10 M16 12 L17 12 M16 14 L17 14 M16 16 L17 16 M19 10 L20 10 M19 12 L20 12 M19 14 L20 14 M19 16 L20 16"/><path d="M17 8 L19 8 L19 5 L17 5 Z"/></svg>`,
+  'piramides-sol': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 22 L23 22"/><path d="M2 22 L22 22 L20 18 L4 18 Z"/><path d="M4 18 L20 18 L18.5 14 L5.5 14 Z"/><path d="M5.5 14 L18.5 14 L17 10 L7 10 Z"/><path d="M7 10 L17 10 L15 6 L9 6 Z"/><path d="M9 6 L15 6 L13 3 L11 3 Z"/><path d="M10.5 3 L13.5 3 L13 1 L11 1 Z"/><path d="M12 22 L12 1"/></svg>`,
+  'hotel-virreyes': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M4 22 L4 8 L20 8 L20 22"/><path d="M3 8 L12 3 L21 8"/><path d="M6 22 L6 12 L10 12 L10 22"/><path d="M14 22 L14 12 L18 12 L18 22"/><path d="M7 16 L9 16 M7 18 L9 18 M15 16 L17 16 M15 18 L17 18"/><path d="M11 6 L11 4 M13 6 L13 4 M11 5 L13 5"/></svg>`,
+};
+
+const pinIcon = (monumentId: string, emoji: string, selected = false): L.DivIcon => {
+  const svg =
+    MONUMENT_ICONS[monumentId] ||
+    `<span style="font-size:20px;line-height:1">${emoji}</span>`;
+  return L.divIcon({
+    html: `<div class="monument-pin ${selected ? 'selected' : ''}">${svg}</div>`,
     className: '',
     iconSize: [40, 40],
     iconAnchor: [20, 20],
     popupAnchor: [0, -22],
   });
+};
+
+// Pin distinto para recintos históricos (más pequeño, color ámbar)
+const recintoPinIcon = (recinto: Recinto): L.DivIcon => {
+  const typeColor = RECINTO_TYPES[recinto.type]?.color || '#a16207';
+  return L.divIcon({
+    html: `<div class="recinto-pin" style="--pin-color:${typeColor}" title="${recinto.name}">
+      <span class="material-symbols-outlined">museum</span>
+    </div>`,
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -16],
+  });
+};
 
 const parseDur = (s: string): number => {
   const p = s.split(':');
@@ -142,7 +176,7 @@ function addMarkers(list: Monument[]) {
   markers.forEach((m) => map.removeLayer(m.inst));
   markers.length = 0;
   list.forEach((m) => {
-    const inst = L.marker([m.lat, m.lng], { icon: pinIcon(m.emoji) })
+    const inst = L.marker([m.lat, m.lng], { icon: pinIcon(m.id, m.emoji) })
       .addTo(map)
       .on('click', (e) => {
         L.DomEvent.stopPropagation(e);
@@ -153,6 +187,7 @@ function addMarkers(list: Monument[]) {
 }
 
 addMarkers(MAPPABLE_MONUMENTS);
+addRecintoMarkers();
 
 map.on('click', () => deselect());
 
@@ -205,6 +240,163 @@ sheetHeader?.addEventListener('click', () => {
 });
 
 bottomSheet?.addEventListener('click', (e) => e.stopPropagation());
+
+// ---------------------------------------------------------------------------
+// Recintos históricos (capa secundaria, no interactúan con el bottom sheet)
+// ---------------------------------------------------------------------------
+
+const recintoMarkers: LMarker[] = [];
+const recintoPolygons: (L.Circle | L.Polygon)[] = [];
+
+function addRecintoMarkers() {
+  recintoMarkers.forEach((m) => map.removeLayer(m));
+  recintoMarkers.length = 0;
+  recintoPolygons.forEach((p) => map.removeLayer(p));
+  recintoPolygons.length = 0;
+  RECINTOS.forEach((r) => {
+    const typeColor = RECINTO_TYPES[r.type]?.color || '#a16207';
+
+    // 1) Polígono delimitando el área (círculo o polígono custom)
+    let shapeLayer: L.Circle | L.Polygon;
+    if (r.polygon && r.polygon.length >= 3) {
+      shapeLayer = L.polygon(r.polygon, {
+        color: typeColor,
+        weight: 2,
+        opacity: 0.7,
+        fillColor: typeColor,
+        fillOpacity: 0.15,
+        interactive: false,
+        className: 'recinto-shape',
+      }).addTo(map);
+    } else {
+      const radius = r.radiusMeters ?? RECINTO_DEFAULT_RADIUS[r.type] ?? 250;
+      shapeLayer = L.circle([r.lat, r.lng], {
+        radius,
+        color: typeColor,
+        weight: 2,
+        opacity: 0.7,
+        fillColor: typeColor,
+        fillOpacity: 0.15,
+        interactive: false,
+        className: 'recinto-shape',
+      }).addTo(map);
+    }
+    recintoPolygons.push(shapeLayer);
+
+    // 2) Pin del recinto (siempre encima)
+    const inst = L.marker([r.lat, r.lng], { icon: recintoPinIcon(r) })
+      .addTo(map)
+      .on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        showRecintoPopup(r);
+      });
+    recintoMarkers.push(inst);
+  });
+}
+
+function showRecintoPopup(r: Recinto) {
+  const typeLabel = RECINTO_TYPES[r.type]?.label || 'Sitio histórico';
+  const html = `
+    <div class="recinto-popup">
+      <div class="recinto-popup-header" style="background-color:${RECINTO_TYPES[r.type]?.color || '#a16207'}">
+        <span class="recinto-popup-emoji">${r.emoji}</span>
+        <span class="recinto-popup-era">${typeLabel} · ${r.era}</span>
+      </div>
+      <div class="recinto-popup-body">
+        <h3 class="recinto-popup-title">${r.name}</h3>
+        <p class="recinto-popup-year">Fundado en ${r.foundedYear < 0 ? `${Math.abs(r.foundedYear)} a.C.` : r.foundedYear}</p>
+        <p class="recinto-popup-desc">${r.shortDesc}</p>
+        <div class="recinto-popup-fact">
+          <strong>¿Sabías que…?</strong> ${r.fact}
+        </div>
+        <button class="recinto-popup-btn" data-recinto-id="${r.id}">Ver más detalles</button>
+      </div>
+    </div>
+  `;
+  const popup = L.popup({
+    className: 'recinto-leaflet-popup',
+    maxWidth: 280,
+    minWidth: 240,
+    autoPan: true,
+    closeButton: true,
+  })
+    .setLatLng([r.lat, r.lng])
+    .setContent(html);
+
+  // Wire up "Ver más detalles" usando popupopen (se dispara cuando el DOM está listo)
+  map.once('popupopen', (e) => {
+    if (e.popup !== popup) return;
+    const btn = (e.popup.getElement() as HTMLElement | undefined)?.querySelector<HTMLButtonElement>(
+      `.recinto-popup-btn[data-recinto-id="${r.id}"]`
+    );
+    if (btn) btn.addEventListener('click', () => openRecintoModal(r.id));
+  });
+
+  popup.openOn(map);
+}
+
+// Modal fullscreen para detalle completo del recinto
+function openRecintoModal(id: string) {
+  const r = RECINTOS.find((x) => x.id === id);
+  if (!r) return;
+  activeRecintoId = id;
+  const modal = $('recinto-modal');
+  const title = $('recinto-modal-title');
+  const emoji = $('recinto-modal-emoji');
+  const era = $('recinto-modal-era');
+  const year = $('recinto-modal-year');
+  const desc = $('recinto-modal-fact-text');
+  const fullDesc = $('recinto-modal-full-desc');
+  const wiki = $('recinto-modal-wiki');
+  const factContainer = $('recinto-modal-fact-container');
+  const typeLabel = RECINTO_TYPES[r.type]?.label || 'Sitio histórico';
+
+  if (title) title.textContent = r.name;
+  if (emoji) emoji.textContent = r.emoji;
+  if (era) era.textContent = `${typeLabel} · ${r.era}`;
+  if (year)
+    year.textContent = `Fundado en ${r.foundedYear < 0 ? `${Math.abs(r.foundedYear)} a.C.` : r.foundedYear}`;
+  if (desc) desc.textContent = r.fact;
+  if (fullDesc) fullDesc.textContent = r.shortDesc;
+  if (wiki) wiki.setAttribute('href', r.wikipediaUrl);
+  if (factContainer)
+    factContainer.style.borderLeftColor = RECINTO_TYPES[r.type]?.color || '#a16207';
+
+  if (modal) {
+    map.closePopup();
+    modal.classList.remove('hidden');
+    void modal.offsetHeight;
+    modal.classList.remove('opacity-0');
+  }
+}
+
+function closeRecintoModal() {
+  const modal = $('recinto-modal');
+  if (modal) {
+    modal.classList.add('opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 250);
+  }
+}
+
+// Cerrar modal de recinto
+$('recinto-modal-close')?.addEventListener('click', closeRecintoModal);
+$('recinto-modal')?.addEventListener('click', (e) => {
+  if (e.target === $('recinto-modal')) closeRecintoModal();
+});
+
+// Botón "Centrar en el mapa" — guarda el id activo y centra al reabrir
+let activeRecintoId: string | null = null;
+$('recinto-modal-locate')?.addEventListener('click', () => {
+  if (activeRecintoId) {
+    const r = RECINTOS.find((x) => x.id === activeRecintoId);
+    if (r) {
+      map.setView([r.lat, r.lng], 17, { animate: true });
+      closeRecintoModal();
+      // Pequeño delay para que el modal cierre antes de abrir el popup
+      setTimeout(() => showRecintoPopup(r), 350);
+    }
+  }
+});
 
 // ---------------------------------------------------------------------------
 // List render
@@ -392,7 +584,7 @@ function selectMonument(id: string) {
   $('player-time')!.textContent = `0:00 / ${m.audioDuration}`;
 
   stopAudio();
-  markers.forEach((x) => x.inst.setIcon(pinIcon(x.emoji, x.id === id)));
+  markers.forEach((x) => x.inst.setIcon(pinIcon(x.id, x.emoji, x.id === id)));
   updateVisitSection(m);
 
   viewList?.classList.add('hidden');
@@ -405,7 +597,7 @@ function selectMonument(id: string) {
 function deselect() {
   selectedId = null;
   stopAudio();
-  markers.forEach((x) => x.inst.setIcon(pinIcon(x.emoji, false)));
+  markers.forEach((x) => x.inst.setIcon(pinIcon(x.id, x.emoji, false)));
   viewDetail?.classList.add('hidden');
   viewList?.classList.remove('hidden');
   isCollapsed = true;
@@ -923,7 +1115,62 @@ $('btn-locate')?.addEventListener('click', () => {
   else requestLocationPermission();
 });
 
+// Toast reusable para mensajes informativos al usuario
+function showToast(message: string, variant: 'info' | 'success' | 'warn' = 'info') {
+  const colorMap = {
+    info: 'border-blue-200/50 bg-blue-50/95 text-blue-900',
+    success: 'border-emerald-200/50 bg-emerald-50/95 text-emerald-900',
+    warn: 'border-amber-200/50 bg-amber-50/95 text-amber-900',
+  };
+  const iconMap = {
+    info: 'info',
+    success: 'check_circle',
+    warn: 'warning',
+  };
+  const toast = document.createElement('div');
+  toast.className = `fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex max-w-[calc(100vw-32px)] items-start gap-2.5 rounded-2xl border px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-md transition-all duration-500 scale-90 opacity-0 ${colorMap[variant]}`;
+  toast.setAttribute('role', 'status');
+  toast.innerHTML = `
+    <span class="material-symbols-outlined mt-0.5 text-[18px] flex-shrink-0">${iconMap[variant]}</span>
+    <span class="text-[12px] font-medium leading-snug">${message}</span>
+  `;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.classList.remove('scale-90', 'opacity-0');
+    toast.classList.add('scale-100', 'opacity-100');
+  });
+  setTimeout(() => {
+    toast.classList.remove('scale-100', 'opacity-100');
+    toast.classList.add('scale-90', 'opacity-0');
+    setTimeout(() => toast.remove(), 500);
+  }, 6000);
+}
+
+// Notificar al usuario que hay sitios fuera del zoom inicial (ej. Pirámides del Sol en Teotihuacán)
+function notifyRemoteSites() {
+  const remoteMonuments = MONUMENTS.filter((m) => m.type === 'sitio-remoto');
+  if (remoteMonuments.length === 0) return;
+  const names = remoteMonuments.map((m) => m.name).join(', ');
+  showToast(
+    `Hay ${remoteMonuments.length} sitio${remoteMonuments.length > 1 ? 's' : ''} turístico${
+      remoteMonuments.length > 1 ? 's' : ''
+    } fuera del centro (${names}). Hacé zoom-out o arrastrá el mapa para verlo${
+      remoteMonuments.length > 1 ? 's' : ''
+    }.`,
+    'info'
+  );
+}
+
 setTimeout(() => map.invalidateSize(), 200);
+
+// Mostrar el aviso después de que el mapa termine de cargar
+window.addEventListener('edificarte-modals-done', () => {
+  setTimeout(notifyRemoteSites, 800);
+});
+// Si ya estaba en el mapa sin modales, mostrar inmediatamente
+if (safeGet('edificarte_lang') && safeGet('edificarte_welcome_shown')) {
+  setTimeout(notifyRemoteSites, 1200);
+}
 
 // ---------------------------------------------------------------------------
 // Rutas de la IA (L.polyline)

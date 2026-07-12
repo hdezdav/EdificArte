@@ -396,6 +396,30 @@ const isEmoji = (str: string) => {
           </div>
         </div>
 
+        <!-- Mis Reservas (tours) — leído de localStorage -->
+        <section class="space-y-4" aria-labelledby="reservations-heading">
+          <div class="flex items-center justify-between">
+            <h2 id="reservations-heading" class="text-lg font-bold text-slate-800 dark:text-slate-200">
+              Mis Reservas
+            </h2>
+            <span id="reservations-count-label" class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+              0 Reservas
+            </span>
+          </div>
+
+          <div id="reservations-list" class="grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
+
+          <div id="reservations-empty" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-center dark:border-slate-800 dark:bg-slate-900/40">
+            <span class="material-symbols-outlined text-[28px] text-slate-300 dark:text-slate-600 select-none">event_busy</span>
+            <p class="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Aún no tenés reservas de recorridos guiados.
+            </p>
+            <p class="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+              Explorá la sección Turismo de la página principal para reservar tu primer tour.
+            </p>
+          </div>
+        </section>
+
         <div class="rounded-2xl border border-slate-200/50 bg-slate-50 p-6 text-center dark:border-slate-800/50 dark:bg-slate-900/40">
           <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">
             Billetera Web3 Integrada
@@ -889,5 +913,161 @@ const isEmoji = (str: string) => {
         setTimeout(() => alert.remove(), 500);
       }, 3500);
     });
+
+    // 6. Renderizar "Mis Reservas" desde localStorage
+    renderReservations();
   });
+
+  /**
+   * Renderiza las reservas de tours guardadas en localStorage bajo
+   * 'edificarte_reservations'. Usa textContent y atributos para datos
+   * user-controlled → evita XSS. Mantiene orden: más recientes primero.
+   */
+  function renderReservations(): void {
+    const STORAGE_KEY = 'edificarte_reservations';
+    const listEl = document.getElementById('reservations-list');
+    const emptyEl = document.getElementById('reservations-empty');
+    const countEl = document.getElementById('reservations-count-label');
+    if (!listEl || !emptyEl || !countEl) return;
+
+    let reservations: Array<Record<string, unknown>> = [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) reservations = JSON.parse(raw);
+      if (!Array.isArray(reservations)) reservations = [];
+    } catch (e) {
+      console.warn('No se pudo leer el storage de reservas:', e);
+      reservations = [];
+    }
+
+    // Orden: más recientes primero
+    reservations.sort((a, b) => {
+      const at = new Date(a.createdAt as string).getTime() || 0;
+      const bt = new Date(b.createdAt as string).getTime() || 0;
+      return bt - at;
+    });
+
+    // Limpiar contenedor
+    listEl.innerHTML = '';
+
+    if (reservations.length === 0) {
+      listEl.classList.add('hidden');
+      emptyEl.classList.remove('hidden');
+      countEl.textContent = '0 Reservas';
+      return;
+    }
+
+    emptyEl.classList.add('hidden');
+    listEl.classList.remove('hidden');
+    countEl.textContent = `${reservations.length} ${reservations.length === 1 ? 'Reserva' : 'Reservas'}`;
+
+    reservations.forEach((r) => {
+      const card = document.createElement('div');
+      card.className =
+        'group flex gap-3 rounded-2xl border border-slate-200/60 bg-white p-3 shadow-sm transition-all hover:border-amber-200/70 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-amber-900/40';
+
+      const tourTitle = (r.tourTitle as string) || 'Tour';
+      const tourImage = (r.tourImage as string) || '';
+      const name = (r.name as string) || '';
+      const date = (r.date as string) || '';
+      const people = (r.people as number) || 1;
+      const totalMXN = (r.totalMXN as number) || 0;
+      const status = (r.status as string) || 'pending';
+      const reservationId = (r.id as string) || '';
+
+      // Thumb (imagen vía atributo para evitar XSS)
+      const thumb = document.createElement('div');
+      thumb.className =
+        'flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-amber-50 dark:bg-amber-950/30';
+      if (tourImage) {
+        const img = document.createElement('img');
+        img.src = tourImage;
+        img.alt = '';
+        img.loading = 'lazy';
+        img.className = 'h-full w-full object-cover';
+        img.referrerPolicy = 'no-referrer';
+        thumb.appendChild(img);
+      } else {
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-outlined text-[28px] text-amber-500';
+        icon.textContent = 'tour';
+        thumb.appendChild(icon);
+      }
+      card.appendChild(thumb);
+
+      // Body
+      const body = document.createElement('div');
+      body.className = 'flex min-w-0 flex-1 flex-col justify-between';
+
+      const titleEl = document.createElement('h3');
+      titleEl.className = 'truncate text-sm font-bold text-slate-800 dark:text-slate-200';
+      titleEl.textContent = tourTitle;
+      body.appendChild(titleEl);
+
+      const meta = document.createElement('div');
+      meta.className = 'mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400';
+
+      const dateEl = document.createElement('span');
+      dateEl.className = 'inline-flex items-center gap-0.5 font-semibold';
+      dateEl.textContent = `📅 ${formatDate(date)}`;
+      meta.appendChild(dateEl);
+
+      const peopleEl = document.createElement('span');
+      peopleEl.className = 'inline-flex items-center gap-0.5';
+      peopleEl.textContent = `👥 ${people} ${people === 1 ? 'persona' : 'personas'}`;
+      meta.appendChild(peopleEl);
+
+      if (name) {
+        const nameEl = document.createElement('span');
+        nameEl.className = 'inline-flex items-center gap-0.5 truncate';
+        nameEl.textContent = `· ${name}`;
+        meta.appendChild(nameEl);
+      }
+      body.appendChild(meta);
+
+      // Footer: total + status
+      const footer = document.createElement('div');
+      footer.className = 'mt-1.5 flex items-center justify-between gap-2';
+
+      const totalEl = document.createElement('span');
+      totalEl.className = 'text-xs font-bold text-slate-700 dark:text-slate-300';
+      totalEl.textContent = `$${totalMXN.toLocaleString('es-MX')} MXN`;
+      footer.appendChild(totalEl);
+
+      const statusEl = document.createElement('span');
+      const isConfirmed = status === 'confirmed';
+      statusEl.className =
+        'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ' +
+        (isConfirmed
+          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300');
+      statusEl.textContent = isConfirmed ? '✓ Confirmada' : '⏳ Pendiente';
+      footer.appendChild(statusEl);
+
+      body.appendChild(footer);
+
+      if (reservationId) {
+        const idEl = document.createElement('span');
+        idEl.className = 'mt-0.5 block font-mono text-[9px] text-slate-300 dark:text-slate-600';
+        idEl.textContent = reservationId;
+        body.appendChild(idEl);
+      }
+
+      card.appendChild(body);
+      listEl.appendChild(card);
+    });
+  }
+
+  /** Formato corto de fecha YYYY-MM-DD → "12 mar 2026" en es-MX. */
+  function formatDate(iso: string): string {
+    if (!iso) return '—';
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const day = parseInt(parts[2], 10);
+    const monthIdx = parseInt(parts[1], 10) - 1;
+    const year = parts[0];
+    if (isNaN(day) || monthIdx < 0 || monthIdx > 11) return iso;
+    return `${day} ${months[monthIdx]} ${year}`;
+  }
 </script>

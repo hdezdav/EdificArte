@@ -3,6 +3,8 @@ import Layout from '../layouts/Layout.astro';
 import AiLoader from '../components/ui/AiLoader.astro';
 import { MONUMENTS } from '../data/monuments';
 import tianquiztlisProducts from '../data/tianquiztlis_products.json';
+import { TOURS, TOUR_GUIDE } from '../data/tours';
+import type { Tour } from '../data/tours';
 
 type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'tienda' | 'sitio-remoto';
 
@@ -22,6 +24,11 @@ interface Experience {
   sku?: string;
   videoUrl?: string;
   isVRAvailable?: boolean;
+  meetingPoint?: string;
+  currency?: string;
+  duration?: string;
+  highlights?: string[];
+  isTour?: boolean;
   translations?: {
     es: { name: string; desc: string; category: string; cta: string; guide: string };
     en: { name: string; desc: string; category: string; cta: string; guide: string };
@@ -294,6 +301,28 @@ const categoryLabel: Record<Category, string> = {
 };
 
 const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cultura', 'gastronomia', 'museo', 'tienda', 'sitio-remoto'];
+
+// Helper: convierte un Tour en Experience para mezclarlo en el carousel de Turismo
+function toExperience(tour: Tour): Experience {
+  return {
+    id: tour.id,
+    title: tour.title,
+    description: tour.description,
+    image: tour.image,
+    category: 'turismo',
+    tagColor: 'amber',
+    url: '#',
+    cta: 'Reservar',
+    rating: 4.98,
+    reviewCount: 67,
+    price: `$${tour.pricePerPerson} MXN`,
+    highlights: tour.highlights,
+    meetingPoint: tour.meetingPoint,
+    currency: tour.currency,
+    duration: tour.duration,
+    isTour: true,
+  };
+}
 ---
 
 <Layout title="EdificARTE — Explorar">
@@ -392,7 +421,9 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
     <div id="experiences-sections-container" class="space-y-6">
       {
         categories.map((cat) => {
-          const catExp = todasLasExperiencias.filter(exp => exp.category === cat);
+          const catExp = cat === 'turismo'
+            ? [...todasLasExperiencias.filter(exp => exp.category === cat), ...TOURS.map(toExperience)]
+            : todasLasExperiencias.filter(exp => exp.category === cat);
           if (catExp.length === 0) return null;
           
           return (
@@ -484,6 +515,10 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                       data-id={exp.id}
                       data-is-vr={exp.isVRAvailable ? 'true' : 'false'}
                       data-vr-url={exp.videoUrl || ''}
+                      data-tour-id={exp.isTour ? exp.id : undefined}
+                      data-tour-title={exp.isTour ? exp.title : undefined}
+                      data-tour-meeting={exp.isTour ? (exp.meetingPoint || '') : undefined}
+                      data-tour-image={exp.isTour ? exp.image : undefined}
                       class={`exp-card group relative flex h-[350px] w-[250px] sm:w-[270px] flex-none snap-start flex-col overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md ${exp.translations ? 'cursor-pointer' : ''}`}
                     >
                       {/* Image */}
@@ -538,6 +573,17 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                           </p>
                         </div>
 
+                        {/* Highlights (solo para tours) */}
+                        {exp.isTour && exp.highlights && (
+                          <div class="px-3 pt-2 pb-1 flex flex-wrap gap-1">
+                            {exp.highlights.slice(0, 2).map((h) => (
+                              <span class="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200/50 font-semibold">
+                                {h.length > 30 ? h.substring(0, 30) + '…' : h}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
                         {/* Footer */}
                         <div class="mt-auto pt-3 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/60">
                           {exp.rating && (
@@ -558,7 +604,15 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
                           )}
 
                           {
-                            exp.translations ? (
+                            exp.isTour ? (
+                              <button
+                                type="button"
+                                class="ml-auto inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97] tour-reserve-btn"
+                              >
+                                <span class="material-symbols-outlined text-[12px]">event_available</span>
+                                {exp.cta}
+                              </button>
+                            ) : exp.translations ? (
                               <button
                                 type="button"
                                 class="ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97] guide-trigger-btn"
@@ -605,6 +659,9 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
         </p>
       </div>
     </div>
+
+    <!-- Recorridos Guiados: ahora viven DENTRO del carousel de Turismo (cards .exp-card con isTour) -->
+      <!-- (Sección estática de tours removida; ahora viven dentro del carousel de Turismo) -->
 
   <!-- Museum/Guide Details Modal (Overlay) -->
   <div
@@ -914,6 +971,105 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
     </div>
   </div>
 
+  <!-- Tour Reservation Modal (Overlay) -->
+  <div
+    id="tour-modal"
+    class="fixed inset-0 z-50 flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tour-modal-title"
+  >
+    <div class="w-full max-w-md scale-100 transform rounded-t-3xl border border-white/20 bg-white/95 p-5 shadow-2xl backdrop-blur-2xl transition-all duration-300 sm:rounded-[2rem] dark:border-slate-800/60 dark:bg-slate-900/95 max-h-[90vh] overflow-y-auto">
+      <!-- Header -->
+      <div class="flex items-start justify-between gap-3 pb-3 border-b border-amber-100 dark:border-amber-900/40">
+        <div class="flex-1 min-w-0">
+          <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 border border-amber-200/50">
+            <span class="material-symbols-outlined text-[12px]">tour</span>
+            Recorrido guiado
+          </span>
+          <h2 id="tour-modal-title" class="mt-2 text-base font-extrabold text-slate-900 dark:text-white leading-tight">
+            Reservar tour
+          </h2>
+          <p id="tour-modal-subtitle" class="mt-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+            —
+          </p>
+        </div>
+        <button type="button" id="tour-modal-close" class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors flex-shrink-0" aria-label="Cerrar">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Tour summary -->
+      <div class="mt-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 p-3">
+        <p class="text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed">
+          <strong>Incluye:</strong> guía e intérprete para los acompañantes.<br/>
+          <strong>Precio:</strong> $480 MXN por persona.<br/>
+          <strong>Guía:</strong> Mtro. Henryk Karol Kocyba (Universidad de Varsovia).
+        </p>
+      </div>
+
+      <!-- Form -->
+      <form id="tour-reservation-form" class="mt-4 space-y-3">
+        <input type="hidden" id="tour-id-input" name="tourId" />
+
+        <div>
+          <label for="tour-name" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre completo</label>
+          <input type="text" id="tour-name" name="name" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" placeholder="Tu nombre" />
+        </div>
+
+        <div>
+          <label for="tour-email" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Email</label>
+          <input type="email" id="tour-email" name="email" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" placeholder="tu@email.com" />
+        </div>
+
+        <div>
+          <label for="tour-phone" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Teléfono</label>
+          <input type="tel" id="tour-phone" name="phone" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" placeholder="+52 55 1234 5678" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="tour-date" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Fecha preferida</label>
+            <input type="date" id="tour-date" name="date" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" />
+          </div>
+          <div>
+            <label for="tour-people" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Personas</label>
+            <input type="number" id="tour-people" name="people" required min="1" max="20" value="2" class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400" />
+          </div>
+        </div>
+
+        <div>
+          <label for="tour-notes" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Notas (opcional)</label>
+          <textarea id="tour-notes" name="notes" rows="2" class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 resize-none" placeholder="Algún requerimiento especial..."></textarea>
+        </div>
+
+        <!-- Total -->
+        <div class="flex items-center justify-between rounded-xl bg-slate-100 dark:bg-slate-800 p-3">
+          <span class="text-[12px] font-bold text-slate-700 dark:text-slate-300">Total estimado</span>
+          <span id="tour-total" class="text-lg font-extrabold text-amber-700 dark:text-amber-400">$960 MXN</span>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" id="tour-submit-btn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-3 text-sm shadow-sm transition-all active:scale-[0.97]">
+          <span class="material-symbols-outlined text-[18px]">send</span>
+          Enviar solicitud de reserva
+        </button>
+      </form>
+
+      <!-- Success state (hidden by default) -->
+      <div id="tour-success-state" class="hidden mt-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 p-5 text-center">
+        <span class="material-symbols-outlined text-4xl text-emerald-600 dark:text-emerald-400">check_circle</span>
+        <h3 class="mt-2 text-base font-bold text-emerald-900 dark:text-emerald-200">¡Solicitud enviada!</h3>
+        <p class="mt-1 text-[12px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
+          Te contactaremos por email y WhatsApp para confirmar disponibilidad y coordinar el pago.
+        </p>
+        <button type="button" id="tour-success-close" class="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 text-[12px] transition-all">
+          Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+
   </Layout>
 
 <style>
@@ -986,7 +1142,7 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
       // Si la categoría de la sección no coincide con la activa, o si no hay cartas visibles en ella, ocultamos toda la sección
       const isSectionVisible = (activeCategory === 'todos' || sectionCategory === activeCategory) && (visibleCardsInSection > 0);
       section.classList.toggle('hidden-section', !isSectionVisible);
-      
+
       totalVisibleCount += visibleCardsInSection;
     });
 
@@ -1657,4 +1813,151 @@ const categories: Exclude<Category, 'todos'>[] = ['turismo', 'patrimonio', 'cult
 
   // Inicializar carrito en la carga
   loadCart();
+
+  // --- TOUR RESERVATION MODAL ---
+
+  const tourModal = document.getElementById('tour-modal');
+  const tourModalClose = document.getElementById('tour-modal-close');
+  const tourModalTitle = document.getElementById('tour-modal-title');
+  const tourModalSubtitle = document.getElementById('tour-modal-subtitle');
+  const tourIdInput = document.getElementById('tour-id-input') as HTMLInputElement | null;
+  const tourForm = document.getElementById('tour-reservation-form') as HTMLFormElement | null;
+  const tourTotalEl = document.getElementById('tour-total');
+  const tourSuccess = document.getElementById('tour-success-state');
+  const tourSuccessClose = document.getElementById('tour-success-close');
+  const tourPeopleInput = document.getElementById('tour-people') as HTMLInputElement | null;
+  const tourSubmitBtn = document.getElementById('tour-submit-btn') as HTMLButtonElement | null;
+
+  const TOUR_PRICE = 480;
+
+  function openTourModal(tourId: string, title: string, subtitle: string) {
+    if (!tourModal) return;
+    if (tourIdInput) tourIdInput.value = tourId;
+    if (tourModalTitle) tourModalTitle.textContent = title;
+    if (tourModalSubtitle) tourModalSubtitle.textContent = subtitle;
+    updateTourTotal();
+    if (tourSuccess) tourSuccess.classList.add('hidden');
+    if (tourForm) tourForm.classList.remove('hidden');
+    tourModal.classList.remove('hidden');
+    void tourModal.offsetHeight;
+    tourModal.classList.remove('opacity-0');
+    if (tourPeopleInput) tourPeopleInput.value = '2';
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateInput = document.getElementById('tour-date') as HTMLInputElement | null;
+    if (dateInput) dateInput.min = tomorrow.toISOString().split('T')[0];
+  }
+
+  function closeTourModal() {
+    if (!tourModal) return;
+    tourModal.classList.add('opacity-0');
+    setTimeout(() => tourModal.classList.add('hidden'), 250);
+  }
+
+  function updateTourTotal() {
+    const n = parseInt(tourPeopleInput?.value || '1', 10) || 1;
+    if (tourTotalEl) {
+      tourTotalEl.textContent = `$${(n * TOUR_PRICE).toLocaleString('es-MX')} MXN`;
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.tour-reserve-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = btn.closest<HTMLElement>('[data-tour-id]');
+      if (!card) return;
+      openTourModal(
+        card.dataset.tourId || '',
+        card.dataset.tourTitle || 'Tour',
+        card.dataset.tourMeeting || ''
+      );
+    });
+  });
+
+  tourPeopleInput?.addEventListener('input', updateTourTotal);
+
+  tourModalClose?.addEventListener('click', closeTourModal);
+  tourSuccessClose?.addEventListener('click', closeTourModal);
+  tourModal?.addEventListener('click', (e) => {
+    if (e.target === tourModal) closeTourModal();
+  });
+
+  tourForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!tourSubmitBtn || !tourForm) return;
+
+    // Snapshot de datos de la card ANTES del await (puede re-renderizarse)
+    const tourId = tourIdInput?.value || '';
+    const tourCard = document.querySelector<HTMLElement>(`[data-tour-id="${tourId}"]`);
+    const tourTitle = tourCard?.dataset.tourTitle || 'Tour';
+    const tourImage = tourCard?.dataset.tourImage || '';
+
+    const formData = new FormData(tourForm);
+    const data = {
+      tourId,
+      name: formData.get('name'),
+      email: formData.get('email'),
+      phone: formData.get('phone'),
+      date: formData.get('date'),
+      people: parseInt(formData.get('people') as string, 10) || 1,
+      notes: formData.get('notes') || '',
+    };
+
+    if (!data.name || !data.email || !data.phone || !data.date || !data.people) {
+      alert('Por favor completá todos los campos obligatorios.');
+      return;
+    }
+
+    tourSubmitBtn.disabled = true;
+    const originalText = tourSubmitBtn.innerHTML;
+    tourSubmitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Enviando...';
+
+    try {
+      const response = await fetch('/api/reservar-tour', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error('Error en el servidor');
+
+      const result = await response.json();
+
+      // Persistir reserva en localStorage para que aparezca en /yo
+      try {
+        const STORAGE_KEY = 'edificarte_reservations';
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<Record<string, unknown>>;
+        const reservation = {
+          id: result.reservationId || `RES-${Date.now()}`,
+          tourId: data.tourId,
+          tourTitle,
+          tourImage,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          date: data.date,
+          people: data.people,
+          totalMXN: result.totalMXN || 0,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+        existing.push(reservation);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      } catch (storageErr) {
+        console.warn('No se pudo guardar la reserva en localStorage:', storageErr);
+      }
+
+      if (tourSuccess) tourSuccess.classList.remove('hidden');
+      if (tourForm) tourForm.classList.add('hidden');
+      tourForm.reset();
+      if (tourPeopleInput) tourPeopleInput.value = '2';
+    } catch (err) {
+      console.error('Error al reservar:', err);
+      alert('Hubo un error al enviar la solicitud. Por favor intentá de nuevo o contactanos por WhatsApp.');
+    } finally {
+      tourSubmitBtn.disabled = false;
+      tourSubmitBtn.innerHTML = originalText;
+    }
+  });
 </script>
