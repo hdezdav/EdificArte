@@ -1,0 +1,125 @@
+---
+import type { Locale } from '../lib/i18n';
+import { SUPPORTED_LOCALES } from '../lib/i18n';
+
+interface Props {
+  current?: Locale;
+}
+
+const { current = 'es' } = Astro.props;
+---
+
+<div
+  id="locale-switcher"
+  class="inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white/80 p-1 text-[11px] font-semibold backdrop-blur-md shadow-sm dark:border-slate-800/80 dark:bg-slate-900/80"
+  role="group"
+  aria-label="Language"
+>
+  {
+    SUPPORTED_LOCALES.map((loc) => (
+      <button
+        type="button"
+        data-locale={loc}
+        aria-pressed={current === loc}
+        class:list={[
+          'locale-btn rounded-full px-3 py-1 transition-all duration-200 uppercase tracking-wider',
+          current === loc
+            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm font-bold'
+            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
+        ]}
+      >
+        {loc === 'es' ? 'Español' : 'English'}
+      </button>
+    ))
+  }
+</div>
+
+<script>
+  import { setLocale, detectLocale, type Locale, SUPPORTED_LOCALES, translate } from '../lib/i18n';
+  import esDict from '../i18n/es.json';
+  import enDict from '../i18n/en.json';
+
+  const DICTS: Record<Locale, Record<string, unknown>> = {
+    es: esDict as Record<string, unknown>,
+    en: enDict as Record<string, unknown>,
+  };
+
+  function applyTranslations(locale: Locale) {
+    const dict = DICTS[locale];
+    // data-i18n → innerText
+    document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
+      const key = el.dataset.i18n!;
+      const varsStr = el.dataset.i18nVars;
+      let vars: Record<string, string | number> | undefined;
+      if (varsStr) {
+        try {
+          vars = JSON.parse(varsStr);
+        } catch (e) {
+          console.warn('Failed to parse i18n vars:', varsStr, e);
+        }
+      }
+      el.textContent = translate(dict, key, vars);
+    });
+    // data-i18n-html → innerHTML (for elements with markup in the translation)
+    document.querySelectorAll<HTMLElement>('[data-i18n-html]').forEach((el) => {
+      const key = el.dataset.i18nHtml!;
+      const varsStr = el.dataset.i18nVars;
+      let vars: Record<string, string | number> | undefined;
+      if (varsStr) {
+        try {
+          vars = JSON.parse(varsStr);
+        } catch (e) {
+          console.warn('Failed to parse i18n vars:', varsStr, e);
+        }
+      }
+      el.innerHTML = translate(dict, key, vars);
+    });
+    // data-i18n-placeholder → input.placeholder
+    document.querySelectorAll<HTMLInputElement>('[data-i18n-placeholder]').forEach((el) => {
+      const key = el.dataset.i18nPlaceholder!;
+      el.placeholder = translate(dict, key);
+    });
+    // data-i18n-aria-label → aria-label
+    document.querySelectorAll<HTMLElement>('[data-i18n-aria-label]').forEach((el) => {
+      const key = el.dataset.i18nAriaLabel!;
+      el.setAttribute('aria-label', translate(dict, key));
+    });
+    // Update <html lang>
+    document.documentElement.setAttribute('lang', locale);
+    // Update pressed state on switcher buttons
+    document.querySelectorAll<HTMLButtonElement>('.locale-btn').forEach((btn) => {
+      const pressed = btn.dataset.locale === locale;
+      btn.setAttribute('aria-pressed', String(pressed));
+      btn.classList.toggle('bg-[#111111]', pressed);
+      btn.classList.toggle('text-white', pressed);
+      btn.classList.toggle('dark:bg-white', pressed);
+      btn.classList.toggle('dark:text-[#111111]', pressed);
+      btn.classList.toggle('shadow-sm', pressed);
+      btn.classList.toggle('text-[#6B7280]', !pressed);
+      btn.classList.toggle('dark:text-slate-400', !pressed);
+    });
+  }
+
+  function bind() {
+    const initial: Locale = detectLocale();
+    applyTranslations(initial);
+
+    document.querySelectorAll<HTMLButtonElement>('.locale-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const next = btn.dataset.locale as Locale | undefined;
+        if (!next || !SUPPORTED_LOCALES.includes(next)) return;
+        setLocale(next);
+        applyTranslations(next);
+        // Force page reload so server-rendered content translates correctly
+        window.location.reload();
+      });
+    });
+
+    window.addEventListener('locale:change', ((e: Event) => {
+      const ce = e as CustomEvent<{ locale: Locale }>;
+      applyTranslations(ce.detail.locale);
+    }) as EventListener);
+  }
+
+  document.addEventListener('astro:page-load', bind);
+</script>

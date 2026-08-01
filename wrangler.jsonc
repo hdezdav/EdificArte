@@ -5,47 +5,34 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "./dist/_worker.js/index.js",
   "assets": {
-    "directory": "./dist",
+    "directory": "./dist"
   },
   "build": {
-    "command": "pnpm build",
+    "command": "pnpm build"
   },
   "vars": {
-    // USDC nativo en Polygon mainnet. Si querés apuntar a Amoy testnet,
-    // reemplazá por la dirección de USDC de prueba de Circle.
     "USDC_CONTRACT_ADDRESS": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
-    // POLYGON_RPC_URL queda como fallback público si ALCHEMY_KEY no está
-    // seteado.
     "POLYGON_RPC_URL": "https://polygon-mainnet.g.alchemy.com/v2/7dWApRtF0HNIC8ZOP04ls",
-    // Contratos deployados en Polygon mainnet (chainId 137).
-    // Owner de ambos: 0xD540067d763bc792b81f816a677bB25d7e6d4B0B
-    // Ver contracts/README.md para PolygonScan links.
     "PUBLIC_BADGE_CONTRACT_ADDRESS": "0xF3BFe6Fac28Fa7E17280fd74e9C52294686a5F25",
     "PUBLIC_REVIEW_CONTRACT_ADDRESS": "0x993362db73F57f3CbEBD310b31E42Bb21ED27538",
-    // Wallet receptora de pagos USDC de la tienda Tianquiztlis Mercado.
     "EDIFICARTE_PAYMENT_ADDRESS": "0xD540067d763bc792b81f816a677bB25d7e6d4B0B",
-    // Wallet receptora de donaciones USDC (free-form).
-    "EDIFICARTE_DONATION_ADDRESS": "0xD540067d763bc792b81f816a677bB25d7e6d4B0B",
+    "EDIFICARTE_DONATION_ADDRESS": "0xD540067d763bc792b81f816a677bB25d7e6d4B0B"
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "edificarte-db",
-      "database_id": "8520a765-4030-4d9c-a4f7-b7d3432a7533",
-    },
+      "database_id": "8520a765-4030-4d9c-a4f7-b7d3432a7533"
+    }
   ],
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "513879ce14e346a9a370f2514977eb1c",
+      "id": "513879ce14e346a9a370f2514977eb1c"
     },
     {
-      // KV namespace required by @astrojs/cloudflare for server-side sessions.
-      // Apunta al mismo namespace ediKV para evitar crear otro. TODO Slice 2+:
-      // migrar a un namespace dedicado (`pnpm wrangler kv:namespace create SESSION`)
-      // para separar TTL/policies de sesiones del cache de aplicación.
       "binding": "SESSION",
-      "id": "513879ce14e346a9a370f2514977eb1c",
-    },
-  ],
+      "id": "513879ce14e346a9a370f2514977eb1c"
+    }
+  ]
 }

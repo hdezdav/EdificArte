@@ -7,5 +7,6 @@
     },
     "jsx": "react-jsx",
     "jsxImportSource": "react"
-  }
+  },
+  "exclude": ["OG", "node_modules", "dist"]
 }

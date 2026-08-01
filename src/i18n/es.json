@@ -1,0 +1,438 @@
+{
+  "nav": {
+    "map": "Mapa",
+    "explore": "Explorar",
+    "profile": "Perfil",
+    "shop": "Tienda"
+  },
+  "layout": {
+    "wordmark": "EdificARTE",
+    "description": "EdificARTE - Descubrí monumentos, museos y lugares ocultos en cualquier parte del mundo."
+  },
+  "mapa": {
+    "search_placeholder": "Buscá lugares, ciudades, monumentos...",
+    "search_aria": "Buscar lugares",
+    "filters": {
+      "all": "Todo",
+      "museums": "🏛️ Museos",
+      "temples": "⛪ Templos",
+      "parks": "🌳 Parques",
+      "historic": "🏰 Histórico",
+      "viewpoints": "🔭 Miradores"
+    },
+    "welcome": {
+      "title": "Bienvenido a EdificARTE",
+      "body": "Descubrí monumentos, museos y lugares ocultos en cualquier parte del mundo. Activá tu GPS para encontrar lugares cerca tuyo.",
+      "cta": "Activar GPS y empezar"
+    },
+    "sheet": {
+      "title": "Lugares cercanos",
+      "inactive": "Inactivo",
+      "loading": "Buscando lugares cerca tuyo...",
+      "empty_cta": "Activá tu ubicación para descubrir lugares cerca tuyo",
+      "zoom_hint": "Acércate para descubrir lugares cercanos"
+    },
+    "detail": {
+      "navigate": "Navegar",
+      "share": "Compartir",
+      "cancel": "Cancelar",
+      "calculating": "Calculando..."
+    }
+  },
+  "ai": {
+    "greeting": "¡Hola! Soy tu guía de <strong class=\"text-accent-600 dark:text-accent-400\">EdificARTE</strong>. 🏛️<br/><br/>Puedo recomendarte lugares para visitar, contarte sobre monumentos o ayudarte a planear una ruta. ¿Qué te gustaría explorar?",
+    "online": "En línea",
+    "placeholder": "Preguntá sobre cualquier lugar..."
+  },
+  "donation": {
+    "title": "Apoyá EdificARTE",
+    "subtitle": "Tu donación ayuda a mantener el proyecto vivo. 100% va al desarrollo.",
+    "custom": "Otro",
+    "custom_label": "Monto personalizado",
+    "custom_placeholder": "Monto en USDC",
+    "custom_help": "Mínimo $0.01 USDC.",
+    "cta": "Donar con USDC",
+    "view_polygonscan": "Ver en PolygonScan",
+    "footer": "Pagás directo desde tu wallet. Sin intermediarios. Red: Polygon · USDC."
+  },
+  "proximity": {
+    "toast_title": "Estás cerca de",
+    "toast_cta": "Ver",
+    "toast_dismiss": "No",
+    "toast_body": "¿Querés saber más?",
+    "notification_body": "Tocá para ver el pin en el mapa."
+  },
+  "locales": {
+    "es": "Español",
+    "en": "English"
+  },
+  "explore": {
+    "search_placeholder": "Buscá experiencias, patrimonio, cultura..."
+  },
+  "explorar": {
+    "hero": {
+      "title": "Encuentra tu próxima<br>experiencia",
+      "subtitle": "Cultura, patrimonio y lugares únicos cerca de ti."
+    },
+    "categories": {
+      "todos": "Todos",
+      "turismo": "Turismo",
+      "sitio_remoto": "Sitios Turísticos",
+      "patrimonio": "Patrimonio",
+      "cultura": "Cultura",
+      "museo": "Museos",
+      "gastronomia": "Gastronomía",
+      "eventos": "Eventos / Exposiciones",
+      "educacion": "Educación y Ciencia"
+    },
+    "location": {
+      "detecting": "Obteniendo ubicación…",
+      "searching": "Obteniendo tu ubicación…",
+      "unsupported": "Ubicación no disponible. El contenido por país está oculto.",
+      "unresolved": "No se pudo resolver el país. El contenido de México permanece oculto.",
+      "available_city": "Servicios y lugares cercanos en {place}{source}",
+      "available_mx": "Mostrando lugares cercanos en México{source}",
+      "available_country": "Mostrando lugares para {code}{source}",
+      "source_via": " (vía {source})",
+      "unavailable_place": "No hay servicios cercanos disponibles en {place}",
+      "unavailable_region": "No hay servicios cercanos disponibles en tu región ({code})",
+      "error": "Servicio de ubicación no disponible. El contenido por país está oculto.",
+      "denied": "Permiso de ubicación denegado o no disponible. El contenido de México permanece oculto."
+    },
+    "search": {
+      "no_suggestions": "No hay sugerencias disponibles",
+      "suggested_tours": "Tours Recomendados",
+      "suggested_places": "Puntos de Interés / Patrimonio"
+    },
+    "empty": {
+      "title": "No hay experiencias en esta categoría todavía",
+      "body": "Probá con otra categoría o volvé a \"Todos\"."
+    },
+    "cards": {
+      "recommended": "Recomendado",
+      "view_article": "Ver artículo",
+      "distance_away": "📍 a {dist}"
+    },
+    "a11y": {
+      "close": "Cerrar",
+      "close_guide": "Cerrar guía",
+      "filter_category": "Filtrar por categoría",
+      "scroll_left": "Deslizar a la izquierda",
+      "scroll_left_title": "Deslizar izquierda",
+      "scroll_right": "Deslizar a la derecha",
+      "scroll_right_title": "Deslizar derecha",
+      "favorite_add": "Añadir a favoritos",
+      "vr_view": "Ver en VR",
+      "vr_view_aria": "Ver experiencia en Realidad Virtual"
+    },
+    "guide": {
+      "loading": "Cargando...",
+      "badge_default": "Museo",
+      "subtitle": "Guía de Audio e Información",
+      "lang_native": "🇲🇽 Nativo",
+      "lsm_title": "Intérprete en Lengua de Señas Mexicana (LSM)",
+      "vr_title": "Experiencia Inmersiva VR (YouTube 360°)",
+      "lsm_video_title": "Video de guía LSM",
+      "reviews_title": "Reseñas de visitantes",
+      "your_rating": "Tu rating",
+      "review_placeholder": "Contá tu experiencia (opcional, máx 500 caracteres)",
+      "review_submit": "Publicar (+5 pts)",
+      "review_verifying": "Verificando tu ubicación…",
+      "review_geo_unsupported": "Tu navegador no soporta geolocalización. No podés dejar una reseña.",
+      "review_too_far": "Necesitás estar a menos de 500 m del lugar para dejar una reseña. Estás a {dist} m.",
+      "review_geo_error": "No se pudo obtener tu ubicación. Acercate al lugar para dejar una reseña.",
+      "view_route": "Ver ruta en el mapa"
+    },
+    "tour": {
+      "badge": "Recorrido guiado",
+      "modal_title": "Reservar tour",
+      "title_fallback": "Tour",
+      "special_tour": "Recorrido Especial",
+      "summary": "<strong>Incluye:</strong> guía e intérprete para los acompañantes.<br/><strong>Precio:</strong> $480 MXN por persona.<br/><strong>Guía:</strong> Mtro. Henryk Karol Kocyba (Universidad de Varsovia).",
+      "form": {
+        "email": "Email",
+        "phone": "Teléfono",
+        "date": "Fecha preferida",
+        "notes": "Notas (opcional)",
+        "name_placeholder": "Tu nombre",
+        "notes_placeholder": "Algún requerimiento especial..."
+      },
+      "total": "Total estimado",
+      "pay_usdc": "Pagar con USDC en Polygon",
+      "pay_waiting_signature": "Esperando firma…",
+      "pay_confirming": "Confirmando pago…",
+      "submit_request": "Solo enviar solicitud (pendiente de pago)",
+      "submitting": "Enviando...",
+      "success_title": "¡Solicitud enviada!",
+      "success_body": "Te contactaremos por email y WhatsApp para confirmar disponibilidad y coordinar el pago.",
+      "success_close": "Entendido",
+      "alert_fill_payment": "Por favor completá todos los campos obligatorios para el pago y registro.",
+      "alert_fill_required": "Por favor completá todos los campos obligatorios.",
+      "alert_web3_required": "MetaMask o un navegador Web3 es requerido para pagar con USDC.",
+      "alert_wallet_connect_failed": "No se pudo conectar la wallet.",
+      "alert_payment_error": "Hubo un error al procesar el pago con USDC.",
+      "alert_submit_error": "Hubo un error al enviar la solicitud. Por favor intentá de nuevo o contactanos por WhatsApp.",
+      "error_server": "Error en el servidor",
+      "error_server_payment": "Error en el servidor al registrar el pago"
+    }
+  },
+  "profile": {
+    "title": "Perfil",
+    "edit_profile": "Editar Perfil",
+    "exit_guest": "Salir de Invitado",
+    "logout": "Cerrar Sesión",
+    "guest_account": "Cuenta Temporal de Invitado",
+    "progress_title": "Tu progreso",
+    "level_val": "Nivel {level}",
+    "exp_val": "{exp} / 500 exp",
+    "activity_title": "Mi Actividad",
+    "badges_title": "Mis Coleccionables (Badges)",
+    "badges_unlocked": "{count} Ganados",
+    "badge_completed": "¡Completado! Acuñado como NFT.",
+    "badge_already_owned": "¡Completado! Ya tienes esta insignia en tu billetera.",
+    "reservations_title": "Mis Reservas",
+    "reservations_count_one": "1 Reserva",
+    "reservations_count_many": "{count} Reservas",
+    "reservations_empty_title": "Aún no tenés reservas",
+    "reservations_empty_desc": "Explorá la sección Turismo para reservar tours.",
+    "reservations_people_one": "1 persona",
+    "reservations_people_many": "{count} personas",
+    "reservations_status_confirmed": "Confirmada",
+    "reservations_status_pending": "Pendiente",
+    "favorites_title": "Mis Favoritos",
+    "favorites_count_one": "1 Favorito",
+    "favorites_count_many": "{count} Favoritos",
+    "favorites_empty_title": "Sin favoritos guardados",
+    "favorites_empty_desc": "Pulsá el ♥ en el mapa o feed para guardarlos acá.",
+    "about_title": "Biografía y Cuenta",
+    "about": {
+      "bio": "Biografía",
+      "account_details": "Detalles de la Cuenta",
+      "email": "Email",
+      "member_since": "Miembro desde"
+    },
+    "settings_title": "Ajustes y Cuenta",
+    "wallet": {
+      "linked": "Billetera Vinculada",
+      "link": "Vincular Billetera",
+      "disconnected": "Desconectado",
+      "drawer_desc": "Vinculá tu wallet para que tus visitas y logros se guarden automáticamente como coleccionables NFT on-chain.",
+      "connect": "Conectar Wallet",
+      "view_polygonscan": "Ver en PolygonScan"
+    },
+    "guest": {
+      "save_progress": "Guardar progreso permanentemente",
+      "drawer_desc": "Registrate para guardar tus insignias, visitas y puntuación de forma permanente en la nube.",
+      "register_cta": "Registrarse ahora"
+    },
+    "modal": {
+      "title": "Editar Perfil",
+      "name": "Nombre",
+      "bio": "Biografía",
+      "avatar_title": "Elige tu Avatar (Emoji)",
+      "save": "Guardar Cambios"
+    },
+    "alerts": {
+      "connect_wallet_badge": "¡Para guardar tu insignia en tu billetera y acuñarla como un NFT on-chain, necesitas conectar tu wallet! ¿Querés conectarla ahora?",
+      "badge_in_wallet": "¡Esta insignia ya está en tu billetera de forma segura en la blockchain!",
+      "badge_locked": "Esta insignia está bloqueada. Escuchá la audioguía del monumento correspondiente en el mapa para desbloquearla y acuñar tu NFT.",
+      "wallet_cancel": "Cancelaste la firma de la wallet.",
+      "wallet_cancel_simple": "Cancelaste la firma.",
+      "wallet_link_error": "Error vinculando wallet: {error}",
+      "connecting": "Conectando…",
+      "request_nonce": "Pidiendo nonce…",
+      "await_signature": "Esperando firma…",
+      "verifying": "Verificando…"
+    },
+    "tabs": {
+      "about": "Sobre mí",
+      "badges": "Insignias",
+      "reservations": "Reservas",
+      "favorites": "Favoritos"
+    },
+    "stats": {
+      "likes": "Me gusta",
+      "visits": "Visitas",
+      "points": "Puntos",
+      "badges": "Insignias",
+      "level": "Nivel"
+    },
+    "settings": {
+      "language": "Idioma"
+    }
+  },
+  "tienda": {
+    "title": "Tienda",
+    "search": {
+      "placeholder": "Buscar artesanías...",
+      "clear": "Limpiar búsqueda",
+      "empty": "No encontramos productos con esa búsqueda."
+    },
+    "subtitle": "Artesanía mexicana auténtica, directo del artesano a tu puerta.",
+    "sections": {
+      "featured": "Piezas con historia",
+      "direct": "Compra directa"
+    },
+    "location": {
+      "detecting": "Obteniendo ubicación para filtrar productos locales…",
+      "searching": "Obteniendo tu ubicación para buscar artesanías cercanas…",
+      "unsupported": "Filtro de ubicación no disponible. Mostrando todo el catálogo.",
+      "available": "Artesanías disponibles para {place}",
+      "unavailable_place": "No hay servicios ni artesanías disponibles en {place}",
+      "unavailable_region": "No hay artesanías disponibles para tu región ({code})",
+      "unresolved": "Ubicación no resuelta. Mostrando todo el catálogo.",
+      "error": "Servicio de ubicación no disponible. Mostrando todo el catálogo.",
+      "denied": "Permiso de ubicación denegado. Mostrando todo el catálogo."
+    },
+    "coming_soon": {
+      "badge": "Próximamente",
+      "show_all": "Ver todo",
+      "fallback_place": "tu región",
+      "textiles_title": "Textiles tradicionales ({place})",
+      "textiles_desc": "Tejidos y bordados autóctonos en curaduría local.",
+      "ceramics_title": "Cerámica y Alfarería ({place})",
+      "ceramics_desc": "Piezas artesanales de barro y cerámica elaboradas a mano.",
+      "carving_title": "Tallado artesanal ({place})",
+      "carving_desc": "Esculturas y objetos únicos de artesanos de la zona."
+    },
+    "a11y": {
+      "close": "Cerrar",
+      "decrement": "Restar",
+      "increment": "Sumar",
+      "open_cart": "Abrir carrito",
+      "close_cart": "Cerrar carrito",
+      "previous": "Anterior",
+      "next": "Siguiente"
+    },
+    "catalog": {
+      "empty": "No hay productos para mostrar.",
+      "added": "¡Agregado!",
+      "qty": "Cantidad",
+      "category_artesania": "Artesanía",
+      "category_gastronomia": "Gastronomía",
+      "category_textil": "Textil",
+      "filter_all": "Todos",
+      "search_placeholder": "Buscar piezas, materiales, regiones…",
+      "search_aria": "Buscar productos",
+      "results": "{count} piezas",
+      "results_one": "1 pieza",
+      "empty_filtered": "No encontramos piezas con estos filtros.",
+      "reset": "Limpiar filtros",
+      "details": "Ver detalles",
+      "aria_label": "Catálogo de artesanías"
+    },
+    "product": {
+      "from": "Desde",
+      "usdc_approx": "aprox. en USDC",
+      "add_to_cart": "Agregar al carrito",
+      "view_cart": "Ver carrito"
+    },
+    "cart": {
+      "title": "Tu carrito",
+      "empty": "Tu carrito está vacío.",
+      "empty_hint": "Explorá la tienda y agregá tus piezas favoritas.",
+      "subtotal": "Subtotal",
+      "shipping": "Envío",
+      "shipping_free": "Gratis",
+      "total": "Total",
+      "checkout": "Finalizar compra",
+      "remove": "Quitar"
+    },
+    "checkout": {
+      "title": "Finalizar compra",
+      "contact": "Datos de contacto",
+      "name": "Nombre completo",
+      "email": "Correo electrónico",
+      "phone": "Teléfono (con código de país)",
+      "payment": "Método de pago",
+      "pay_usdc": "Pagar con USDC (Polygon)",
+      "pay_usdc_hint": "Pago directo desde tu wallet. Sin intermediarios.",
+      "pay_cash": "Pago contra entrega",
+      "pay_cash_hint": "Pagás al recibir tu pedido en MXN.",
+      "submit_usdc": "Confirmar y pagar",
+      "submit_cash": "Hacer pedido",
+      "success_title": "¡Pedido confirmado!",
+      "success_subtitle_usdc": "Tu pago fue confirmado en Polygon.",
+      "success_subtitle_cash": "Te contactaremos por WhatsApp para coordinar la entrega.",
+      "view_polygonscan": "Ver en PolygonScan",
+      "whatsapp_cta": "Hablar por WhatsApp",
+      "new_order": "Nuevo pedido",
+      "errors": {
+        "name_required": "Necesitamos tu nombre.",
+        "email_required": "Necesitamos un correo válido.",
+        "phone_required": "Necesitamos tu teléfono para coordinar la entrega.",
+        "wallet_rejected": "Conexión rechazada. Probá de nuevo.",
+        "payment_failed": "No pudimos procesar el pago. Probá de nuevo."
+      }
+    }
+  },
+  "reserva": {
+    "title": "Experiencias",
+    "subtitle": "Reservá tours guiados por historiadores locales.",
+    "card": {
+      "from": "Desde",
+      "per_person": "por persona",
+      "duration": "Duración",
+      "meeting": "Punto de encuentro",
+      "rating": "{rating} · {count} reseñas",
+      "reserve": "Reservar"
+    },
+    "modal": {
+      "title": "Reservá tu experiencia",
+      "summary": "Resumen",
+      "fields": {
+        "name": "Nombre completo",
+        "email": "Correo electrónico",
+        "phone": "Teléfono (opcional)",
+        "date": "Fecha",
+        "people": "Personas",
+        "notes": "Notas para el guía (opcional)"
+      },
+      "payment": "Pago",
+      "pay_usdc": "Pagar con USDC (Polygon)",
+      "pay_usdc_hint": "Pago directo desde tu wallet. Confirmación inmediata.",
+      "pay_arrival": "Pagar al llegar",
+      "pay_arrival_hint": "Reservá ahora y pagás en el punto de encuentro.",
+      "total": "Total",
+      "total_usdc_approx": "≈ {usdc} USDC",
+      "submit": "Confirmar reserva",
+      "submitting": "Procesando…",
+      "people_hint": "Entre 1 y 20 personas",
+      "date_hint": "Mínimo mañana",
+      "success_title": "¡Reserva confirmada!",
+      "success_subtitle_usdc": "Te enviamos los detalles a tu correo.",
+      "success_subtitle_arrival": "Te contactaremos para confirmar el punto de encuentro.",
+      "view_reservations": "Ver mis reservas",
+      "close": "Cerrar",
+      "errors": {
+        "name_required": "Necesitamos tu nombre.",
+        "email_required": "Correo inválido.",
+        "people_invalid": "Elegí entre 1 y 20 personas.",
+        "date_invalid": "Elegí una fecha válida (desde mañana).",
+        "server": "No pudimos enviar la reserva. Probá de nuevo."
+      }
+    }
+  },
+  "auth": {
+    "subtitle": "Coleccioná insignias e historia urbana",
+    "tabs": {
+      "login": "Iniciar Sesión",
+      "register": "Registrarse"
+    },
+    "fields": {
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "name": "Nombre completo"
+    },
+    "buttons": {
+      "login": "Entrar",
+      "register": "Registrarse",
+      "wallet_connect": "Conectar Wallet",
+      "continue_guest": "Continuar como Invitado"
+    },
+    "have_account": "¿Ya tenés cuenta?",
+    "switch_to_login_btn": "Iniciá sesión",
+    "separator": "o también",
+    "wallet_help": "Inicia sesión firmando un mensaje. Sin gas, sin transacciones."
+  }
+}

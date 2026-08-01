@@ -3,8 +3,7 @@ interface ChatMessage {
   content: string;
 }
 
-// API mínima del Web Speech Recognition (no está en lib.dom por defecto en
-// todos los targets; acá solo usamos el subset necesario para dictado de voz).
+// API mínima del Web Speech Recognition
 interface SpeechRecognitionAlternativeLike {
   readonly transcript: string;
 }
@@ -36,120 +35,50 @@ interface SpeechRecognitionLike extends EventTarget {
   stop(): void;
 }
 
-const aiBtn = document.getElementById('ai-agent-btn');
-const aiPopover = document.getElementById('ai-agent-popover');
-const aiClose = document.getElementById('ai-agent-close');
-const aiForm = document.getElementById('ai-agent-form') as HTMLFormElement;
-const aiInput = document.getElementById('ai-agent-input') as HTMLInputElement;
-const messagesContainer = document.getElementById('ai-agent-messages');
-
 const chatHistory: ChatMessage[] = [];
 let currentUtterance: SpeechSynthesisUtterance | null = null;
+let globalListenersBound = false;
+let chatRequestController: AbortController | null = null;
+let aiLifecycleVersion = 0;
+let activeRecognition: SpeechRecognitionLike | null = null;
+let placeholderTimer: ReturnType<typeof setTimeout> | null = null;
+let startErrorTimer: ReturnType<typeof setTimeout> | null = null;
+let focusTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Ajustar posición si estamos en la página del mapa para evitar superposición
-const aiContainer = document.getElementById('ai-agent-container');
-if (aiContainer && aiPopover && window.location.pathname.startsWith('/mapa')) {
-  aiContainer.classList.remove('bottom-[76px]', 'right-4');
-  aiContainer.classList.add('top-[135px]', 'right-3', 'sm:right-4');
+const clearPlaceholderTimer = () => {
+  if (placeholderTimer !== null) {
+    clearTimeout(placeholderTimer);
+    placeholderTimer = null;
+  }
+  if (startErrorTimer !== null) {
+    clearTimeout(startErrorTimer);
+    startErrorTimer = null;
+  }
+};
 
-  // Desplegar el popover hacia abajo
-  aiPopover.classList.remove('bottom-16', 'mb-2', 'h-[420px]');
-  aiPopover.classList.add('top-16', 'mt-2', 'h-[360px]');
+function cleanupAiAgent() {
+  aiLifecycleVersion += 1;
+  clearPlaceholderTimer();
+  if (focusTimer !== null) {
+    clearTimeout(focusTimer);
+    focusTimer = null;
+  }
+  chatRequestController?.abort();
+  chatRequestController = null;
+  stopSpeaking();
+  if (activeRecognition) {
+    activeRecognition.onstart = null;
+    activeRecognition.onend = null;
+    activeRecognition.onresult = null;
+    activeRecognition.onerror = null;
+    try { activeRecognition.stop(); } catch {}
+    activeRecognition = null;
+  }
 }
 
-// Ajustar posición del popover cuando aparece el teclado en iOS
-const bottomNav = document.querySelector('nav.glassmorphism') as HTMLElement | null;
-if (aiContainer && 'visualViewport' in window) {
-  const handleViewportResize = () => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    // Si el viewport visible es mucho menor que el de la ventana, el teclado está abierto
-    const keyboardOpen = vv.height < window.innerHeight - 100;
-    if (keyboardOpen && !aiPopover?.classList.contains('hidden')) {
-      // Teclado abierto + popover abierto → posicionar arriba del teclado.
-      // Forzar bottom inline; esto anula el `top-[135px]` del mapa.
-      const keyboardHeight = window.innerHeight - vv.height;
-      aiContainer.style.top = 'auto';
-      aiContainer.style.bottom = `${keyboardHeight + 16}px`;
-      aiContainer.style.right = '12px';
-      // Limitar ancho en pantallas chicas para que no se salga
-      aiContainer.style.maxWidth = 'calc(100vw - 24px)';
-      if (aiPopover) {
-        aiPopover.style.maxWidth = 'calc(100vw - 24px)';
-        // Achicar el popover para que entre arriba del teclado
-        aiPopover.style.height = `${Math.max(220, vv.height - keyboardHeight - 16)}px`;
-      }
-      // Esconder el bottom nav mientras el teclado esté abierto
-      if (bottomNav) bottomNav.style.transform = 'translateY(100%)';
-    } else {
-      aiContainer.style.top = '';
-      aiContainer.style.bottom = '';
-      aiContainer.style.right = '';
-      aiContainer.style.height = '';
-      aiContainer.style.maxWidth = '';
-      if (aiPopover) {
-        aiPopover.style.maxWidth = '';
-        aiPopover.style.height = '';
-      }
-      if (bottomNav) bottomNav.style.transform = '';
-    }
-  };
-  window.visualViewport?.addEventListener('resize', handleViewportResize);
-  window.visualViewport?.addEventListener('scroll', handleViewportResize);
-
-  // Fallback: en iOS a veces resize se dispara tarde; usar focusin para re-evaluar
-  document.addEventListener('focusin', (e) => {
-    if (e.target === aiInput) {
-      // Esperar un frame para que iOS termine de animar el teclado
-      requestAnimationFrame(() => handleViewportResize());
-      // Y otro por las dudas
-      setTimeout(handleViewportResize, 250);
-    }
-  });
-  document.addEventListener('focusout', (e) => {
-    if (e.target === aiInput) {
-      setTimeout(handleViewportResize, 250);
-    }
-  });
-}
-
-// Abrir y cerrar Popover
-if (aiBtn && aiPopover) {
-  aiBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    aiPopover.classList.toggle('hidden');
-    if (!aiPopover.classList.contains('hidden')) {
-      setTimeout(() => aiInput?.focus(), 100);
-      scrollToBottom();
-    }
-  });
-
-  aiClose?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    aiPopover.classList.add('hidden');
-    stopSpeaking();
-  });
-
-  // Cerrar al hacer clic afuera
-  document.addEventListener('click', (e) => {
-    if (!aiPopover.contains(e.target as Node) && !aiBtn.contains(e.target as Node)) {
-      aiPopover.classList.add('hidden');
-      stopSpeaking();
-    }
-  });
-
-  aiPopover.addEventListener('click', (e) => {
-    e.stopPropagation();
-  });
-
-  // Cerrar el chatbot automáticamente cuando se traza una ruta en el mapa
-  window.addEventListener('ai-route-generated', () => {
-    aiPopover.classList.add('hidden');
-    stopSpeaking();
-  });
-}
 
 function scrollToBottom() {
+  const messagesContainer = document.getElementById('ai-agent-messages');
   if (messagesContainer) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
@@ -183,16 +112,13 @@ function speakText(text: string, button: HTMLButtonElement) {
       }
     }
 
-    // Resetear todos los íconos de volumen en los botones
     document.querySelectorAll('.ai-speak-btn .material-symbols-outlined').forEach(icon => {
       icon.textContent = 'volume_up';
     });
 
-    // Limpiar etiquetas HTML para la lectura por voz
     const cleanText = text.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
-
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'es-MX'; // Español de México / Latino
+    utterance.lang = 'es-MX';
 
     utterance.onstart = () => {
       button.querySelector('.material-symbols-outlined')!.textContent = 'volume_off';
@@ -214,10 +140,11 @@ function speakText(text: string, button: HTMLButtonElement) {
 }
 
 function appendUserMessage(text: string) {
+  const messagesContainer = document.getElementById('ai-agent-messages');
   if (!messagesContainer) return;
   const msgHtml = `
     <div class="flex justify-end w-full">
-      <div class="bg-brand-500 text-white rounded-2xl rounded-tr-none px-3.5 py-2 text-[12px] max-w-[85%] shadow-sm leading-relaxed break-words">
+      <div class="max-w-[80%] break-words rounded-2xl rounded-tr-md bg-accent-600 px-3.5 py-2 text-[13px] leading-relaxed text-white shadow-sm shadow-accent-600/25">
         ${escapeHtml(text)}
       </div>
     </div>
@@ -227,14 +154,15 @@ function appendUserMessage(text: string) {
 }
 
 function appendAssistantLoader(): string {
+  const messagesContainer = document.getElementById('ai-agent-messages');
   if (!messagesContainer) return '';
   const id = 'loader-' + Date.now();
   const msgHtml = `
     <div id="${id}" class="flex items-start gap-2 max-w-[85%]">
-      <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[12px]">
-        <span class="material-symbols-outlined text-[14px]">smart_toy</span>
+      <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200/70 bg-white/70 text-slate-500 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+        <span class="material-symbols-outlined text-[14px]" style="font-variation-settings:'FILL' 1">auto_awesome</span>
       </span>
-      <div class="ai-bubble-content bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none px-3.5 py-2 text-[12px] shadow-sm leading-relaxed flex items-center min-h-[32px]">
+      <div class="ai-bubble-content flex items-center min-h-[32px] rounded-2xl rounded-tl-md border border-slate-200/60 bg-white/70 px-3.5 py-2 text-[13px] leading-relaxed text-slate-800 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-100">
         <div class="loader-wrapper !h-6 !scale-75 origin-left">
           <span class="loader-letter" style="--i: 0">P</span>
           <span class="loader-letter" style="--i: 1">e</span>
@@ -262,7 +190,6 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
 
   const formattedText = escapeHtml(text).replace(/\n/g, '<br/>');
 
-  // Botones de acción si tiene ruta o monumentos
   let actionsHtml = '';
   if (route && route.length > 0) {
     const isMapPage = window.location.pathname.startsWith('/mapa');
@@ -273,7 +200,7 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
     if (action === 'reserve' && route.length === 1) {
       actionsHtml += `
         <button
-          class="ai-reserve-trigger flex items-center justify-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+          class="ai-reserve-trigger flex items-center justify-center gap-1.5 rounded-xl bg-accent-600 hover:bg-accent-500 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm shadow-accent-600/25 transition-all active:scale-[0.97]"
           data-monument="${route[0]}"
         >
           <span class="material-symbols-outlined text-[14px]">calendar_month</span>
@@ -283,7 +210,7 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
     } else if (isMapPage) {
       actionsHtml += `
         <button
-          class="ai-route-trigger flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+          class="ai-route-trigger flex items-center justify-center gap-1.5 rounded-xl bg-accent-600 hover:bg-accent-500 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm shadow-accent-600/25 transition-all active:scale-[0.97]"
           data-route="${routeStr}"
         >
           <span class="material-symbols-outlined text-[14px]">map</span>
@@ -291,11 +218,10 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
         </button>
       `;
 
-      // Si es exactamente un monumento, agregar la opción de reproducir audioguía
       if (route.length === 1) {
         actionsHtml += `
           <button
-            class="ai-audio-trigger flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+            class="ai-audio-trigger flex items-center justify-center gap-1.5 rounded-xl border border-slate-300/60 bg-transparent hover:border-accent-500/40 hover:text-accent-600 text-slate-600 dark:border-white/15 dark:text-slate-300 dark:hover:border-accent-400/40 dark:hover:text-accent-400 font-semibold px-3 py-1.5 text-[11px] transition-all active:scale-[0.97]"
             data-monument="${route[0]}"
           >
             <span class="material-symbols-outlined text-[14px]">headphones</span>
@@ -307,7 +233,7 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
       actionsHtml += `
         <a
           href="/mapa?route=${routeStr}"
-          class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+          class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent-600 hover:bg-accent-500 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm shadow-accent-600/25 transition-all active:scale-[0.97]"
         >
           <span class="material-symbols-outlined text-[14px]">explore</span>
           Ver ruta en el mapa
@@ -318,7 +244,7 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
         actionsHtml += `
           <a
             href="/mapa?route=${route[0]}&play=true"
-            class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+            class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300/60 bg-transparent hover:border-accent-500/40 hover:text-accent-600 text-slate-600 dark:border-white/15 dark:text-slate-300 dark:hover:border-accent-400/40 dark:hover:text-accent-400 font-semibold px-3 py-1.5 text-[11px] transition-all active:scale-[0.97]"
           >
             <span class="material-symbols-outlined text-[14px]">headphones</span>
             Escuchar audioguía
@@ -339,7 +265,7 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
         ${formattedText}
       </div>
       <button
-        class="ai-speak-btn absolute top-2 right-2 text-slate-400 hover:text-brand-600 transition-colors p-0.5"
+        class="ai-speak-btn absolute top-2 right-2 p-0.5 text-slate-400 transition-colors hover:text-accent-600 dark:text-slate-500 dark:hover:text-accent-400"
         title="Escuchar respuesta"
       >
         <span class="material-symbols-outlined text-[16px]">volume_up</span>
@@ -348,7 +274,6 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
     `;
   }
 
-  // Agregar event listener para volumen (TTS)
   const speakBtn = el.querySelector('.ai-speak-btn') as HTMLButtonElement;
   if (speakBtn) {
     speakBtn.addEventListener('click', () => {
@@ -356,13 +281,11 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
     });
   }
 
-  // Agregar event listeners para acciones de mapa/audio/reserva
   if (route && route.length > 0) {
     if (action === 'reserve') {
       const reserveBtn = el.querySelector('.ai-reserve-trigger');
       reserveBtn?.addEventListener('click', () => {
         window.dispatchEvent(new CustomEvent('ai-reserve-tour', { detail: { monumentId: route[0] } }));
-        // Cerrar el popover después de apretar
         const aiPopover = document.getElementById('ai-agent-popover');
         if (aiPopover) {
           aiPopover.classList.add('hidden');
@@ -385,172 +308,429 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
   scrollToBottom();
 }
 
-// Speech Recognition (Dictado de voz)
-const micBtn = document.getElementById('ai-mic-btn') as HTMLButtonElement;
-let recognition: SpeechRecognitionLike | null = null;
-let isListening = false;
+let lastInitializedLifecycle = -1;
 
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-  const SpeechRecognitionCtor = (window as unknown as {
-    SpeechRecognition?: new () => SpeechRecognitionLike;
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-  }).SpeechRecognition ?? (window as unknown as {
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-  }).webkitSpeechRecognition;
-  if (SpeechRecognitionCtor) {
-    recognition = new SpeechRecognitionCtor();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    // Lang: usar el del navegador si es español, sino fallback a es-MX
-    const userLang = navigator.language || 'es-MX';
-    recognition.lang = ['es-MX', 'es-ES', 'es-AR', 'es'].includes(userLang) ? userLang : 'es-MX';
-    recognition.maxAlternatives = 1;
+function initAiAgent() {
+  if (lastInitializedLifecycle === aiLifecycleVersion) return;
+  lastInitializedLifecycle = aiLifecycleVersion;
 
-  recognition.onstart = () => {
-    isListening = true;
-    if (micBtn) {
-      micBtn.classList.remove('bg-slate-50', 'text-slate-500', 'dark:bg-slate-800');
-      micBtn.classList.add('bg-red-500', 'text-white', 'animate-pulse');
-      const icon = micBtn.querySelector('.material-symbols-outlined');
-      if (icon) icon.textContent = 'mic_off';
-    }
-    if (aiInput) {
-      aiInput.placeholder = 'Escuchando...';
-    }
-  };
+  const lifecycleVersion = aiLifecycleVersion;
+  const aiBtn = document.getElementById('ai-agent-btn');
+  const aiPopover = document.getElementById('ai-agent-popover');
+  const aiClose = document.getElementById('ai-agent-close');
+  const aiForm = document.getElementById('ai-agent-form') as HTMLFormElement;
+  const aiInput = document.getElementById('ai-agent-input') as HTMLInputElement;
+  const searchbarBtns = document.querySelectorAll('#ai-agent-btn-searchbar');
+  const aiContainer = document.getElementById('ai-agent-container');
+  const micBtn = document.getElementById('ai-mic-btn') as HTMLButtonElement;
 
-  recognition.onend = () => {
-    isListening = false;
-    if (micBtn) {
-      micBtn.classList.add('bg-slate-50', 'text-slate-500', 'dark:bg-slate-800');
-      micBtn.classList.remove('bg-red-500', 'text-white', 'animate-pulse');
-      const icon = micBtn.querySelector('.material-symbols-outlined');
-      if (icon) icon.textContent = 'mic';
-    }
-    if (aiInput) {
-      aiInput.placeholder = '¿Qué ruta querés hacer hoy?...';
-    }
-  };
+  function safeAddListener(
+    el: HTMLElement | null,
+    event: string,
+    handler: EventListenerOrEventListenerObject
+  ) {
+    if (!el) return;
+    const key = `aiBound_${event}`;
+    if (el.dataset[key] === 'true') return;
+    el.dataset[key] = 'true';
+    el.addEventListener(event, handler);
+  }
 
-  recognition.onresult = (event: SpeechRecognitionEventLike) => {
-    const transcript = event.results[0][0].transcript;
-    if (aiInput && transcript) {
-      aiInput.value = transcript;
-      aiForm.requestSubmit();
-    }
-  };
+  if (!aiPopover) return;
 
-  recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
-    console.error('Speech recognition error', event.error);
-    // Feedback user-friendly según tipo de error
-    const messages: Record<string, string> = {
-      'not-allowed': 'Permiso de micrófono denegado. Activalo en Configuración del navegador.',
-      'no-speech': 'No detecté voz. Probá de nuevo.',
-      'audio-capture': 'No encontré micrófono disponible.',
-      'network': 'Error de red. Verificá tu conexión.',
-      'service-not-allowed': 'Servicio de reconocimiento no disponible en este dispositivo.',
-      'aborted': 'Reconocimiento cancelado.',
-    };
-    const msg = messages[event.error] || `Error: ${event.error || 'desconocido'}`;
-    // Mostrar feedback en la UI en vez de alert() invasivo
-    if (aiInput) {
-      const originalPlaceholder = aiInput.placeholder;
-      aiInput.placeholder = msg;
-      setTimeout(() => {
-        if (aiInput) aiInput.placeholder = originalPlaceholder;
-      }, 4000);
-    }
-    if (recognition && isListening) {
-      recognition.stop();
-    }
-  };
+  if (searchbarBtns.length > 0 && aiBtn) {
+    aiBtn.classList.add('hidden');
+  }
 
-  micBtn?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!recognition) return;
-    if (isListening) {
-      recognition.stop();
+  function resetPosition() {
+    if (!aiContainer || !aiPopover) return;
+
+    if (window.location.pathname.startsWith('/mapa')) {
+      aiContainer.classList.remove('bottom-[76px]', 'right-4', 'fixed');
+      aiContainer.style.position = 'fixed';
+      aiContainer.style.top = 'calc(env(safe-area-inset-top, 0px) + 74px)';
+      aiContainer.style.left = '50%';
+      aiContainer.style.transform = 'translateX(-50%)';
+      aiContainer.style.width = '100%';
+      aiContainer.style.maxWidth = '512px';
+      aiContainer.style.paddingLeft = '16px';
+      aiContainer.style.paddingRight = '16px';
+      aiContainer.style.zIndex = '40';
+      aiContainer.style.pointerEvents = 'none';
+      aiContainer.style.bottom = '';
+      aiContainer.style.right = '';
+
+      aiPopover.classList.remove('bottom-16', 'mb-2', 'absolute', 'right-0');
+      aiPopover.classList.add('relative', 'w-full', 'mt-2');
+      aiPopover.style.pointerEvents = 'auto';
+      aiPopover.style.height = '380px';
+      aiPopover.style.maxHeight = 'calc(100vh - 150px)';
     } else {
-      try {
-        recognition.start();
-      } catch (err) {
-        console.error('Failed to start recognition:', err);
-        if (aiInput) {
-          const original = aiInput.placeholder;
-          aiInput.placeholder = 'No pude iniciar el micrófono. Reintentá.';
-          setTimeout(() => {
-            if (aiInput) aiInput.placeholder = original;
-          }, 3000);
-        }
-      }
+      aiContainer.style.position = '';
+      aiContainer.style.top = '';
+      aiContainer.style.left = '';
+      aiContainer.style.transform = '';
+      aiContainer.style.width = '';
+      aiContainer.style.maxWidth = '';
+      aiContainer.style.paddingLeft = '';
+      aiContainer.style.paddingRight = '';
+      aiContainer.style.zIndex = '';
+      aiContainer.style.pointerEvents = '';
+      aiContainer.style.bottom = '';
+      aiContainer.style.right = '';
+
+      aiPopover.classList.add('bottom-16', 'mb-2', 'absolute', 'right-0');
+      aiPopover.classList.remove('relative', 'w-full', 'mt-2');
+      aiPopover.style.pointerEvents = '';
+      aiPopover.style.height = '';
+      aiPopover.style.maxHeight = '';
+    }
+  }
+
+  resetPosition();
+
+  const togglePopover = (e: Event) => {
+    e.stopPropagation();
+    aiPopover.classList.toggle('hidden');
+    if (!aiPopover.classList.contains('hidden')) {
+      if (focusTimer !== null) clearTimeout(focusTimer);
+      focusTimer = setTimeout(() => {
+        focusTimer = null;
+        if (lifecycleVersion === aiLifecycleVersion) aiInput?.focus();
+      }, 100);
+      scrollToBottom();
+    }
+  };
+
+  if (aiBtn) {
+    safeAddListener(aiBtn, 'click', togglePopover);
+  }
+
+  searchbarBtns.forEach((btn) => {
+    if (btn instanceof HTMLElement) {
+      safeAddListener(btn, 'click', togglePopover);
     }
   });
-  }
-} else {
-  if (micBtn) {
-    micBtn.style.display = 'none';
-  }
-}
 
-// Inicializar altavoz del mensaje de bienvenida
-const welcomeSpeakBtn = document.querySelector('#ai-agent-messages .ai-speak-btn') as HTMLButtonElement;
-if (welcomeSpeakBtn) {
-  const welcomeText = '¡Hola! Soy tu asistente de EdificARTE. ¿Quieres que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Pregúntame lo que quieras!';
-  welcomeSpeakBtn.addEventListener('click', () => {
-    speakText(welcomeText, welcomeSpeakBtn);
-  });
-}
-
-// Submit Handler
-aiForm?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const text = aiInput.value.trim();
-  if (!text) return;
-
-  aiInput.value = '';
-  appendUserMessage(text);
-  chatHistory.push({ role: 'user', content: text });
-
-  const loaderId = appendAssistantLoader();
-
-  // Obtener coordenadas de localStorage si están disponibles
-  const userLat = localStorage.getItem('edificarte_user_lat');
-  const userLng = localStorage.getItem('edificarte_user_lng');
-  const userLocation = userLat && userLng ? {
-    lat: parseFloat(userLat),
-    lng: parseFloat(userLng)
-  } : null;
-
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: chatHistory,
-        userLocation: userLocation
-      }),
+  if (aiClose) {
+    safeAddListener(aiClose, 'click', (e) => {
+      e.stopPropagation();
+      aiPopover.classList.add('hidden');
+      stopSpeaking();
     });
-
-    if (!response.ok) {
-      throw new Error('Response error');
-    }
-
-    const data = await response.json();
-    const botReply = data.reply || 'Disculpa, se me complicó procesar la respuesta en este momento.';
-    const botRoute = data.route || [];
-    const botAction = data.action || 'chat';
-
-    chatHistory.push({ role: 'assistant', content: botReply });
-    updateAssistantMessage(loaderId, botReply, botRoute, botAction);
-
-    // Si estamos en la página del mapa, trazar la ruta automáticamente al recibirla
-    if (botAction === 'route' && botRoute.length > 0 && window.location.pathname.startsWith('/mapa')) {
-      window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route: botRoute } }));
-    }
-
-  } catch (err) {
-    console.error(err);
-    updateAssistantMessage(loaderId, '¡Hola! Perdón, pero se perdió la conexión con el servidor. ¿Podrías intentar de nuevo en un momento?');
   }
+
+  const welcomeSpeakBtn = document.querySelector('#ai-agent-messages .ai-speak-btn') as HTMLButtonElement;
+  if (welcomeSpeakBtn) {
+    const welcomeText = '¡Hola! Soy tu asistente de TuriMap. ¿Quieres que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Pregúntame lo que quieras!';
+    safeAddListener(welcomeSpeakBtn, 'click', () => {
+      speakText(welcomeText, welcomeSpeakBtn);
+    });
+  }
+
+  if (aiForm) {
+    safeAddListener(aiForm, 'submit', async (e) => {
+      e.preventDefault();
+      if (!aiInput) return;
+      const text = aiInput.value.trim();
+      if (!text) return;
+
+    aiInput.value = '';
+    appendUserMessage(text);
+    chatHistory.push({ role: 'user', content: text });
+
+    const loaderId = appendAssistantLoader();
+
+    const userLat = localStorage.getItem('turimap_user_lat');
+    const userLng = localStorage.getItem('turimap_user_lng');
+    const userLocation = userLat && userLng ? {
+      lat: parseFloat(userLat),
+      lng: parseFloat(userLng)
+    } : null;
+
+    const controller = new AbortController();
+    chatRequestController?.abort();
+    chatRequestController = controller;
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: chatHistory,
+          userLocation: userLocation
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error('Response error');
+      }
+
+      const data = await response.json();
+      if (lifecycleVersion !== aiLifecycleVersion || controller.signal.aborted) return;
+      const botReply = data.reply || 'Disculpa, se me complicó procesar la respuesta en este momento.';
+      const botRoute = data.route || [];
+      const botAction = data.action || 'chat';
+
+      chatHistory.push({ role: 'assistant', content: botReply });
+      updateAssistantMessage(loaderId, botReply, botRoute, botAction);
+
+      if (botAction === 'route' && botRoute.length > 0 && window.location.pathname.startsWith('/mapa')) {
+        window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route: botRoute } }));
+      }
+
+    } catch (err) {
+      if (controller.signal.aborted || lifecycleVersion !== aiLifecycleVersion) return;
+      console.error(err);
+      updateAssistantMessage(loaderId, '¡Hola! Perdón, pero se perdió la conexión con el servidor. ¿Podrías intentar de nuevo en un momento?');
+    } finally {
+      if (chatRequestController === controller) chatRequestController = null;
+    }
+  });
+}
+
+  let recognition: SpeechRecognitionLike | null = null;
+  let isListening = false;
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognitionCtor = (window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    }).SpeechRecognition ?? (window as unknown as {
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    }).webkitSpeechRecognition;
+
+    if (SpeechRecognitionCtor) {
+      recognition = new SpeechRecognitionCtor();
+      activeRecognition = recognition;
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      const userLang = navigator.language || 'es-MX';
+      recognition.lang = ['es-MX', 'es-ES', 'es-AR', 'es'].includes(userLang) ? userLang : 'es-MX';
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        if (lifecycleVersion !== aiLifecycleVersion) return;
+        isListening = true;
+        if (micBtn) {
+          micBtn.classList.remove('bg-slate-50', 'text-slate-500', 'dark:bg-slate-800');
+          micBtn.classList.add('bg-red-500', 'text-white', 'animate-pulse');
+          const icon = micBtn.querySelector('.material-symbols-outlined');
+          if (icon) icon.textContent = 'mic_off';
+        }
+        if (aiInput) {
+          aiInput.placeholder = 'Escuchando...';
+        }
+      };
+
+      recognition.onend = () => {
+        if (lifecycleVersion !== aiLifecycleVersion) return;
+        isListening = false;
+        if (micBtn) {
+          micBtn.classList.add('bg-slate-50', 'text-slate-500', 'dark:bg-slate-800');
+          micBtn.classList.remove('bg-red-500', 'text-white', 'animate-pulse');
+          const icon = micBtn.querySelector('.material-symbols-outlined');
+          if (icon) icon.textContent = 'mic';
+        }
+        if (aiInput) {
+          aiInput.placeholder = '¿Qué ruta querés hacer hoy?...';
+        }
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEventLike) => {
+        if (lifecycleVersion !== aiLifecycleVersion) return;
+        const transcript = event.results[0][0].transcript;
+        if (aiInput && transcript && aiForm) {
+          aiInput.value = transcript;
+          aiForm.requestSubmit();
+        }
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
+        if (lifecycleVersion !== aiLifecycleVersion) return;
+        console.error('Speech recognition error', event.error);
+        const messages: Record<string, string> = {
+          'not-allowed': 'Permiso de micrófono denegado. Activalo en Configuración del navegador.',
+          'no-speech': 'No detecté voz. Probá de nuevo.',
+          'audio-capture': 'No encontré micrófono disponible.',
+          'network': 'Error de red. Verificá tu conexión.',
+          'service-not-allowed': 'Servicio de reconocimiento no disponible en este dispositivo.',
+          'aborted': 'Reconocimiento cancelado.',
+        };
+        const msg = messages[event.error] || `Error: ${event.error || 'desconocido'}`;
+        if (aiInput) {
+          const originalPlaceholder = aiInput.placeholder;
+          clearPlaceholderTimer();
+          aiInput.placeholder = msg;
+          placeholderTimer = setTimeout(() => {
+            placeholderTimer = null;
+            if (lifecycleVersion === aiLifecycleVersion && aiInput) aiInput.placeholder = originalPlaceholder;
+          }, 4000);
+        }
+        if (recognition && isListening) {
+          try { recognition.stop(); } catch {}
+        }
+      };
+
+      if (micBtn) {
+        safeAddListener(micBtn, 'click', (e) => {
+          const ev = e as MouseEvent;
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (!recognition || lifecycleVersion !== aiLifecycleVersion) return;
+          if (isListening) {
+          try { recognition.stop(); } catch {}
+        } else {
+          try {
+            recognition.start();
+          } catch (err) {
+            console.error('Failed to start recognition:', err);
+            if (aiInput) {
+              const original = aiInput.placeholder;
+              clearPlaceholderTimer();
+              aiInput.placeholder = 'No pude iniciar el micrófono. Reintentá.';
+              startErrorTimer = setTimeout(() => {
+                startErrorTimer = null;
+                if (lifecycleVersion === aiLifecycleVersion && aiInput) aiInput.placeholder = original;
+              }, 3000);
+            }
+          }
+        }
+      });
+    }
+  }
+  } else {
+    if (micBtn) {
+      micBtn.style.display = 'none';
+    }
+  }
+}
+
+document.addEventListener('astro:page-load', () => {
+  initAiAgent();
 });
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+  initAiAgent();
+} else {
+  document.addEventListener('DOMContentLoaded', () => {
+    initAiAgent();
+  });
+}
+
+document.addEventListener('astro:before-swap', cleanupAiAgent);
+window.addEventListener('pagehide', cleanupAiAgent);
+window.addEventListener('beforeunload', cleanupAiAgent);
+
+// Registrar listeners globales una sola vez en window/document
+if (typeof window !== 'undefined' && !globalListenersBound) {
+  globalListenersBound = true;
+
+  if ('visualViewport' in window) {
+    const handleViewportResize = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const aiContainer = document.getElementById('ai-agent-container');
+      const aiPopover = document.getElementById('ai-agent-popover');
+      const bottomNav = document.querySelector('nav.glassmorphism') as HTMLElement | null;
+      if (!aiContainer || !aiPopover) return;
+
+      const keyboardOpen = vv.height < window.innerHeight - 100;
+      if (keyboardOpen && !aiPopover.classList.contains('hidden')) {
+        const keyboardHeight = window.innerHeight - vv.height;
+        aiContainer.style.top = 'auto';
+        aiContainer.style.bottom = `${keyboardHeight + 16}px`;
+        aiContainer.style.right = '12px';
+        aiContainer.style.left = 'auto';
+        aiContainer.style.transform = 'none';
+        aiContainer.style.maxWidth = 'calc(100vw - 24px)';
+        aiPopover.style.maxWidth = 'calc(100vw - 24px)';
+        aiPopover.style.height = `${Math.max(220, vv.height - keyboardHeight - 16)}px`;
+        if (bottomNav) bottomNav.style.transform = 'translateY(100%)';
+      } else {
+        if (window.location.pathname.startsWith('/mapa')) {
+          aiContainer.classList.remove('bottom-[76px]', 'right-4', 'fixed');
+          aiContainer.style.position = 'fixed';
+          aiContainer.style.top = 'calc(env(safe-area-inset-top, 0px) + 74px)';
+          aiContainer.style.left = '50%';
+          aiContainer.style.transform = 'translateX(-50%)';
+          aiContainer.style.width = '100%';
+          aiContainer.style.maxWidth = '512px';
+          aiContainer.style.paddingLeft = '16px';
+          aiContainer.style.paddingRight = '16px';
+          aiContainer.style.zIndex = '40';
+          aiContainer.style.pointerEvents = 'none';
+          aiContainer.style.bottom = '';
+          aiContainer.style.right = '';
+
+          aiPopover.classList.remove('bottom-16', 'mb-2', 'absolute', 'right-0');
+          aiPopover.classList.add('relative', 'w-full', 'mt-2');
+          aiPopover.style.pointerEvents = 'auto';
+          aiPopover.style.height = '380px';
+          aiPopover.style.maxHeight = 'calc(100vh - 150px)';
+        } else {
+          aiContainer.style.position = '';
+          aiContainer.style.top = '';
+          aiContainer.style.left = '';
+          aiContainer.style.transform = '';
+          aiContainer.style.width = '';
+          aiContainer.style.maxWidth = '';
+          aiContainer.style.paddingLeft = '';
+          aiContainer.style.paddingRight = '';
+          aiContainer.style.zIndex = '';
+          aiContainer.style.pointerEvents = '';
+          aiContainer.style.bottom = '';
+          aiContainer.style.right = '';
+
+          aiPopover.classList.add('bottom-16', 'mb-2', 'absolute', 'right-0');
+          aiPopover.classList.remove('relative', 'w-full', 'mt-2');
+          aiPopover.style.pointerEvents = '';
+          aiPopover.style.height = '';
+          aiPopover.style.maxHeight = '';
+        }
+        if (bottomNav) bottomNav.style.transform = '';
+      }
+    };
+
+    window.visualViewport?.addEventListener('resize', handleViewportResize);
+    window.visualViewport?.addEventListener('scroll', handleViewportResize);
+
+    document.addEventListener('focusin', (e) => {
+      const aiInput = document.getElementById('ai-agent-input');
+      if (e.target === aiInput) {
+        requestAnimationFrame(() => handleViewportResize());
+        setTimeout(handleViewportResize, 250);
+      }
+    });
+    document.addEventListener('focusout', (e) => {
+      const aiInput = document.getElementById('ai-agent-input');
+      if (e.target === aiInput) {
+        setTimeout(handleViewportResize, 250);
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    const aiPopover = document.getElementById('ai-agent-popover');
+    const aiBtn = document.getElementById('ai-agent-btn');
+    const searchbarBtns = document.querySelectorAll('#ai-agent-btn-searchbar');
+    if (!aiPopover || aiPopover.classList.contains('hidden')) return;
+
+    const target = e.target as Node;
+    const clickedBtn = (aiBtn && aiBtn.contains(target)) ||
+                       Array.from(searchbarBtns).some(btn => btn.contains(target));
+    if (!aiPopover.contains(target) && !clickedBtn) {
+      aiPopover.classList.add('hidden');
+      stopSpeaking();
+    }
+  });
+
+  window.addEventListener('ai-route-generated', () => {
+    const aiPopover = document.getElementById('ai-agent-popover');
+    if (aiPopover) {
+      aiPopover.classList.add('hidden');
+      stopSpeaking();
+    }
+  });
+}

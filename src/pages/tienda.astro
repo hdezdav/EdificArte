@@ -1,0 +1,1366 @@
+---
+import Layout from '../layouts/Layout.astro';
+import AiAgent from '../components/AiAgent.astro';
+import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
+import { MXN_PER_USDC } from '../lib/flows/money';
+
+interface Product {
+  name: string;
+  description: string;
+  sku: string;
+  price: number;
+  currency: string;
+  images: string[];
+  file: string;
+  category?: string;
+  origin?: string;
+  countryCode?: string;
+}
+
+function parseImages(raw: string): string[] {
+  try {
+    return JSON.parse(raw || '[]') || [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeCountryCode(code?: string | null, origin?: string | null): string {
+  if (typeof code === 'string' && /^[A-Za-z]{2}$/.test(code.trim())) {
+    return code.trim().toUpperCase();
+  }
+  if (typeof origin === 'string') {
+    const raw = origin.trim().toUpperCase();
+    if (raw === 'MX' || raw === 'MEX' || raw === 'MEXICO' || raw === 'MÉXICO') return 'MX';
+    if (raw === 'ES' || raw === 'ESP' || raw === 'ESPAÑA' || raw === 'SPAIN') return 'ES';
+    if (raw === 'US' || raw === 'USA' || raw === 'UNITED STATES' || raw === 'EEUU') return 'US';
+    if (/^[A-Z]{2}$/.test(raw)) return raw;
+  }
+  return 'MX';
+}
+
+let items: Product[] = [];
+try {
+  const productsResult = await Astro.locals.runtime.env.DB
+    .prepare('SELECT name, description, sku, price, currency, category, origin, country_code, images, file FROM products WHERE is_published = 1 ORDER BY created_at DESC')
+    .all();
+  items = ((productsResult?.results as Array<{
+    name: string; description: string; sku: string; price: number;
+    currency: string; category: string; origin: string; country_code: string; images: string; file: string;
+  }>) ?? []).map((r) => ({
+    name: r.name,
+    description: r.description,
+    sku: r.sku,
+    price: r.price,
+    currency: r.currency,
+    category: r.category,
+    origin: r.origin,
+    countryCode: normalizeCountryCode(r.country_code, r.origin),
+    images: parseImages(r.images),
+    file: r.file,
+  }));
+} catch (err) {
+  console.warn('[tienda.astro] DB products query failed, using empty array fallback:', err);
+}
+---
+
+<Layout title="EdificARTE - Tienda">
+  <div class="unified-search-layer">
+    <UnifiedSearchBar
+      inputId="store-search-input"
+      clearId="store-search-clear"
+      placeholder="Buscar artesanías..."
+      ariaLabel="Buscar productos"
+      i18nPlaceholder="tienda.search.placeholder"
+    />
+  </div>
+
+  <div class="unified-search-spacer" aria-hidden="true"></div>
+
+  <header class="mx-auto mb-10 max-w-xl px-2 pt-2 text-center sm:mb-14 sm:pt-6">
+    <h1
+      class="text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl"
+      data-i18n="tienda.title"
+    >Tienda</h1>
+    <p
+      class="mt-3 text-base leading-relaxed text-slate-500 dark:text-slate-400 sm:text-lg"
+      data-i18n="tienda.subtitle"
+    >
+      Artesanía mexicana auténtica, directo del artesano a tu puerta.
+    </p>
+
+    <div id="store-location-status" role="status" aria-live="polite" class="store-location-pill mx-auto mt-5 inline-flex max-w-xl items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-medium transition-colors duration-300">
+      <span id="store-location-icon" class="material-symbols-outlined text-[16px] shrink-0 text-slate-500 dark:text-slate-400">near_me</span>
+      <span id="store-location-text" data-i18n="tienda.location.detecting">Obteniendo ubicación para filtrar productos locales…</span>
+    </div>
+  </header>
+
+  <div class="mb-5 flex items-end justify-between gap-4 px-1">
+    <h2 class="text-lg font-semibold tracking-tight text-slate-900 dark:text-white" data-i18n="tienda.sections.featured">Piezas con historia</h2>
+    <span class="pb-0.5 text-xs font-medium text-slate-400 dark:text-slate-500" data-i18n="tienda.sections.direct">
+      Compra directa
+    </span>
+  </div>
+
+  <section
+    id="catalog"
+    class="ios-product-grid"
+    aria-label="Catálogo de artesanías"
+    data-i18n-attr="aria-label|tienda.catalog.aria_label"
+  ></section>
+
+  <p
+    id="catalog-empty"
+    class="hidden py-16 text-center text-sm text-slate-400 dark:text-slate-500"
+    data-i18n="tienda.catalog.empty"
+  >
+    No hay productos para mostrar.
+  </p>
+</Layout>
+
+<!-- Product modal (single instance, JS swaps content) -->
+<div
+  id="product-modal"
+  class="fixed inset-0 z-[60] hidden items-center justify-center p-4 sm:p-0"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="product-modal-title"
+>
+  <div class="ios-backdrop absolute inset-0" data-modal-dismiss></div>
+  <div
+    class="ios-modal relative mx-auto w-full overflow-hidden sm:max-w-lg flex flex-col"
+    style="max-height: 92dvh; margin-bottom: env(safe-area-inset-bottom, 0px);"
+  >
+    <button
+      type="button"
+      class="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-600 shadow-sm ring-1 ring-slate-900/5 backdrop-blur-sm transition hover:bg-white hover:text-slate-900 dark:bg-slate-800/95 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-slate-800 dark:hover:text-white"
+      aria-label="Cerrar"
+      data-i18n-attr="aria-label|tienda.a11y.close"
+      data-modal-dismiss
+    >
+      <span class="material-symbols-outlined text-[20px]">close</span>
+    </button>
+    <div class="overflow-y-auto flex-1 flex flex-col no-scrollbar">
+      <div
+        id="product-modal-gallery"
+        class="relative w-full overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0"
+        style="aspect-ratio: 1 / 1;"
+      ></div>
+      <div class="flex flex-col gap-4 p-5 flex-grow">
+        <div>
+          <p
+            id="product-modal-category"
+            class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500"
+          >
+            Artesanía
+          </p>
+          <h2
+            id="product-modal-title"
+            class="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-white"
+          ></h2>
+          <p
+            id="product-modal-price"
+            class="mt-1 text-base font-semibold text-slate-900 dark:text-white"
+          ></p>
+        </div>
+        <p
+          id="product-modal-description"
+          class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+        ></p>
+        <div class="flex flex-col gap-2">
+          <label
+            for="product-modal-qty"
+            class="text-sm font-medium text-slate-700 dark:text-slate-300"
+            data-i18n="tienda.catalog.qty"
+          >Cantidad</label>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-300 dark:hover:text-white"
+              id="product-modal-dec"
+              aria-label="Restar"
+              data-i18n-attr="aria-label|tienda.a11y.decrement"
+            >
+              <span class="material-symbols-outlined text-[18px]">remove</span>
+            </button>
+            <input
+              type="number"
+              id="product-modal-qty"
+              min="1"
+              max="99"
+              value="1"
+              class="w-16 rounded-lg border border-slate-300 bg-white px-2 py-2 text-center text-sm font-medium text-slate-900 focus:border-slate-900 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:focus:border-slate-300"
+            />
+            <button
+              type="button"
+              class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-300 dark:hover:text-white"
+              id="product-modal-inc"
+              aria-label="Sumar"
+              data-i18n-attr="aria-label|tienda.a11y.increment"
+            >
+              <span class="material-symbols-outlined text-[18px]">add</span>
+            </button>
+          </div>
+        </div>
+        <div class="flex flex-col gap-2 mt-auto shrink-0">
+          <button
+            type="button"
+            id="product-modal-add"
+            class="ios-btn ios-btn-primary w-full shrink-0"
+            data-i18n="tienda.product.add_to_cart"
+          >
+            Agregar al carrito
+          </button>
+          <button
+            type="button"
+            id="product-modal-view-cart"
+            class="ios-btn ios-btn-ghost w-full shrink-0"
+            data-i18n="tienda.product.view_cart"
+          >
+            Ver carrito
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cart drawer -->
+<div
+  id="cart-drawer"
+  class="fixed inset-0 z-[70] hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="cart-title"
+>
+  <div class="ios-backdrop absolute inset-0" data-cart-dismiss></div>
+  <aside
+    class="ios-sheet absolute right-0 top-0 flex h-[100dvh] w-full max-w-md flex-col"
+    style="padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);"
+  >
+    <header class="flex items-center justify-between px-5 pb-3 pt-5">
+      <h2
+        id="cart-title"
+        class="text-lg font-semibold tracking-tight text-slate-900 dark:text-white"
+        data-i18n="tienda.cart.title"
+      >Tu carrito</h2>
+      <button
+        type="button"
+        class="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+        data-cart-dismiss
+        aria-label="Cerrar carrito"
+        data-i18n-attr="aria-label|tienda.a11y.close_cart"
+      >
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </header>
+    <div class="ios-divider" role="separator"></div>
+    <div
+      id="cart-items"
+      class="flex-1 overflow-y-auto px-5 py-4"
+    >
+      <p
+        id="cart-empty-state"
+        class="mt-12 text-center text-sm text-slate-400 dark:text-slate-500"
+        data-i18n="tienda.cart.empty"
+      ></p>
+    </div>
+    <div
+      id="cart-footer"
+      class="flex flex-col gap-4 border-t border-slate-100 px-5 pb-5 pt-4 dark:border-slate-800"
+    >
+      <dl class="flex flex-col gap-2 text-sm">
+        <div class="flex justify-between">
+          <dt
+            class="text-slate-500 dark:text-slate-400"
+            data-i18n="tienda.cart.subtotal"
+          >Subtotal</dt>
+          <dd
+            id="cart-subtotal"
+            class="font-semibold text-slate-900 dark:text-white"
+          >$0 MXN</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt
+            class="text-slate-500 dark:text-slate-400"
+            data-i18n="tienda.cart.shipping"
+          >Envío</dt>
+          <dd
+            class="font-medium text-emerald-600 dark:text-emerald-400"
+            data-i18n="tienda.cart.shipping_free"
+          >Gratis</dd>
+        </div>
+        <div class="flex justify-between text-base font-semibold">
+          <dt class="text-slate-900 dark:text-white" data-i18n="tienda.cart.total">Total</dt>
+          <dd
+            id="cart-total"
+            class="text-slate-900 dark:text-white"
+          >$0 MXN</dd>
+        </div>
+      </dl>
+      <button
+        type="button"
+        id="cart-checkout"
+        class="ios-btn ios-btn-primary w-full"
+        data-i18n="tienda.cart.checkout"
+      >
+        Finalizar compra
+      </button>
+    </div>
+  </aside>
+</div>
+
+<!-- Checkout modal -->
+<div
+  id="checkout-modal"
+  class="fixed inset-0 z-[80] hidden items-center justify-center p-4 sm:p-0"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="checkout-title"
+>
+  <div class="ios-backdrop absolute inset-0" data-checkout-dismiss></div>
+  <div
+    class="ios-modal relative mx-auto flex w-full flex-col sm:max-w-lg"
+    style="max-height: 92dvh; margin-bottom: env(safe-area-inset-bottom, 0px);"
+  >
+    <header class="flex items-center justify-between px-5 pb-3 pt-5">
+      <h2
+        id="checkout-title"
+        class="text-lg font-semibold tracking-tight text-slate-900 dark:text-white"
+        data-i18n="tienda.checkout.title"
+      >Finalizar compra</h2>
+      <button
+        type="button"
+        class="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+        data-checkout-dismiss
+        aria-label="Cerrar"
+        data-i18n-attr="aria-label|tienda.a11y.close"
+      >
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </header>
+    <div class="ios-divider"></div>
+
+    <div
+      id="checkout-body"
+      class="flex-1 overflow-y-auto px-5 py-5"
+    >
+      <form id="checkout-form" class="flex flex-col gap-4" novalidate>
+        <fieldset class="flex flex-col gap-3">
+          <legend
+            class="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500"
+            data-i18n="tienda.checkout.contact"
+          >Datos de contacto</legend>
+          <div class="ios-field">
+            <label for="ck-name" class="ios-field-label" data-i18n="tienda.checkout.name">Nombre</label>
+            <input id="ck-name" name="name" type="text" required class="ios-input" autocomplete="name" />
+          </div>
+          <div class="ios-field">
+            <label for="ck-email" class="ios-field-label" data-i18n="tienda.checkout.email">Correo</label>
+            <input id="ck-email" name="email" type="email" required class="ios-input" autocomplete="email" />
+          </div>
+          <div class="ios-field">
+            <label for="ck-phone" class="ios-field-label" data-i18n="tienda.checkout.phone">Teléfono</label>
+            <input id="ck-phone" name="phone" type="tel" required class="ios-input" autocomplete="tel" inputmode="tel" />
+          </div>
+        </fieldset>
+        <fieldset class="flex flex-col gap-3">
+          <legend class="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500" data-i18n="tienda.checkout.payment">Pago</legend>
+          <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-slate-300 has-[:checked]:border-slate-900 has-[:checked]:ring-1 has-[:checked]:ring-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:has-[:checked]:border-slate-200 dark:has-[:checked]:ring-slate-200">
+            <input type="radio" name="payment" value="usdc" class="sr-only peer" checked />
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition peer-checked:bg-slate-900 peer-checked:text-white dark:bg-slate-800 dark:text-slate-400 dark:peer-checked:bg-white dark:peer-checked:text-slate-900">
+              <span class="material-symbols-outlined text-[16px]">token</span>
+            </span>
+            <span class="flex flex-col gap-0.5">
+              <span class="text-sm font-semibold text-slate-900 dark:text-white" data-i18n="tienda.checkout.pay_usdc">USDC</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400" data-i18n="tienda.checkout.pay_usdc_hint">Desde tu wallet.</span>
+            </span>
+          </label>
+          <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-slate-300 has-[:checked]:border-slate-900 has-[:checked]:ring-1 has-[:checked]:ring-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:has-[:checked]:border-slate-200 dark:has-[:checked]:ring-slate-200">
+            <input type="radio" name="payment" value="cash" class="sr-only peer" />
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition peer-checked:bg-slate-900 peer-checked:text-white dark:bg-slate-800 dark:text-slate-400 dark:peer-checked:bg-white dark:peer-checked:text-slate-900">
+              <span class="material-symbols-outlined text-[16px]">payments</span>
+            </span>
+            <span class="flex flex-col gap-0.5">
+              <span class="text-sm font-semibold text-slate-900 dark:text-white" data-i18n="tienda.checkout.pay_cash">Contra entrega</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400" data-i18n="tienda.checkout.pay_cash_hint">En MXN al recibir.</span>
+            </span>
+          </label>
+        </fieldset>
+      </form>
+
+      <div id="checkout-success" class="hidden flex-col items-center gap-4 py-10 text-center">
+        <div class="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+          <span class="material-symbols-outlined text-[32px]">check_circle</span>
+        </div>
+        <div class="flex flex-col gap-1">
+          <h3 class="text-lg font-semibold tracking-tight text-slate-900 dark:text-white" data-i18n="tienda.checkout.success_title">¡Pedido confirmado!</h3>
+          <p id="checkout-success-subtitle" class="text-sm text-slate-500 dark:text-slate-400"></p>
+        </div>
+        <div id="checkout-success-extra" class="flex w-full flex-col gap-2"></div>
+        <button type="button" id="checkout-new" class="ios-btn ios-btn-ghost w-full" data-i18n="tienda.checkout.new_order">Nuevo pedido</button>
+      </div>
+    </div>
+
+    <div class="ios-divider"></div>
+    <div class="flex flex-col gap-2 px-5 pb-5 pt-4" id="checkout-actions">
+      <button
+        type="button"
+        id="checkout-submit-usdc"
+        class="ios-btn ios-btn-primary w-full"
+        data-i18n="tienda.checkout.submit_usdc"
+      >Confirmar y pagar</button>
+      <button
+        type="button"
+        id="checkout-submit-cash"
+        class="ios-btn ios-btn-secondary w-full"
+        data-i18n="tienda.checkout.submit_cash"
+      >Hacer pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- FAB: cart, safe-area-aware (lives above BottomNav) -->
+<button
+  type="button"
+  id="cart-fab"
+  class="fixed right-5 z-30 hidden h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+  aria-label="Abrir carrito"
+  data-i18n-attr="aria-label|tienda.a11y.open_cart"
+  style="bottom: calc(6rem + env(safe-area-inset-bottom, 0px));"
+>
+  <span class="material-symbols-outlined text-[24px]">shopping_bag</span>
+  <span
+    id="cart-count"
+    class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-bold text-slate-900 ring-1 ring-slate-900/10 dark:bg-slate-900 dark:text-white dark:ring-white/20"
+  >0</span>
+</button>
+
+<AiAgent slot="overlays" />
+
+<script
+  is:inline
+  data-astro-rerun
+  define:vars={{
+    products: items,
+    mxnPerUsdc: MXN_PER_USDC,
+  }}
+>
+  (function tiendaApp() {
+    if (window.__turimapTiendaController) {
+      window.__turimapTiendaController.abort();
+    }
+    const tiendaController = new AbortController();
+    window.__turimapTiendaController = tiendaController;
+
+    const DICTS = (window.__TURIMAP_I18N__ || { es: {}, en: {} });
+    function getDict() {
+      // Mirrors detectLocale() in src/lib/i18n.ts (is:inline cannot import):
+      // URL ?lang → localStorage → navigator.language, default 'es'.
+      try {
+        const q = new URL(window.location.href).searchParams.get('lang');
+        if (q === 'es' || q === 'en') return DICTS[q];
+      } catch { /* ignore */ }
+      try {
+        const s = localStorage.getItem('turimap_locale');
+        if (s === 'en' || s === 'es') return DICTS[s];
+      } catch { /* ignore */ }
+      const n = (navigator && navigator.language) || '';
+      return n.toLowerCase().startsWith('en') ? DICTS.en : DICTS.es;
+    }
+    const _dict = getDict();
+    function resolve(dict, key) {
+      const parts = key.split('.');
+      let cur = dict;
+      for (const p of parts) {
+        if (cur && typeof cur === 'object' && p in cur) cur = cur[p];
+        else return key;
+      }
+      return typeof cur === 'string' ? cur : key;
+    }
+    function tr(key, vars) {
+      let s = resolve(_dict, key);
+      if (!vars) return s;
+      s = s.replace(/\{(\w+)\}/g, function (_, n) {
+        return n in vars ? String(vars[n]) : '{' + n + '}';
+      });
+      return s;
+    }
+    function applyI18n() {
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (!key) return;
+        el.innerHTML = tr(key);
+      });
+      document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-html');
+        if (!key) return;
+        el.innerHTML = tr(key);
+      });
+      document.querySelectorAll('[data-i18n-attr]').forEach((el) => {
+        const v = el.getAttribute('data-i18n-attr');
+        if (!v) return;
+        const [attr, key] = v.split('|');
+        if (attr && key) el.setAttribute(attr, tr(key));
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key) el.setAttribute('placeholder', tr(key));
+      });
+    }
+
+    const MXN_PER_USDC_LOCAL = mxnPerUsdc;
+    function fmtMxn(n) {
+      return new Intl.NumberFormat('es-MX', {
+        style: 'currency',
+        currency: 'MXN',
+        maximumFractionDigits: 0,
+      }).format(n);
+    }
+    function fmtUsdc(n) {
+      return new Intl.NumberFormat('es-MX', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+      }).format(n);
+    }
+    function toUsdc(mxn) { return mxn / MXN_PER_USDC_LOCAL; }
+    function toUsdcRaw(amount) {
+      return BigInt(Math.round(amount * 1_000_000)).toString();
+    }
+
+    const CART_KEY = 'turimap_cart';
+    const ORDERS_KEY = 'turimap_orders';
+    function readCart() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CART_KEY) || '{"items":[]}');
+        return parsed && Array.isArray(parsed.items) ? parsed : { items: [] };
+      } catch {
+        return { items: [] };
+      }
+    }
+    function writeCart(c) {
+      try { localStorage.setItem(CART_KEY, JSON.stringify(c)); } catch {}
+    }
+    function cartCount() {
+      return readCart().items.reduce((acc, i) => acc + i.qty, 0);
+    }
+    function cartSubtotal() {
+      return readCart().items.reduce((acc, i) => acc + i.unitMxn * i.qty, 0);
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function optimizeProductImageUrl(url, size, quality) {
+      if (!url || !url.includes('static.wixstatic.com')) return url || '';
+      return url.replace(
+        /\/v1\/fit\/w_\d+,h_\d+,q_\d+\//,
+        `/v1/fit/w_${size},h_${size},q_${quality}/`,
+      );
+    }
+
+    const catalogEl = document.getElementById('catalog');
+    const emptyEl = document.getElementById('catalog-empty');
+    const storeSearchInput = document.getElementById('store-search-input');
+    const storeSearchClear = document.getElementById('store-search-clear');
+    let catalogQuery = '';
+    let activeCountry = '';
+    let userCity = '';
+    let showAllProductsFallback = false;
+
+    function setStoreLocationStatus(message, iconName = 'near_me', state = 'neutral') {
+      const storeLocationStatus = document.getElementById('store-location-status');
+      if (!storeLocationStatus) return;
+      const textEl = storeLocationStatus.querySelector('#store-location-text') || storeLocationStatus;
+      const iconEl = storeLocationStatus.querySelector('#store-location-icon');
+      if (textEl) textEl.textContent = message;
+      if (iconEl) iconEl.textContent = iconName;
+
+      const baseClasses = 'store-location-pill mx-auto mt-5 inline-flex max-w-xl items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-medium transition-colors duration-300';
+      if (state === 'success') {
+        storeLocationStatus.className = `${baseClasses} is-success`;
+        if (iconEl) iconEl.className = 'material-symbols-outlined text-[16px] shrink-0 text-emerald-600 dark:text-emerald-400';
+      } else if (state === 'warning') {
+        storeLocationStatus.className = `${baseClasses} is-warning`;
+        if (iconEl) iconEl.className = 'material-symbols-outlined text-[16px] shrink-0 text-amber-600 dark:text-amber-400';
+      } else {
+        storeLocationStatus.className = baseClasses;
+        if (iconEl) iconEl.className = 'material-symbols-outlined text-[16px] shrink-0 text-slate-500 dark:text-slate-400';
+      }
+    }
+
+    function requestStoreLocation() {
+      if (!navigator.geolocation) {
+        setStoreLocationStatus(tr('tienda.location.unsupported'), 'location_off', 'warning');
+        return;
+      }
+      setStoreLocationStatus(tr('tienda.location.searching'), 'near_me', 'neutral');
+      navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+        try {
+          const response = await fetch('/api/explore/location', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ latitude: coords.latitude, longitude: coords.longitude }),
+          });
+          const data = await response.json();
+          if (data.location?.status === 'resolved') {
+            activeCountry = (data.location.countryCode || '').toUpperCase();
+            userCity = data.location.city || '';
+
+            const hasProductsInCountry = (products || []).some(
+              (p) => (p.countryCode || 'MX').toUpperCase() === activeCountry
+            );
+            if (hasProductsInCountry) {
+              setStoreLocationStatus(tr('tienda.location.available', { place: userCity || activeCountry }), 'check_circle', 'success');
+            } else {
+              setStoreLocationStatus(userCity ? tr('tienda.location.unavailable_place', { place: userCity }) : tr('tienda.location.unavailable_region', { code: activeCountry }), 'location_off', 'warning');
+            }
+            renderCatalog();
+          } else {
+            setStoreLocationStatus(tr('tienda.location.unresolved'), 'location_off', 'warning');
+          }
+        } catch {
+          setStoreLocationStatus(tr('tienda.location.error'), 'signal_wifi_off', 'warning');
+        }
+      }, () => {
+        setStoreLocationStatus(tr('tienda.location.denied'), 'location_off', 'warning');
+      }, { timeout: 8000, maximumAge: 300000 });
+    }
+
+    function normalizeSearch(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function setStoreClearVisible(visible) {
+      storeSearchClear.classList.toggle('hidden', !visible);
+      storeSearchClear.classList.toggle('flex', visible);
+    }
+
+    function renderCatalog() {
+      const filteredByCountry = (products || []).filter((p) => {
+        if (showAllProductsFallback || !activeCountry) return true;
+        return (p.countryCode || 'MX').toUpperCase() === activeCountry;
+      });
+
+      const visibleProducts = filteredByCountry
+        .map((p) => ({ p, idx: (products || []).indexOf(p) }))
+        .filter(({ p }) => {
+          if (!catalogQuery) return true;
+          const searchable = normalizeSearch([p.name, p.description, p.sku].join(' '));
+          return searchable.includes(catalogQuery);
+        });
+
+      if (visibleProducts.length === 0) {
+        if (activeCountry && !showAllProductsFallback && !catalogQuery) {
+          catalogEl.classList.remove('hidden');
+          emptyEl.classList.add('hidden');
+          renderComingSoonHolders();
+          return;
+        }
+
+        catalogEl.classList.add('hidden');
+        emptyEl.textContent = catalogQuery
+          ? tr('tienda.search.empty')
+          : tr('tienda.catalog.empty');
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+
+      catalogEl.classList.remove('hidden');
+      emptyEl.classList.add('hidden');
+      catalogEl.innerHTML = '';
+      visibleProducts.forEach(({ p, idx }, displayIndex) => {
+        const img = optimizeProductImageUrl((p.images && p.images[0]) || '', 360, 72);
+        const priceMxn = Number(p.price) || 0;
+        const card = document.createElement('article');
+        card.className = 'group flex cursor-pointer flex-col';
+        card.setAttribute('data-product-idx', String(idx));
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.innerHTML = `
+          <div class="relative aspect-square overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
+            <img
+              src="${img}"
+              alt="${escapeHtml(p.name)}"
+              loading="${displayIndex < 2 ? 'eager' : 'lazy'}"
+              fetchpriority="${displayIndex === 0 ? 'high' : 'auto'}"
+              width="400"
+              height="400"
+              decoding="async"
+              class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              onerror="this.style.display='none'"
+            />
+            <span class="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-900 shadow-md ring-1 ring-slate-900/5 dark:bg-slate-900 dark:text-white dark:ring-white/10" aria-label="${tr('tienda.catalog.details')}">
+              <span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+            </span>
+          </div>
+          <div class="flex flex-1 flex-col gap-0.5 pt-2.5">
+            <h3 class="text-sm font-medium leading-snug text-slate-900 dark:text-white line-clamp-2">${escapeHtml(p.name)}</h3>
+            <span class="text-sm font-semibold text-slate-900 dark:text-white">${fmtMxn(priceMxn)}</span>
+          </div>
+        `;
+        card.addEventListener('click', () => openProduct(idx));
+        card.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            openProduct(idx);
+          }
+        });
+        catalogEl.appendChild(card);
+      });
+    }
+
+    function renderComingSoonHolders() {
+      catalogEl.innerHTML = '';
+      const placeName = userCity || activeCountry || tr('tienda.coming_soon.fallback_place');
+
+      const placeholders = [
+        { title: tr('tienda.coming_soon.textiles_title', { place: placeName }), desc: tr('tienda.coming_soon.textiles_desc'), category: tr('tienda.coming_soon.badge') },
+        { title: tr('tienda.coming_soon.ceramics_title', { place: placeName }), desc: tr('tienda.coming_soon.ceramics_desc'), category: tr('tienda.coming_soon.badge') },
+        { title: tr('tienda.coming_soon.carving_title', { place: placeName }), desc: tr('tienda.coming_soon.carving_desc'), category: tr('tienda.coming_soon.badge') },
+      ];
+
+      placeholders.forEach((ph) => {
+        const card = document.createElement('article');
+        card.className = 'flex flex-col';
+        card.innerHTML = `
+          <div class="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50">
+            <div class="flex flex-col items-center gap-2 p-4 text-center">
+              <span class="material-symbols-outlined text-[28px] text-slate-400 dark:text-slate-500">schedule</span>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Coming Soon</span>
+            </div>
+          </div>
+          <div class="flex flex-1 flex-col gap-1 pt-2.5">
+            <h3 class="text-sm font-medium leading-snug text-slate-900 dark:text-white line-clamp-2">${escapeHtml(ph.title)}</h3>
+            <p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-2">${escapeHtml(ph.desc)}</p>
+            <div class="mt-auto pt-2">
+              <button type="button" class="btn-show-all-products text-xs font-semibold text-slate-900 underline underline-offset-2 transition hover:text-slate-600 dark:text-white dark:hover:text-slate-300">${tr('tienda.coming_soon.show_all')}</button>
+            </div>
+          </div>
+        `;
+        catalogEl.appendChild(card);
+      });
+
+      catalogEl.querySelectorAll('.btn-show-all-products').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          showAllProductsFallback = true;
+          renderCatalog();
+        });
+      });
+    }
+
+    storeSearchInput.addEventListener('input', (event) => {
+      const value = event.target.value;
+      catalogQuery = normalizeSearch(value);
+      setStoreClearVisible(Boolean(value));
+      renderCatalog();
+    });
+
+    storeSearchClear.addEventListener('click', () => {
+      storeSearchInput.value = '';
+      catalogQuery = '';
+      setStoreClearVisible(false);
+      renderCatalog();
+      storeSearchInput.focus();
+    });
+
+    // ----- Product modal -----
+    const productModalEl = document.getElementById('product-modal');
+    const productGalleryEl = document.getElementById('product-modal-gallery');
+    const productTitleEl = document.getElementById('product-modal-title');
+    const productPriceEl = document.getElementById('product-modal-price');
+    const productDescEl = document.getElementById('product-modal-description');
+    const productCategoryEl = document.getElementById('product-modal-category');
+    const qtyInput = document.getElementById('product-modal-qty');
+    const cartDrawerEl = document.getElementById('cart-drawer');
+    const checkoutModalEl = document.getElementById('checkout-modal');
+    let activeProductIdx = -1;
+
+    function openProduct(idx) {
+      const p = products[idx];
+      if (!p) return;
+      activeProductIdx = idx;
+      const images = p.images && p.images.length > 0 ? p.images : [''];
+      productGalleryEl.innerHTML = '';
+      productGalleryEl.style.aspectRatio = '1 / 1';
+      images.forEach((src, i) => {
+        const img = document.createElement('img');
+        const optimizedSrc = optimizeProductImageUrl(src, 640, 78);
+        img.dataset.src = optimizedSrc;
+        if (i === 0) img.src = optimizedSrc;
+        img.alt = `${p.name} - ${i + 1}`;
+        img.className = 'absolute inset-0 h-full w-full object-cover transition-opacity duration-300';
+        img.style.opacity = i === 0 ? '1' : '0';
+        img.loading = i === 0 ? 'eager' : 'lazy';
+        img.decoding = 'async';
+        if (i > 0) img.setAttribute('fetchpriority', 'low');
+        img.onerror = function () { this.style.display = 'none'; };
+        productGalleryEl.appendChild(img);
+      });
+      if (images.length > 1) {
+        const nav = document.createElement('div');
+        nav.className = 'absolute inset-x-3 top-1/2 flex -translate-y-1/2 justify-between';
+        nav.innerHTML = `
+          <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-900/5 backdrop-blur-sm transition hover:bg-white hover:text-slate-900 dark:bg-slate-800/95 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800 dark:hover:text-white" data-carousel-prev aria-label="${tr('tienda.a11y.previous')}">
+            <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+          </button>
+          <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-900/5 backdrop-blur-sm transition hover:bg-white hover:text-slate-900 dark:bg-slate-800/95 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800 dark:hover:text-white" data-carousel-next aria-label="${tr('tienda.a11y.next')}">
+            <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+          </button>
+        `;
+        productGalleryEl.appendChild(nav);
+        let current = 0;
+        function updateCarousel() {
+          const imgs = productGalleryEl.querySelectorAll('img');
+          imgs.forEach((im, k) => {
+            if (k === current && !im.hasAttribute('src') && im.dataset.src) {
+              im.src = im.dataset.src;
+            }
+            im.style.opacity = k === current ? '1' : '0';
+          });
+        }
+        nav.querySelector('[data-carousel-prev]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          current = (current - 1 + images.length) % images.length;
+          updateCarousel();
+        });
+        nav.querySelector('[data-carousel-next]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          current = (current + 1) % images.length;
+          updateCarousel();
+        });
+        let startX = 0;
+        productGalleryEl.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+        productGalleryEl.addEventListener('touchend', (e) => {
+          const dx = e.changedTouches[0].clientX - startX;
+          if (Math.abs(dx) > 40) {
+            current = dx < 0 ? (current + 1) % images.length : (current - 1 + images.length) % images.length;
+            updateCarousel();
+          }
+        });
+      }
+      productTitleEl.textContent = p.name;
+      const pMxn = Number(p.price) || 0;
+      const pUsdc = toUsdc(pMxn);
+      productPriceEl.innerHTML = `${fmtMxn(pMxn)} <span class="text-sm font-normal text-slate-500 dark:text-slate-400">(${tr('tienda.product.usdc_approx')} ${fmtUsdc(pUsdc)})</span>`;
+      productDescEl.textContent = p.description || '';
+      productCategoryEl.textContent = tr('tienda.catalog.category_artesania');
+      qtyInput.value = '1';
+      showModal(productModalEl);
+    }
+
+    document.getElementById('product-modal-dec').addEventListener('click', () => {
+      const v = Math.max(1, (parseInt(qtyInput.value, 10) || 1) - 1);
+      qtyInput.value = String(v);
+    });
+    document.getElementById('product-modal-inc').addEventListener('click', () => {
+      const v = Math.min(99, (parseInt(qtyInput.value, 10) || 1) + 1);
+      qtyInput.value = String(v);
+    });
+    qtyInput.addEventListener('input', () => {
+      let v = parseInt(qtyInput.value, 10);
+      if (!Number.isFinite(v)) v = 1;
+      qtyInput.value = String(Math.max(1, Math.min(99, v)));
+    });
+
+    function addToCartFromModal() {
+      if (activeProductIdx < 0) return;
+      const p = products[activeProductIdx];
+      const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+      const cart = readCart();
+      const existing = cart.items.find((i) => i.sku === p.sku);
+      if (existing) existing.qty += qty;
+      else {
+        cart.items.push({
+          sku: p.sku || `no-sku-${activeProductIdx}`,
+          name: p.name,
+          unitMxn: Number(p.price) || 0,
+          unitUsdc: toUsdc(Number(p.price) || 0),
+          image: optimizeProductImageUrl((p.images && p.images[0]) || '', 160, 68),
+          qty,
+        });
+      }
+      cart.updatedAt = new Date().toISOString();
+      writeCart(cart);
+      flashAdded();
+      updateFabCount();
+    }
+    document.getElementById('product-modal-add').addEventListener('click', addToCartFromModal);
+    document.getElementById('product-modal-view-cart').addEventListener('click', () => {
+      hideModal(productModalEl);
+      openCart();
+    });
+
+    function flashAdded() {
+      const btn = document.getElementById('product-modal-add');
+      const original = btn.dataset.original || btn.textContent;
+      btn.dataset.original = original;
+      btn.textContent = tr('tienda.catalog.added');
+      setTimeout(() => { btn.textContent = original; }, 1400);
+    }
+
+    function showModal(el) {
+      el.classList.remove('hidden');
+      el.classList.add('flex');
+      document.body.classList.add('modal-open');
+    }
+    function hideModal(el) {
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+      document.body.classList.remove('modal-open');
+    }
+    document.querySelectorAll('[data-modal-dismiss]').forEach((b) => {
+      b.addEventListener('click', () => hideModal(productModalEl));
+    });
+    productModalEl.addEventListener('click', (e) => {
+      if (e.target === productModalEl) hideModal(productModalEl);
+    });
+    document.querySelectorAll('[data-cart-dismiss]').forEach((b) => {
+      b.addEventListener('click', () => hideModal(cartDrawerEl));
+    });
+    cartDrawerEl.addEventListener('click', (e) => {
+      if (e.target === cartDrawerEl) hideModal(cartDrawerEl);
+    });
+    document.querySelectorAll('[data-checkout-dismiss]').forEach((b) => {
+      b.addEventListener('click', () => hideModal(checkoutModalEl));
+    });
+    checkoutModalEl.addEventListener('click', (e) => {
+      if (e.target === checkoutModalEl) hideModal(checkoutModalEl);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!checkoutModalEl.classList.contains('hidden')) hideModal(checkoutModalEl);
+      else if (!cartDrawerEl.classList.contains('hidden')) hideModal(cartDrawerEl);
+      else if (!productModalEl.classList.contains('hidden')) hideModal(productModalEl);
+    }, { signal: tiendaController.signal });
+
+    // ----- Cart drawer -----
+    const cartItemsEl = document.getElementById('cart-items');
+    const cartFooterEl = document.getElementById('cart-footer');
+    const cartFabEl = document.getElementById('cart-fab');
+    const cartCountEl = document.getElementById('cart-count');
+
+    function updateFabCount() {
+      const c = cartCount();
+      if (c > 0) {
+        cartFabEl.classList.remove('hidden');
+        cartCountEl.textContent = String(c);
+      } else {
+        cartFabEl.classList.add('hidden');
+      }
+    }
+
+    function openCart() {
+      renderCart();
+      showModal(cartDrawerEl);
+    }
+    cartFabEl.addEventListener('click', openCart);
+
+    function renderCart() {
+      const cart = readCart();
+      if (!cart.items || cart.items.length === 0) {
+        cartItemsEl.innerHTML = '';
+        const empty = document.createElement('p');
+        empty.className = 'mt-12 text-center text-sm text-slate-400 dark:text-slate-500';
+        empty.textContent = tr('tienda.cart.empty');
+        const hint = document.createElement('p');
+        hint.className = 'mt-2 text-center text-xs text-slate-400 dark:text-slate-500';
+        hint.textContent = tr('tienda.cart.empty_hint');
+        cartItemsEl.appendChild(empty);
+        cartItemsEl.appendChild(hint);
+        cartFooterEl.classList.add('hidden');
+        return;
+      }
+      cartFooterEl.classList.remove('hidden');
+      cartItemsEl.innerHTML = '';
+      cart.items.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex gap-3 border-b border-slate-100 py-4 last:border-b-0 dark:border-slate-800';
+        row.innerHTML = `
+          <img src="${escapeHtml(item.image)}" alt="" loading="lazy" class="h-16 w-16 flex-shrink-0 rounded-xl object-cover bg-slate-100 dark:bg-slate-800" onerror="this.style.display='none'" />
+          <div class="flex min-w-0 flex-1 flex-col gap-1">
+            <p class="text-sm font-medium text-slate-900 dark:text-white line-clamp-2">${escapeHtml(item.name)}</p>
+            <p class="text-sm font-semibold text-slate-900 dark:text-white">${fmtMxn(item.unitMxn * item.qty)}</p>
+            <div class="mt-1 flex items-center gap-2">
+              <button type="button" class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-300 dark:hover:text-white" data-cart-dec="${idx}" aria-label="${tr('tienda.a11y.decrement')}">
+                <span class="material-symbols-outlined text-[16px]">remove</span>
+              </button>
+              <span class="w-8 text-center text-sm font-semibold text-slate-900 dark:text-white">${item.qty}</span>
+              <button type="button" class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-300 dark:hover:text-white" data-cart-inc="${idx}" aria-label="${tr('tienda.a11y.increment')}">
+                <span class="material-symbols-outlined text-[16px]">add</span>
+              </button>
+              <button type="button" class="ml-auto text-xs font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" data-cart-remove="${idx}">
+                ${tr('tienda.cart.remove')}
+              </button>
+            </div>
+          </div>
+        `;
+        cartItemsEl.appendChild(row);
+      });
+      cartItemsEl.querySelectorAll('[data-cart-inc]').forEach((b) => {
+        b.addEventListener('click', () => {
+          const i = parseInt(b.getAttribute('data-cart-inc'), 10);
+          const c = readCart();
+          if (c.items[i]) c.items[i].qty = Math.min(99, c.items[i].qty + 1);
+          writeCart(c);
+          renderCart();
+          updateFabCount();
+        });
+      });
+      cartItemsEl.querySelectorAll('[data-cart-dec]').forEach((b) => {
+        b.addEventListener('click', () => {
+          const i = parseInt(b.getAttribute('data-cart-dec'), 10);
+          const c = readCart();
+          if (c.items[i]) c.items[i].qty = Math.max(1, c.items[i].qty - 1);
+          writeCart(c);
+          renderCart();
+          updateFabCount();
+        });
+      });
+      cartItemsEl.querySelectorAll('[data-cart-remove]').forEach((b) => {
+        b.addEventListener('click', () => {
+          const i = parseInt(b.getAttribute('data-cart-remove'), 10);
+          const c = readCart();
+          c.items.splice(i, 1);
+          writeCart(c);
+          renderCart();
+          updateFabCount();
+        });
+      });
+      const sub = cartSubtotal();
+      document.getElementById('cart-subtotal').textContent = fmtMxn(sub);
+      document.getElementById('cart-total').textContent = fmtMxn(sub);
+    }
+
+    document.getElementById('cart-checkout').addEventListener('click', () => {
+      const c = readCart();
+      if (!c.items || c.items.length === 0) return;
+      hideModal(cartDrawerEl);
+      openCheckout();
+    });
+
+    // ----- Checkout modal -----
+    const checkoutFormEl = document.getElementById('checkout-form');
+    const checkoutSuccessEl = document.getElementById('checkout-success');
+    const checkoutActionsEl = document.getElementById('checkout-actions');
+
+    function openCheckout() {
+      checkoutFormEl.reset();
+      checkoutFormEl.classList.remove('hidden');
+      checkoutSuccessEl.classList.add('hidden');
+      checkoutSuccessEl.classList.remove('flex');
+      checkoutActionsEl.classList.remove('hidden');
+      showModal(checkoutModalEl);
+    }
+    document.getElementById('checkout-new').addEventListener('click', () => {
+      hideModal(checkoutModalEl);
+    });
+
+    function setError(input, msg) {
+      input.classList.add('is-error');
+      const id = input.id + '-err';
+      let errEl = document.getElementById(id);
+      if (!errEl) {
+        errEl = document.createElement('p');
+        errEl.id = id;
+        errEl.className = 'ios-text-caption1 mt-1 text-rose-600 dark:text-rose-400';
+        input.parentElement.appendChild(errEl);
+      }
+      errEl.textContent = msg;
+    }
+    function clearError(input) {
+      input.classList.remove('is-error');
+      const errEl = document.getElementById(input.id + '-err');
+      if (errEl) errEl.remove();
+    }
+    function validateContact() {
+      let ok = true;
+      const name = checkoutFormEl.querySelector('#ck-name');
+      const email = checkoutFormEl.querySelector('#ck-email');
+      const phone = checkoutFormEl.querySelector('#ck-phone');
+      [name, email, phone].forEach(clearError);
+      if (!name.value.trim()) { setError(name, tr('tienda.checkout.errors.name_required')); ok = false; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+        setError(email, tr('tienda.checkout.errors.email_required'));
+        ok = false;
+      }
+      if (!phone.value.trim()) { setError(phone, tr('tienda.checkout.errors.phone_required')); ok = false; }
+      return ok;
+    }
+
+    document.getElementById('checkout-submit-usdc').addEventListener('click', () => submitOrder('usdc'));
+    document.getElementById('checkout-submit-cash').addEventListener('click', () => submitOrder('cash'));
+
+    async function submitOrder(method) {
+      if (!validateContact()) return;
+      const cart = readCart();
+      if (!cart.items || cart.items.length === 0) return;
+      const contact = {
+        name: checkoutFormEl.querySelector('#ck-name').value.trim(),
+        email: checkoutFormEl.querySelector('#ck-email').value.trim(),
+        phone: checkoutFormEl.querySelector('#ck-phone').value.trim(),
+      };
+      const subtotalMxn = cartSubtotal();
+      const subtotalUsdc = toUsdc(subtotalMxn);
+
+      checkoutActionsEl.classList.add('hidden');
+
+      if (method === 'cash') {
+        completeOrder({
+          method: 'cash',
+          cart,
+          contact,
+          subtotalMxn,
+          subtotalUsdc,
+          txHash: null,
+        });
+        return;
+      }
+
+      try {
+        const onchain = await import('../lib/onchain/client.ts');
+        const wallet = new onchain.BrowserWalletProvider();
+        const addr = await wallet.connect();
+        const rawAmount = toUsdcRaw(subtotalUsdc);
+        const paymentAddr =
+          window.__TURIMAP_PAYMENT_ADDRESS__ ||
+          '0xD540067d763bc792b81f816a677bB25d7e6d4B0B';
+        const txHash = await wallet.sendUsdcTransfer({
+          to: paymentAddr,
+          rawAmount,
+        });
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            txHash,
+            walletAddress: addr,
+            items: cart.items.map((i) => ({
+              sku: i.sku,
+              name: i.name,
+              qty: i.qty,
+              priceMXN: i.unitMxn,
+              priceUSDC: i.unitUsdc,
+            })),
+            totalUSDC: subtotalUsdc,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          throw new Error(json.error || tr('tienda.checkout.errors.payment_failed'));
+        }
+        completeOrder({
+          method: 'usdc',
+          cart,
+          contact,
+          subtotalMxn,
+          subtotalUsdc,
+          txHash: json.txHash || txHash,
+        });
+      } catch (err) {
+        const msg = (err && err.message) || '';
+        let key = 'tienda.checkout.errors.payment_failed';
+        if (/rechaz/i.test(msg) || /reject/i.test(msg)) key = 'tienda.checkout.errors.wallet_rejected';
+        checkoutActionsEl.classList.remove('hidden');
+        alert(tr(key));
+      }
+    }
+
+    function completeOrder({ method, cart, contact, subtotalMxn, subtotalUsdc, txHash }) {
+      const orderId = 'ORD-' + Date.now();
+      const order = {
+        id: orderId,
+        method,
+        contact,
+        items: cart.items,
+        subtotalMxn,
+        subtotalUsdc,
+        txHash,
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        const all = JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]');
+        all.push(order);
+        localStorage.setItem(ORDERS_KEY, JSON.stringify(all));
+      } catch {}
+
+      writeCart({ items: [], updatedAt: new Date().toISOString() });
+
+      checkoutFormEl.classList.add('hidden');
+      checkoutActionsEl.classList.add('hidden');
+      const subtitleEl = document.getElementById('checkout-success-subtitle');
+      const extraEl = document.getElementById('checkout-success-extra');
+      const isUsdc = method === 'usdc';
+      subtitleEl.textContent = isUsdc
+        ? tr('tienda.checkout.success_subtitle_usdc')
+        : tr('tienda.checkout.success_subtitle_cash');
+      extraEl.innerHTML = '';
+      if (txHash) {
+        const link = document.createElement('a');
+        link.href = 'https://polygonscan.com/tx/' + txHash;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'ios-btn ios-btn-secondary w-full';
+        link.textContent = tr('tienda.checkout.view_polygonscan');
+        extraEl.appendChild(link);
+      } else {
+        const lines = [
+          'Hola! Acabo de hacer un pedido en TuriMap.',
+          `Pedido: ${orderId}`,
+          `Nombre: ${contact.name}`,
+          `Total: ${fmtMxn(subtotalMxn)} MXN`,
+        ];
+        const wa = document.createElement('a');
+        wa.href = 'https://wa.me/5215512345678?text=' + encodeURIComponent(lines.join('\n'));
+        wa.target = '_blank';
+        wa.rel = 'noopener noreferrer';
+        wa.className = 'ios-btn ios-btn-primary w-full';
+        wa.textContent = tr('tienda.checkout.whatsapp_cta');
+        extraEl.appendChild(wa);
+      }
+      checkoutSuccessEl.classList.remove('hidden');
+      checkoutSuccessEl.classList.add('flex');
+      updateFabCount();
+    }
+
+    applyI18n();
+    renderCatalog();
+    requestStoreLocation();
+    updateFabCount();
+  })();
+</script>
+
+<style>
+  /* iOS 26 glass pill for the location status — page-local, mirrors the shared
+     liquid-glass recipe without touching the global ios-* classes. States only
+     swap icon + text color on the same glass base. */
+  .store-location-pill {
+    border: 0.5px solid rgba(148, 163, 184, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.62);
+    color: #475569; /* slate-600 */
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 8px 24px -12px rgba(15, 23, 42, 0.12),
+      0 1px 2px rgba(15, 23, 42, 0.04);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  }
+
+  :global(.dark) .store-location-pill {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.55);
+    color: #cbd5e1; /* slate-300 */
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  .store-location-pill.is-success {
+    color: #059669; /* emerald-600 */
+  }
+  :global(.dark) .store-location-pill.is-success {
+    color: #34d399; /* emerald-400 */
+  }
+
+  .store-location-pill.is-warning {
+    color: #d97706; /* amber-600 */
+  }
+  :global(.dark) .store-location-pill.is-warning {
+    color: #fbbf24; /* amber-400 */
+  }
+
+  #cart-fab.hidden {
+    display: none !important;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Calm, solid modal surfaces for this page (Airbnb-style) — overrides the
+     shared liquid-glass look without touching the global ios-* classes. */
+  #product-modal > .ios-modal,
+  #checkout-modal > .ios-modal {
+    border: none;
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow:
+      0 24px 48px -12px rgba(15, 23, 42, 0.18),
+      0 4px 12px -4px rgba(15, 23, 42, 0.08);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  :global(.dark) #product-modal > .ios-modal,
+  :global(.dark) #checkout-modal > .ios-modal {
+    background: #0f172a;
+    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.6);
+  }
+
+  #cart-drawer .ios-sheet {
+    border-top: none;
+    border-radius: 24px 0 0 24px;
+    background: #ffffff;
+    box-shadow: -16px 0 40px -16px rgba(15, 23, 42, 0.18);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  :global(.dark) #cart-drawer .ios-sheet {
+    background: #0f172a;
+    box-shadow: -16px 0 40px -16px rgba(0, 0, 0, 0.6);
+  }
+
+  @media (max-width: 639px) {
+    #product-modal > .ios-modal,
+    #checkout-modal > .ios-modal {
+      max-height: calc(
+        100dvh - 2rem - env(safe-area-inset-top, 0px) -
+          env(safe-area-inset-bottom, 0px)
+      );
+      margin-bottom: 0;
+      border-radius: 1.5rem;
+    }
+
+    #cart-drawer .ios-sheet {
+      border-radius: 0;
+    }
+
+    #product-modal,
+    #checkout-modal {
+      padding-top: max(1rem, env(safe-area-inset-top, 0px));
+      padding-right: max(1rem, env(safe-area-inset-right, 0px));
+      padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+      padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    }
+
+    #product-modal-gallery {
+      aspect-ratio: 4 / 3 !important;
+    }
+
+    #checkout-body,
+    #product-modal .no-scrollbar {
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+    }
+
+    #checkout-actions {
+      padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+    }
+  }
+</style>

@@ -1,0 +1,127 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { isAdmin } from '../../lib/admin';
+
+const loggedIn = isAdmin(Astro.locals);
+if (!loggedIn) return Astro.redirect('/admin/login');
+---
+<AdminLayout title="Reviews" activePage="reviews">
+  <!-- Filters -->
+  <div class="flex flex-wrap gap-2 mb-6">
+    <button data-target="" class="review-filter active px-4 py-2 rounded-xl text-xs font-bold border transition-all bg-purple-600/15 border-purple-500/30 text-purple-400">Todas</button>
+    <button data-target="museum" class="review-filter px-4 py-2 rounded-xl text-xs font-bold border transition-all border-slate-700 text-slate-400 hover:text-white hover:border-slate-600">Museos</button>
+    <button data-target="product" class="review-filter px-4 py-2 rounded-xl text-xs font-bold border transition-all border-slate-700 text-slate-400 hover:text-white hover:border-slate-600">Productos</button>
+    <button data-target="tour" class="review-filter px-4 py-2 rounded-xl text-xs font-bold border transition-all border-slate-700 text-slate-400 hover:text-white hover:border-slate-600">Tours</button>
+  </div>
+
+  <!-- Table -->
+  <div class="rounded-2xl border border-slate-800 bg-slate-900/50 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-800 text-left">
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Autor</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Target</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Rating</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Texto</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="reviews-tbody" class="divide-y divide-slate-800/60">
+          <tr><td colspan="6" class="px-5 py-8 text-center text-slate-600">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="flex items-center justify-between px-5 py-3 border-t border-slate-800">
+      <p id="reviews-count" class="text-xs text-slate-500"></p>
+      <div class="flex gap-2">
+        <button id="reviews-prev" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30" disabled>? Anterior</button>
+        <button id="reviews-next" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30" disabled>Siguiente ?</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let currentTarget = '';
+    const limit = 20;
+
+    function renderStars(r: number) {
+      return '?'.repeat(r) + '?'.repeat(5 - r);
+    }
+
+    async function loadReviews() {
+      const params = new URLSearchParams({ page: String(currentPage), limit: String(limit) });
+      if (currentTarget) params.set('targetType', currentTarget);
+
+      try {
+        const res = await fetch(`/api/admin/reviews?${params}`);
+        const data = await res.json();
+        if (!data.ok) return;
+
+        const tbody = document.getElementById('reviews-tbody')!;
+        if (!data.reviews.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-8 text-center text-slate-600">Sin resultados</td></tr>';
+        } else {
+          tbody.innerHTML = data.reviews.map((r: any) => `
+            <tr class="hover:bg-slate-800/30 transition-colors">
+              <td class="px-5 py-3">
+                <div>
+                  <p class="font-semibold text-white text-sm">${r.author_name || 'Anónimo'}</p>
+                  <p class="text-[10px] text-slate-500">${r.author_email || ''}</p>
+                </div>
+              </td>
+              <td class="px-5 py-3">
+                <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-400">${r.target_type}</span>
+                <span class="text-xs text-slate-500 ml-1">${r.target_id}</span>
+              </td>
+              <td class="px-5 py-3 text-center text-amber-400 text-sm tracking-wider">${renderStars(r.rating)}</td>
+              <td class="px-5 py-3 text-slate-300 text-xs max-w-[200px] truncate" title="${r.text || ''}">${r.text || '—'}</td>
+              <td class="px-5 py-3 text-slate-500 text-xs">${new Date(r.created_at).toLocaleDateString('es-MX')}</td>
+              <td class="px-5 py-3">
+                <button data-review-id="${r.id}" class="delete-review p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all" title="Eliminar">
+                  <span class="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+              </td>
+            </tr>
+          `).join('');
+
+          tbody.querySelectorAll('.delete-review').forEach((btn) => {
+            btn.addEventListener('click', async (e) => {
+              const reviewId = (e.currentTarget as HTMLElement).dataset.reviewId;
+              if (!confirm('¿Eliminar esta review?')) return;
+              await fetch(`/api/admin/reviews?id=${reviewId}`, { method: 'DELETE' });
+              loadReviews();
+            });
+          });
+        }
+
+        document.getElementById('reviews-count')!.textContent = `${data.total} review(s) total`;
+        (document.getElementById('reviews-prev') as HTMLButtonElement).disabled = currentPage <= 1;
+        (document.getElementById('reviews-next') as HTMLButtonElement).disabled = currentPage * limit >= data.total;
+      } catch {
+        document.getElementById('reviews-tbody')!.innerHTML = '<tr><td colspan="6" class="px-5 py-8 text-center text-red-400">Error al cargar</td></tr>';
+      }
+    }
+
+    document.querySelectorAll('.review-filter').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.review-filter').forEach(b => {
+          b.classList.remove('active', 'bg-purple-600/15', 'border-purple-500/30', 'text-purple-400');
+          b.classList.add('border-slate-700', 'text-slate-400');
+        });
+        btn.classList.add('active', 'bg-purple-600/15', 'border-purple-500/30', 'text-purple-400');
+        btn.classList.remove('border-slate-700', 'text-slate-400');
+        currentTarget = (btn as HTMLElement).dataset.target || '';
+        currentPage = 1;
+        loadReviews();
+      });
+    });
+
+    document.getElementById('reviews-prev')?.addEventListener('click', () => { currentPage--; loadReviews(); });
+    document.getElementById('reviews-next')?.addEventListener('click', () => { currentPage++; loadReviews(); });
+
+    loadReviews();
+  </script>
+</AdminLayout>

@@ -1,4 +1,4 @@
--- Schema para EdificARTE: Usuarios, Insignias, Reviews, Wallets
+-- Schema para TuriMap: Usuarios, Insignias, Reviews, Wallets
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS user_wallets (
 -- distintos se identifiquen con la misma address y dividan sus puntos/badges
 -- en D1 mientras gastan USDC desde la misma wallet on-chain).
 -- Aplicar también en prod con:
---   pnpm wrangler d1 execute edificarte-db --file db/schema.sql
+--   pnpm wrangler d1 execute turimap-db --file db/schema.sql
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_wallets_address
 ON user_wallets(address);
 

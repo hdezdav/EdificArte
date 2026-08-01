@@ -1,0 +1,113 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { isAdmin } from '../../lib/admin';
+
+const loggedIn = isAdmin(Astro.locals);
+if (!loggedIn) return Astro.redirect('/admin/login');
+---
+<AdminLayout title="Usuarios" activePage="users">
+  <!-- Search -->
+  <div class="mb-6">
+    <div class="relative max-w-md">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-500">search</span>
+      <input
+        type="text"
+        id="user-search"
+        placeholder="Buscar por nombre o email..."
+        class="w-full rounded-xl border border-slate-700 bg-slate-800/50 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+      />
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="rounded-2xl border border-slate-800 bg-slate-900/50 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-800 text-left">
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Puntos</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Visitas</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Teléfono</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Creado</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody" class="divide-y divide-slate-800/60">
+          <tr><td colspan="6" class="px-5 py-8 text-center text-slate-600">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="users-pagination" class="flex items-center justify-between px-5 py-3 border-t border-slate-800">
+      <p id="users-count" class="text-xs text-slate-500"></p>
+      <div class="flex gap-2">
+        <button id="users-prev" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30" disabled>? Anterior</button>
+        <button id="users-next" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30" disabled>Siguiente ?</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let currentSearch = '';
+    const limit = 20;
+
+    function timeAgo(d: string) {
+      const diff = Date.now() - new Date(d).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 60) return `hace ${mins}m`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `hace ${hrs}h`;
+      return `hace ${Math.floor(hrs / 24)}d`;
+    }
+
+    async function loadUsers() {
+      const params = new URLSearchParams({ page: String(currentPage), limit: String(limit) });
+      if (currentSearch) params.set('search', currentSearch);
+
+      try {
+        const res = await fetch(`/api/admin/users?${params}`);
+        const data = await res.json();
+        if (!data.ok) return;
+
+        const tbody = document.getElementById('users-tbody')!;
+        if (!data.users.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-8 text-center text-slate-600">Sin resultados</td></tr>';
+        } else {
+          tbody.innerHTML = data.users.map((u: any) => `
+            <tr class="hover:bg-slate-800/30 transition-colors">
+              <td class="px-5 py-3">
+                <div class="flex items-center gap-2">
+                  <div class="h-7 w-7 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400">${(u.name||'?').charAt(0).toUpperCase()}</div>
+                  <span class="font-semibold text-white text-sm">${u.name || '—'}</span>
+                </div>
+              </td>
+              <td class="px-5 py-3 text-slate-400 text-sm">${u.email || '—'}</td>
+              <td class="px-5 py-3 text-right"><span class="font-bold text-purple-400">${u.points ?? 0}</span></td>
+              <td class="px-5 py-3 text-right text-slate-400">${u.visits ?? 0}</td>
+              <td class="px-5 py-3 text-slate-400 text-sm">${u.phone || '—'}</td>
+              <td class="px-5 py-3 text-slate-500 text-xs">${timeAgo(u.created_at)}</td>
+            </tr>
+          `).join('');
+        }
+
+        document.getElementById('users-count')!.textContent = `${data.total} usuario(s) total`;
+        (document.getElementById('users-prev') as HTMLButtonElement).disabled = currentPage <= 1;
+        (document.getElementById('users-next') as HTMLButtonElement).disabled = currentPage * limit >= data.total;
+      } catch {
+        document.getElementById('users-tbody')!.innerHTML = '<tr><td colspan="6" class="px-5 py-8 text-center text-red-400">Error al cargar</td></tr>';
+      }
+    }
+
+    document.getElementById('user-search')?.addEventListener('input', (e) => {
+      currentSearch = (e.target as HTMLInputElement).value;
+      currentPage = 1;
+      loadUsers();
+    });
+
+    document.getElementById('users-prev')?.addEventListener('click', () => { currentPage--; loadUsers(); });
+    document.getElementById('users-next')?.addEventListener('click', () => { currentPage++; loadUsers(); });
+
+    loadUsers();
+  </script>
+</AdminLayout>

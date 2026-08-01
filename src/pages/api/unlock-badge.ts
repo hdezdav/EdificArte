@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
 
   // 1. Resolver usuario (registrado o guest)
   const user = await getUserBySession(cookies, env);
-  const isGuest = cookies.get('edificarte_guest')?.value === 'true';
+  const isGuest = cookies.get('turimap_guest')?.value === 'true';
 
   if (!user && !isGuest) {
     return new Response(
@@ -49,14 +49,28 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   const badgeId = Number(body.badgeId);
 
   if (user) {
-    // Usuario registrado: persistir en D1 + sumar puntos + mintear NFT
+    // Usuario registrado: persistir en D1 + sumar puntos solo si es nuevo badge + mintear NFT
+    const existingBadge = await env.DB.prepare(
+      'SELECT 1 FROM user_badges WHERE user_id = ? AND badge_id = ?'
+    ).bind(user.id, badgeId).first();
+    const isNewBadge = !existingBadge;
+
     await unlockUserBadge(env, user.id, badgeId);
-    const newPoints = await env.DB.prepare(
-      'UPDATE users SET points = points + ?, visits = visits + 1 WHERE id = ? RETURNING points'
-    )
-      .bind(POINTS_PER_VISIT, user.id)
-      .first<{ points: number }>();
-    const totalPoints = newPoints?.points ?? 0;
+
+    let totalPoints = 0;
+    if (isNewBadge) {
+      const newPoints = await env.DB.prepare(
+        'UPDATE users SET points = points + ?, visits = visits + 1 WHERE id = ? RETURNING points'
+      )
+        .bind(POINTS_PER_VISIT, user.id)
+        .first<{ points: number }>();
+      totalPoints = newPoints?.points ?? 0;
+    } else {
+      // Badge ya existia: solo incrementar visits, no puntos
+      await env.DB.prepare('UPDATE users SET visits = visits + 1 WHERE id = ?').bind(user.id).run();
+      const current = await env.DB.prepare('SELECT points FROM users WHERE id = ?').bind(user.id).first<{ points: number }>();
+      totalPoints = current?.points ?? 0;
+    }
 
     // Buscar si el usuario tiene una wallet vinculada en user_wallets
     const walletRow = await env.DB.prepare(

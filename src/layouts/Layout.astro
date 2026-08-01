@@ -1,40 +1,77 @@
 ---
 import BottomNav from '../components/BottomNav.astro';
-import AiAgent from '../components/AiAgent.astro';
+import LocaleSwitcher from '../components/LocaleSwitcher.astro';
+import { ViewTransitions } from 'astro:transitions';
 import '../styles/global.css';
+import esDict from '../i18n/es.json';
+import enDict from '../i18n/en.json';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from '../lib/i18n';
 
 interface Props {
   title: string;
   description?: string;
   fullScreen?: boolean;
+  locale?: Locale;
+  showLocaleSwitcher?: boolean;
+  hideNotch?: boolean;
 }
 
 const {
   title,
-  description = 'EdificARTE - Audio guía geolocalizada y gamificación turística de monumentos históricos.',
+  description,
   fullScreen = false,
+  locale = DEFAULT_LOCALE,
+  showLocaleSwitcher = false,
+  hideNotch = false,
 } = Astro.props;
+
+const isProfileOrSettingsPage =
+  Astro.url.pathname === '/yo' ||
+  Astro.url.pathname.includes('/yo') ||
+  Astro.url.pathname.includes('/settings') ||
+  hideNotch;
+
+const safeLocale: Locale = (SUPPORTED_LOCALES as string[]).includes(locale)
+  ? locale
+  : DEFAULT_LOCALE;
+
+const defaultDescription =
+  (enDict as { layout: { description: string } }).layout.description;
+
+// Serialize both dictionaries so the proximity-toast script can localize
+// notifications without an extra round-trip.
+const esJson = JSON.stringify(esDict);
+const enJson = JSON.stringify(enDict);
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={safeLocale}>
   <head>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#3f043a" />
+    <meta name="theme-color" content="#0f172a" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="description" content={description} />
+    <meta name="description" content={description ?? defaultDescription} />
     <title>{title}</title>
 
+    <!-- Preconnects for critical third-party origins -->
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="preconnect" href="https://static.wixstatic.com" />
+    <link rel="preconnect" href="https://api.mapbox.com" crossorigin />
+    <link rel="preconnect" href="https://events.mapbox.com" crossorigin />
+
     <!-- Google Fonts for Plus Jakarta Sans & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -42,70 +79,151 @@ const {
     <link
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
+        rel="stylesheet"
+      />
+    </noscript>
 
     <!-- Force light mode -->
     <script is:inline>
       document.documentElement.classList.remove('dark');
     </script>
+
+    <!-- Inject both locale dictionaries so client scripts can translate
+         without a fetch. LocaleSwitcher script also reuses these globals. -->
+    <script is:inline define:vars={{ esJson, enJson }}>
+      window.__TURIMAP_I18N__ = { es: JSON.parse(esJson), en: JSON.parse(enJson) };
+    </script>
+    <ViewTransitions />
+  
+    <!-- DNS prefetch for third-party resources -->
+    <link rel="dns-prefetch" href="https://api.mapbox.com" />
+    <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
+    <link rel="dns-prefetch" href="https://polygonscan.com" />
+    <link rel="dns-prefetch" href="https://offloadmedia.feverup.com" />
+    <link rel="dns-prefetch" href="https://cdn0.bodas.com.mx" />
+    <link rel="dns-prefetch" href="https://content-historia.nationalgeographic.com.es" />
+    <link rel="dns-prefetch" href="https://oem.com.mx" />
+    <link rel="dns-prefetch" href="https://stanzahotel.com" />
+    <link rel="dns-prefetch" href="https://plus.unsplash.com" />
+    <link rel="dns-prefetch" href="https://www.turismoregenerativomexico.com" />
+    <link rel="dns-prefetch" href="https://www.fundacionedificate.org" />
+    <link rel="dns-prefetch" href="https://casalamm.com.mx" />
+    <link rel="dns-prefetch" href="https://www.mercadodesanjuan.com.mx" />
+    <link rel="dns-prefetch" href="https://www.museoanahuacalli.org.mx" />
   </head>
   <body
     class="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100"
   >
+    <!-- EdificARTE White Notch (Lateral, visible on all tabs except profile & settings) -->
     {
-      !fullScreen && (
-        <header id="site-header" class="sticky top-0 z-30 w-full border-b border-slate-200/50 bg-white/70 backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-900/70">
-          <div class="mx-auto flex h-14 max-w-screen-md items-center justify-between px-4">
-            <div class="flex items-center gap-2">
-              <span class="text-xl font-extrabold text-[#3f043a] tracking-tight">
-                EdificARTE
-              </span>
-            </div>
+      !isProfileOrSettingsPage && (
+        <div
+          class="pointer-events-none fixed left-3 top-3 z-40 sm:left-4 sm:top-3.5"
+          style="padding-top: env(safe-area-inset-top, 0px);"
+        >
+          <div class="pointer-events-auto flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3.5 py-1.5 shadow-md border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 transition-all hover:bg-white active:scale-95">
+            <span class="text-xs">🏛️</span>
+            <span class="text-[12px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+              Edific<span class="text-[#3f043a] dark:text-[#e085b3] font-black">ARTE</span>
+            </span>
           </div>
-        </header>
+        </div>
+      )
+    }
+
+    <!-- Floating locale switcher (top-right, only on non-fullscreen pages) -->
+    {
+      !fullScreen && showLocaleSwitcher && (
+        <div
+          class="fixed right-3 top-3 z-40 sm:right-4 sm:top-4"
+          style="padding-top: env(safe-area-inset-top, 0px);"
+        >
+          <LocaleSwitcher current={safeLocale} />
+        </div>
       )
     }
 
     <main
       class={fullScreen
-        ? 'w-full h-screen relative overflow-hidden'
-        : 'mx-auto w-full max-w-screen-md flex-grow px-4 pb-24 pt-6'}
+        ? 'w-full h-[100dvh] relative overflow-hidden'
+        : 'mx-auto w-full max-w-screen-md flex-grow overflow-x-hidden px-4 sm:px-6 pb-24 sm:pb-28'}
+      style={!fullScreen ? 'padding-top: calc(env(safe-area-inset-top, 0px) + 40px);' : undefined}
     >
       <slot />
     </main>
 
-    <AiAgent />
-    <BottomNav />
+    <slot name="overlays" />
+
+    <BottomNav locale={safeLocale} />
 
     <!-- Proximity Notification: fires a browser notification when user is within 300 m of a monument -->
     <div
       id="proximity-toast"
-      class="fixed bottom-24 left-4 right-4 z-[200] hidden max-w-sm mx-auto"
+      class="fixed left-4 right-4 z-[200] hidden max-w-sm mx-auto"
+      style="bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));"
       role="alert"
       aria-live="polite"
     >
-      <div class="flex items-center gap-3 rounded-2xl border border-brand-200/60 bg-white/95 dark:bg-slate-900/95 px-4 py-3 shadow-xl backdrop-blur-md">
-        <span class="material-symbols-outlined text-[24px] text-brand-600 dark:text-brand-400 flex-shrink-0">location_on</span>
+      <div class="liquid-glass flex items-center gap-3 rounded-2xl px-4 py-3">
+        <span class="material-symbols-outlined text-[24px] text-accent-600 dark:text-accent-400 flex-shrink-0">location_on</span>
         <div class="min-w-0 flex-1">
           <p id="proximity-toast-msg" class="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight"></p>
-          <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">¿Querés saber más?</p>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5" data-i18n="proximity.toast_body">Want to learn more?</p>
         </div>
         <div class="flex flex-col gap-1">
-          <button id="proximity-toast-yes" class="rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold px-3 py-1 text-[10px] transition-all active:scale-95">Ver</button>
-          <button id="proximity-toast-dismiss" class="rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 font-bold px-3 py-1 text-[10px] transition-all active:scale-95">No</button>
+          <button id="proximity-toast-yes" class="rounded-xl bg-accent-600 hover:bg-accent-700 text-white font-bold px-3 py-1 text-[10px] transition-all active:scale-95" data-i18n="proximity.toast_cta">View</button>
+          <button id="proximity-toast-dismiss" class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 text-slate-500 font-bold px-3 py-1 text-[10px] transition-all active:scale-95" data-i18n="proximity.toast_dismiss">No</button>
         </div>
       </div>
     </div>
 
     <script is:inline>
     (function proximityNotifications() {
-      const MONUMENTS = (window.__EDIFICARTE_MONUMENTS__ || []);
+      const DICTS = (window.__TURIMAP_I18N__ || { es: {}, en: {} });
+      function resolve(dict, key) {
+        const parts = key.split('.');
+        let cur = dict;
+        for (let i = 0; i < parts.length; i++) {
+          if (cur && typeof cur === 'object' && parts[i] in cur) {
+            cur = cur[parts[i]];
+          } else {
+            return key;
+          }
+        }
+        return typeof cur === 'string' ? cur : key;
+      }
+      function getDict() {
+        try {
+          const stored = localStorage.getItem('turimap_locale');
+          return (stored === 'en') ? DICTS.en : DICTS.es;
+        } catch {
+          return DICTS.es;
+        }
+      }
+      function tr(key, vars) {
+        let s = resolve(getDict(), key);
+        if (!vars) return s;
+        s = s.replace(/\{(\w+)\}/g, function (_, name) {
+          return name in vars ? String(vars[name]) : '{' + name + '}';
+        });
+        return s;
+      }
+
+      const MONUMENTS = (window.__TURIMAP_MONUMENTS__ || []);
       if (!MONUMENTS.length) return;
       if (!('geolocation' in navigator)) return;
 
       const RADIUS_M = 300;
-      const STORAGE_KEY = 'edificarte_proximity_seen';
+      const STORAGE_KEY = 'turimap_proximity_seen';
       let toastTimeout = null;
+      let proximityWatchId = null;
+      let isPageVisible = true;
 
       function getSeenIds() {
         try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); }
@@ -136,7 +254,7 @@ const {
         const btnNo  = document.getElementById('proximity-toast-dismiss');
         if (!toast || !msg || !btnYes || !btnNo) return;
 
-        msg.textContent = 'Estas cerca de ' + monument.name;
+        msg.textContent = tr('proximity.toast_title') + ' ' + monument.name;
         toast.classList.remove('hidden');
         clearTimeout(toastTimeout);
         toastTimeout = setTimeout(function() { toast.classList.add('hidden'); }, 15000);
@@ -171,8 +289,8 @@ const {
           if (dist <= RADIUS_M) {
             showToast(m);
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-              new Notification('EdificARTE - Cerca de ' + m.name, {
-                body: 'Pulsa para ver el pin en el mapa.',
+              new Notification('TuriMap - ' + tr('proximity.toast_title') + ' ' + m.name, {
+                body: tr('proximity.notification_body'),
                 icon: '/favicon-32x32.png',
                 tag: 'proximity-' + m.id,
               });
@@ -182,18 +300,121 @@ const {
         }
       }
 
+      function stopWatching() {
+        if (proximityWatchId !== null) {
+          navigator.geolocation.clearWatch(proximityWatchId);
+          proximityWatchId = null;
+        }
+      }
+      function startWatching() {
+        if (!isPageVisible || proximityWatchId !== null) return;
+        proximityWatchId = navigator.geolocation.watchPosition(checkProximity, function() {}, {
+          enableHighAccuracy: false,
+          maximumAge: 60000,
+          timeout: 30000,
+        });
+      }
+      function handleVisibility() {
+        isPageVisible = document.visibilityState === 'visible';
+        if (isPageVisible) startWatching();
+        else stopWatching();
+      }
+
       if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
         Notification.requestPermission().catch(function() {});
       }
-
-      navigator.geolocation.watchPosition(checkProximity, function() {}, {
-        enableHighAccuracy: true,
-        maximumAge: 30000,
-        timeout: 15000,
+      document.addEventListener('visibilitychange', handleVisibility);
+      window.addEventListener('map:mounted', stopWatching);
+      document.addEventListener('astro:page-load', function() {
+        if (document.getElementById('map')) stopWatching();
+        else startWatching();
       });
+      window.addEventListener('pagehide', stopWatching);
+      window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+          isPageVisible = document.visibilityState === 'visible';
+          startWatching();
+        }
+      });
+      window.addEventListener('beforeunload', stopWatching, { once: true });
+      startWatching();
     })();
     </script>
 
+
+    <!-- Early i18n apply: prevents FOUC of untranslated content.
+         Runs synchronously after body DOM is parsed, before first paint.
+         Idempotent — LocaleSwitcher's astro:page-load handler re-applies safely.
+         data-astro-rerun: ViewTransitions swaps do not re-run plain is:inline
+         scripts; without this, [data-i18n-html] stays in the authored fallback
+         after SPA navigation when no LocaleSwitcher is rendered. -->
+    <script is:inline data-astro-rerun>
+    try {
+      (function() {
+        var DICTS = window.__TURIMAP_I18N__;
+        if (!DICTS) return;
+        function detect() {
+          try {
+            var q = new URL(window.location.href).searchParams.get('lang');
+            if (q && (q === 'es' || q === 'en')) return q;
+          } catch {}
+          try {
+            var s = localStorage.getItem('turimap_locale');
+            if (s === 'en' || s === 'es') return s;
+          } catch {}
+          var n = (navigator && navigator.language) || '';
+          if (n.toLowerCase().startsWith('en')) return 'en';
+          return 'es';
+        }
+        function resolve(dict, key) {
+          var parts = key.split('.');
+          var cur = dict;
+          for (var i = 0; i < parts.length; i++) {
+            if (cur && typeof cur === 'object' && parts[i] in cur) cur = cur[parts[i]];
+            else return null;
+          }
+          return typeof cur === 'string' ? cur : null;
+        }
+        var loc = detect();
+        var dict = DICTS[loc] || DICTS.es;
+        var el, key, val;
+        var i18nEls = document.querySelectorAll('[data-i18n]');
+        for (var i = 0; i < i18nEls.length; i++) {
+          el = i18nEls[i];
+          key = el.getAttribute('data-i18n');
+          val = resolve(dict, key);
+          if (val !== null) el.textContent = val;
+        }
+        var htmlEls = document.querySelectorAll('[data-i18n-html]');
+        for (var i = 0; i < htmlEls.length; i++) {
+          el = htmlEls[i];
+          key = el.getAttribute('data-i18n-html');
+          val = resolve(dict, key);
+          if (val !== null) el.innerHTML = val;
+        }
+        var phEls = document.querySelectorAll('[data-i18n-placeholder]');
+        for (var i = 0; i < phEls.length; i++) {
+          el = phEls[i];
+          key = el.getAttribute('data-i18n-placeholder');
+          val = resolve(dict, key);
+          if (val !== null) el.placeholder = val;
+        }
+        document.documentElement.setAttribute('lang', loc);
+      })();
+    } catch {}
+
+    </script>
+
+    <!-- Service Worker for offline caching -->
+    <script is:inline>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker
+            .register('/sw.js?v=2', { updateViaCache: 'none' })
+            .then((registration) => registration.update())
+            .catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>
-

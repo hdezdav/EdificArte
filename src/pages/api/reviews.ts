@@ -14,7 +14,7 @@ import { getReviewEmitter } from '../../lib/onchain';
  *   targetId: string,
  *   rating: number (1-5),
  *   text?: string,
- *   walletAddress?: string (opcional — si el user conectó wallet, se incluye en el evento)
+ *   walletAddress?: string (opcional - si el user conectó wallet, se incluye en el evento)
  * }
  *
  * Respuesta: { ok: true, reviewId, pointsEarned, totalPoints, txHash, mode }
@@ -114,7 +114,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
         .run();
     }
   } catch (err) {
-    // No fallamos la review si on-chain falla — off-chain ya quedó persistido.
+    // No fallamos la review si on-chain falla - off-chain ya quedó persistido.
     console.warn('[api/reviews] on-chain emit falló, review off-chain OK:', err);
   }
 

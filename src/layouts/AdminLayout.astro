@@ -1,0 +1,134 @@
+---
+import '../styles/global.css';
+import { adminEmail as getAdminEmail } from '../lib/admin';
+
+interface Props {
+  title: string;
+  activePage?: string;
+}
+
+const { title, activePage = 'dashboard' } = Astro.props;
+const adminEmail = getAdminEmail(Astro.locals);
+const csrfToken = Astro.locals.csrfToken || '';
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} — TuriMap Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
+  </head>
+  <body class="bg-slate-950 text-slate-200 font-sans min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 lg:translate-x-0 -translate-x-full">
+      <!-- Logo -->
+      <div class="px-5 py-5 border-b border-slate-800">
+        <a href="/admin" class="flex items-center gap-2.5">
+          <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 text-white text-sm font-bold shadow-lg shadow-purple-500/20">T</span>
+          <div>
+            <span class="text-sm font-bold text-white tracking-tight">TuriMap</span>
+            <span class="text-[10px] font-semibold text-slate-500 block -mt-0.5">Admin Panel</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <a href="/admin" class:list={["flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all", activePage === 'dashboard' ? "bg-purple-600/15 text-purple-400" : "text-slate-400 hover:text-white hover:bg-slate-800/60"]}>
+          <span class="material-symbols-outlined text-[20px]">dashboard</span>
+          Dashboard
+        </a>
+        <a href="/admin/products" class:list={["flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all", activePage === 'products' ? "bg-purple-600/15 text-purple-400" : "text-slate-400 hover:text-white hover:bg-slate-800/60"]}>
+          <span class="material-symbols-outlined text-[20px]">storefront</span>
+          Productos
+        </a>
+        <a href="/admin/tours" class:list={["flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all", activePage === 'tours' ? "bg-purple-600/15 text-purple-400" : "text-slate-400 hover:text-white hover:bg-slate-800/60"]}>
+          <span class="material-symbols-outlined text-[20px]">tour</span>
+          Tours
+        </a>
+        <a href="/admin/users" class:list={["flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all", activePage === 'users' ? "bg-purple-600/15 text-purple-400" : "text-slate-400 hover:text-white hover:bg-slate-800/60"]}>
+          <span class="material-symbols-outlined text-[20px]">group</span>
+          Usuarios
+        </a>
+        <a href="/admin/orders" class:list={["flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all", activePage === 'orders' ? "bg-purple-600/15 text-purple-400" : "text-slate-400 hover:text-white hover:bg-slate-800/60"]}>
+          <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+          Órdenes
+        </a>
+        <a href="/admin/reviews" class:list={["flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all", activePage === 'reviews' ? "bg-purple-600/15 text-purple-400" : "text-slate-400 hover:text-white hover:bg-slate-800/60"]}>
+          <span class="material-symbols-outlined text-[20px]">rate_review</span>
+          Reviews
+        </a>
+        <a href="/admin/settings" class:list={["flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all", activePage === 'settings' ? "bg-purple-600/15 text-purple-400" : "text-slate-400 hover:text-white hover:bg-slate-800/60"]}>
+          <span class="material-symbols-outlined text-[20px]">settings</span>
+          Configuración
+        </a>
+      </nav>
+
+      <!-- Footer -->
+      <div class="px-4 py-4 border-t border-slate-800">
+        <a href="/" class="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors mb-3">
+          <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+          Ver sitio público
+        </a>
+        <div class="flex items-center gap-2">
+          <div class="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400">
+            {adminEmail.charAt(0).toUpperCase()}
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold text-slate-300 truncate">{adminEmail}</p>
+          </div>
+          <button id="admin-logout-btn" class="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-800 transition-all" title="Cerrar sesión">
+            <span class="material-symbols-outlined text-[18px]">logout</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mobile overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-black/50 hidden lg:hidden" onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full'); this.classList.add('hidden');"></div>
+
+    <!-- Main content -->
+    <div class="flex-1 lg:ml-64">
+      <!-- Top bar -->
+      <header class="sticky top-0 z-20 flex items-center gap-4 px-6 py-4 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/60">
+        <button id="sidebar-toggle" class="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+          <span class="material-symbols-outlined text-[22px]">menu</span>
+        </button>
+        <h1 class="text-lg font-bold text-white">{title}</h1>
+      </header>
+
+      <!-- Page content -->
+      <main class="p-6">
+        <slot />
+      </main>
+    </div>
+
+    <script define:vars={{ csrfToken }}>
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = (input, init = {}) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+        const method = (init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+        if (url.startsWith('/api/admin/') && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+          const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+          headers.set('x-csrf-token', csrfToken);
+          init = { ...init, headers };
+        }
+        return originalFetch(input, init);
+      };
+      document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
+        document.getElementById('admin-sidebar')?.classList.toggle('-translate-x-full');
+        document.getElementById('sidebar-overlay')?.classList.toggle('hidden');
+      });
+
+      document.getElementById('admin-logout-btn')?.addEventListener('click', async () => {
+        await fetch('/api/admin/logout', { method: 'POST' });
+        window.location.href = '/admin/login';
+      });
+    </script>
+  </body>
+</html>

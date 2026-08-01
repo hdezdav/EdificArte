@@ -1,6 +1,6 @@
 import type { AstroCookies } from 'astro';
 
-const PASSWORD_SALT = "edificarte-app-salt-2026";
+const PASSWORD_SALT = "turimap-app-salt-2026";
 
 export async function hashPassword(password: string): Promise<string> {
   if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -38,7 +38,7 @@ export async function getUserBySession(
   cookies: AstroCookies,
   env: Env
 ): Promise<User | null> {
-  const sessionId = cookies.get('edificarte_session')?.value;
+  const sessionId = cookies.get('turimap_session')?.value;
   if (!sessionId) return null;
 
   try {
@@ -64,7 +64,7 @@ export async function getUserBySession(
  * Usado por /api/wallet-login. Joinea `users` con `user_wallets` por address.
  *
  * Devuelve el user SOLO si la address está registrada y verificada en
- * `user_wallets`. No valida la firma acá — eso lo hace /api/wallet-login
+ * `user_wallets`. No valida la firma acá - eso lo hace /api/wallet-login
  * antes de llamar este helper.
  */
 export async function getUserByWalletAddress(
@@ -99,7 +99,7 @@ export async function createSession(
   // Guardamos la sesión en KV con expiración de 7 días (604800 segundos)
   await env.SESSION.put(sessionId, sessionData, { expirationTtl: 604800 });
 
-  cookies.set('edificarte_session', sessionId, {
+  cookies.set('turimap_session', sessionId, {
     path: '/',
     httpOnly: true,
     // secure: true en dev (http://localhost) hace que el navegador rechace
@@ -113,11 +113,11 @@ export async function createSession(
 }
 
 export async function deleteSession(cookies: AstroCookies, env: Env): Promise<void> {
-  const sessionId = cookies.get('edificarte_session')?.value;
+  const sessionId = cookies.get('turimap_session')?.value;
   if (sessionId) {
     await env.SESSION.delete(sessionId);
   }
-  cookies.delete('edificarte_session', { path: '/' });
+  cookies.delete('turimap_session', { path: '/' });
 }
 
 export async function getUserBadges(env: Env, userId: string): Promise<number[]> {
@@ -127,7 +127,7 @@ export async function getUserBadges(env: Env, userId: string): Promise<number[]>
     )
       .bind(userId)
       .all();
-    return results.map((r: { badge_id: number }) => r.badge_id);
+    return (results as Array<{ badge_id: number }>).map((r) => r.badge_id);
   } catch (err) {
     console.error('Error fetching user badges:', err);
     return [];

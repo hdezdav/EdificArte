@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="EdificARTE">
+  <title>EdificARTE</title>
+  <!-- Background: EdificARTE OG Purple (#3f043a) rounded square -->
+  <rect x="0" y="0" width="64" height="64" rx="16" fill="#3f043a"/>
+  <!-- Classic Architectural Temple icon in Gold -->
+  <g fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 50h40M16 50V30m8 20V30m8 20V30m8 20V30m8 20V30" stroke="#f59e0b"/>
+    <path d="M10 30h44L32 14z" fill="#3f043a" stroke="#fbbf24"/>
+    <path d="M14 50h36" stroke="#ffffff" stroke-width="2" opacity="0.8"/>
+  </g>
+</svg>

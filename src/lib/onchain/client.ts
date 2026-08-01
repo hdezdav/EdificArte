@@ -11,19 +11,6 @@
 
 import type { WalletProvider } from './types';
 
-// ABI mínima del USDC para encodear la llamada `transfer(address,uint256)`.
-const ERC20_TRANSFER_ABI = [
-  {
-    name: 'transfer',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-] as const;
 
 interface Eip1193Provider {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
@@ -33,7 +20,7 @@ interface Eip1193Provider {
 function getEthereum(): Eip1193Provider | null {
   if (typeof window === 'undefined') return null;
   // El estándar EIP-1193 expone window.ethereum. Algunos wallets lo exponen
-  // bajo otros nombres — si tu wallet lo hace, agregalo acá.
+  // bajo otros nombres - si tu wallet lo hace, agregalo acá.
   const w = window as unknown as { ethereum?: Eip1193Provider };
   return w.ethereum ?? null;
 }
@@ -146,7 +133,7 @@ export class BrowserWalletProvider implements WalletProvider {
         });
       } else {
         throw new Error(
-          'Necesitás estar en Polygon mainnet para usar EdificARTE. Cambiá de red en tu wallet.'
+          'Necesitás estar en Polygon mainnet para usar TuriMap. Cambiá de red en tu wallet.'
         );
       }
     }

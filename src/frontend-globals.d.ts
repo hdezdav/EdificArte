@@ -11,12 +11,13 @@ export {};
 
 declare global {
   interface Window {
-    /** Address receptora de pagos USDC. Inyectada en src/pages/index.astro. */
-    __EDIFICARTE_PAYMENT_ADDRESS__?: string;
-    /** Address receptora de donaciones USDC. Inyectada en src/pages/index.astro. */
-    __EDIFICARTE_DONATION_ADDRESS__?: string;
-    /** Flag anti-race-condition seteado por mapa.astro cuando el usuario pide GPS
-     *  desde el modal de bienvenida antes de que mapa-app monte el listener. */
-    __edificarteGpsPending?: boolean;
+    /** Mapbox GL JS access token. Injected in mapa.astro via define:vars. */
+    __TURIMAP_TOKEN__?: string;
+    /** Legacy: Address receptora de pagos USDC. Inyectada en src/pages/index.astro. */
+    __TURIMAP_PAYMENT_ADDRESS__?: string;
+    /** Legacy: Address receptora de donaciones USDC. */
+    __TURIMAP_DONATION_ADDRESS__?: string;
+    /** Legacy: monuments list for proximity notifications */
+    __TURIMAP_MONUMENTS__?: Array<{ id: string; name: string; lat: number; lng: number }>;
   }
 }

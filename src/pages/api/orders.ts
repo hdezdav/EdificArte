@@ -7,14 +7,14 @@ import { getUsdcVerifier } from '../../lib/onchain';
  * Registra una orden de compra de artesanías pagada en USDC de Polygon.
  *
  * Validación on-chain: el server verifica la tx (que el destino sea
- * EDIFICARTE_PAYMENT_ADDRESS, el monto coincida, sea USDC) antes de
+ * TURIMAP_PAYMENT_ADDRESS, el monto coincida, sea USDC) antes de
  * persistir la orden. Esto evita que un cliente mande una tx fake.
  *
  * Body: {
  *   txHash: string,
  *   walletAddress: string,
  *   items: Array<{ sku: string, name: string, qty: number, priceMXN: number, priceUSDC: number }>,
- *   totalUSDC: number  (en formato humano, ej. 12.50 — server convierte a raw con 6 decimales)
+ *   totalUSDC: number  (en formato humano, ej. 12.50 - server convierte a raw con 6 decimales)
  * }
  *
  * Respuesta: { ok: true, orderId, totalUSDC, txHash }
@@ -95,7 +95,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     );
   }
 
-  const paymentAddress = env.EDIFICARTE_PAYMENT_ADDRESS;
+  const paymentAddress = env.EDIFICARTE_PAYMENT_ADDRESS || env.TURIMAP_PAYMENT_ADDRESS;
   if (!paymentAddress) {
     return new Response(
       JSON.stringify({ ok: false, error: 'Pagos USDC no configurados en el servidor (EDIFICARTE_PAYMENT_ADDRESS).' }),
@@ -146,7 +146,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   }
 
   // Resolver user_id (si hay sesión activa; guest puede comprar igual)
-  const session = cookies.get('edificarte_session')?.value;
+  const session = cookies.get('turimap_session')?.value;
   let userId: string | null = null;
   if (session) {
     const sessionDataStr = await env.SESSION.get(session);
@@ -184,7 +184,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
       txHash,
       // El verificador actual (`getUsdcVerifier`) siempre devuelve la
       // implementación Live; no hay path mock para pagos. Por eso el
-      // campo es siempre 'verified' — la rama 'mock' quedó inalcanzable
+      // campo es siempre 'verified' - la rama 'mock' quedó inalcanzable
       // y se removió del contrato de respuesta.
       mode: 'verified',
     }),

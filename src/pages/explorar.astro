@@ -1,0 +1,2305 @@
+---
+import Layout from '../layouts/Layout.astro';
+import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
+import AiAgent from '../components/AiAgent.astro';
+import { MONUMENTS } from '../data/monuments';
+import type { Tour } from '../data/tours';
+
+type TourRow = {
+  id: string; title: string; subtitle: string; duration: string;
+  price_per_person: number; currency: string; image: string; highlights: string;
+  description: string; meeting_point: string; city: string; country: string;
+  country_code?: string | null;
+  guide: string; category: string; translations: string; is_published: number;
+};
+type ExploreTour = Tour & { countryCode: string };
+function __normalizeCountryCode(countryCode: string | null | undefined, legacyCountry: string): string {
+  const normalized = countryCode?.trim().toUpperCase() || '';
+  if (/^[A-Z]{2}$/.test(normalized)) return normalized;
+  const legacyNormalized = legacyCountry.trim().toUpperCase();
+  return ['MX', 'MEXICO', 'MÉXICO'].includes(legacyNormalized) ? 'MX' : '';
+}
+function __parseTourJson<T>(raw: string, fallback: T): T {
+  try {
+    return (JSON.parse(raw || 'null') ?? fallback) as T;
+  } catch {
+    return fallback;
+  }
+}
+let TOURS: ExploreTour[] = [];
+try {
+  const _toursResult = await Astro.locals.runtime.env.DB
+    .prepare('SELECT * FROM tours WHERE is_published = 1 ORDER BY created_at DESC')
+    .all();
+  TOURS = ((_toursResult?.results as TourRow[]) ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    subtitle: r.subtitle,
+    duration: r.duration,
+    pricePerPerson: r.price_per_person,
+    currency: r.currency,
+    image: r.image,
+    highlights: __parseTourJson<string[]>(r.highlights, []),
+    description: r.description,
+    meetingPoint: r.meeting_point,
+    city: r.city,
+    country: r.country,
+    countryCode: __normalizeCountryCode(r.country_code, r.country),
+    guide: __parseTourJson<{ name: string; title: string; bio: string }>(r.guide, { name: '', title: '', bio: '' }),
+    category: (r.category || 'tour') as Tour['category'],
+    translations: __parseTourJson<Tour['translations']>(r.translations, undefined),
+  }));
+} catch (err) {
+  console.warn('[explorar.astro] DB tours query failed, using static fallback:', err);
+}
+
+type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'sitio-remoto' | 'eventos' | 'educacion';
+
+interface Experience {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  category: Exclude<Category, 'todos'>;
+  tagColor: 'emerald' | 'accent' | 'amber' | 'rose' | 'sky' | 'blue';
+  url: string;
+  cta: string;
+  rating?: number;
+  reviewCount?: number;
+  price?: string;
+  images?: string[];
+  sku?: string;
+  videoUrl?: string;
+  isVRAvailable?: boolean;
+  meetingPoint?: string;
+  customBadge?: string;
+  currency?: string;
+  duration?: string;
+  highlights?: string[];
+  isTour?: boolean;
+  lat?: number;
+  lng?: number;
+  translations?: {
+    es: { name: string; desc: string; category: string; cta: string; guide: string };
+    en: { name: string; desc: string; category: string; cta: string; guide: string };
+    señas: { name: string; desc: string; category: string; cta: string; guide: string; videoUrl: string };
+    native?: { name: string; desc: string; category: string; cta: string; guide: string };
+  };
+}
+
+const experiencias: Experience[] = [
+  {
+    id: 'turismo-regenerativo',
+    title: 'Regenerative Travel Collective',
+    description:
+      'Curated partner experiences with local communities driving social impact and cultural regeneration around the world.',
+    image:
+      'https://www.turismoregenerativomexico.com/wp-content/uploads/2025/08/Copia-de-DSCN4585-768x576.jpg',
+    category: 'turismo',
+    tagColor: 'emerald',
+    url: 'https://turismoregenerativomexico.com',
+    cta: 'Conoce más',
+    rating: 4.95,
+    reviewCount: 124,
+    price: '$250 MXN',
+  },
+  {
+    id: 'fundacion-turimap',
+    title: 'TuriMap Heritage Foundation',
+    description:
+      'Preserving architectural and cultural heritage through education, technology, and community-driven programs worldwide.',
+    image:
+      'https://www.fundacionedificate.org/wp-content/uploads/2025/01/Edificate.jpg',
+    category: 'turismo',
+    tagColor: 'accent',
+    url: 'https://www.fundacionedificate.org/',
+    cta: 'Visitar sitio',
+    rating: 4.9,
+    reviewCount: 98,
+    customBadge: 'Voluntariado',
+    price: 'Gratis',
+  },
+  {
+    id: 'casa-lamm',
+    title: 'Casa Lamm - Culture & Academia',
+    description:
+      'Cultural hub inside a historic Porfirian-era mansion: exhibitions, library, art workshops, and an art-history academy open to the public.',
+    image:
+      'https://stanzahotel.com/wp-content/uploads/2024/07/casa_lamm_1.jpg',
+    category: 'cultura',
+    tagColor: 'amber',
+    url: 'https://casalamm.com.mx/',
+    cta: 'Ver agenda',
+    rating: 4.88,
+    reviewCount: 156,
+    price: 'Varios',
+  },
+  {
+    id: 'mercado-san-juan',
+    title: 'Mercado de San Juan',
+    description:
+      'A historic culinary destination celebrating artisan cheeses, rare cuts, traditional sweets, and rotating chef residencies.',
+    image:
+      'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&h=500&q=80',
+    category: 'gastronomia',
+    tagColor: 'rose',
+    url: 'https://www.mercadodesanjuan.com.mx/',
+    cta: 'Visitar mercado',
+    rating: 4.92,
+    reviewCount: 342,
+    price: 'Gratis',
+  },
+
+  {
+    id: 'museo-anahuacalli',
+    title: 'Museo Anahuacalli',
+    description:
+      'Basalt pyramid designed by Diego Rivera to house his pre-Hispanic art collection, set within an ecological reserve on the city outskirts.',
+    image:
+      'https://cdn0.bodas.com.mx/vendor/0011/3_2/960/jpeg/vista-aerea-de-costado-dron_5_320011-162250734231083.jpeg',
+    category: 'patrimonio',
+    tagColor: 'accent',
+    url: 'https://www.museoanahuacalli.org.mx/',
+    cta: 'Conoce más',
+    rating: 4.96,
+    reviewCount: 210,
+    price: '$80 MXN',
+  },
+];
+
+// Generar experiencias a partir de los museos de Monuments
+const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'museo').map((m) => {
+  const ratings: Record<string, { rating: number; reviewCount: number; price: string }> = {
+    'bellas-artes': { rating: 4.97, reviewCount: 382, price: '$85 MXN' },
+    'palacio-nacional': { rating: 4.89, reviewCount: 145, price: 'Gratis' },
+    'revolucion': { rating: 4.92, reviewCount: 204, price: '$120 MXN' },
+    'angel': { rating: 4.96, reviewCount: 412, price: 'Gratis' },
+    'chapultepec': { rating: 4.98, reviewCount: 520, price: '$90 MXN' },
+    'memorial-68': { rating: 4.88, reviewCount: 95, price: '$30 MXN' },
+    'el-rule': { rating: 4.85, reviewCount: 78, price: 'Gratis' },
+  };
+
+  const translations = {
+    es: {
+      name: m.name,
+      desc: m.desc,
+      category: m.id === 'el-rule' ? 'Exposición / Evento' : m.category,
+      cta: m.id === 'el-rule' ? 'Ver Evento' : 'Ver guía',
+      guide: m.id === 'el-rule'
+        ? '¡Bienvenido al Centro Cultural El Rule! Te invitamos a la exposición multilingüe y multisensorial "Nombrar el Orgullo Neo". Esta exhibición, presentada por Metalingua en alianza con TuriMap y Unesco, celebra la identidad y la diversidad cultural a través del arte contemporáneo, el diálogo social y la inclusión.'
+        : `¡Bienvenido al ${m.name}! Este emblemático espacio es parte fundamental del patrimonio cultural histórico. Aquí podrás contemplar una arquitectura imponente y aprender sobre su evolución artística, social e histórica a través del tiempo. Disfrutá del recorrido detallado por sus salas principales y descubrí los secretos que sus paredes guardan.`,
+    },
+    en: {
+      name: m.id === 'el-rule' ? 'El Rule Cultural Center' : (m.name === 'Palacio de Bellas Artes' ? 'Palace of Fine Arts' : (m.name === 'Palacio Nacional' ? 'National Palace' : (m.name === 'Castillo de Chapultepec' ? 'Chapultepec Castle' : (m.name === 'Ángel de la Independencia' ? 'Angel of Independence' : (m.name === 'Museo Memorial del 68' ? '68 Memorial Museum' : (m.name === 'Hotel Virreyes' ? 'Hotel Virreyes' : 'Monument to the Revolution')))))),
+      desc: m.id === 'el-rule' ? 'Multidisciplinary cultural space in a historic city center, hosting multilingual and multisensorial exhibitions.' : (m.name === 'Palacio de Bellas Artes' ? 'One of the world\'s most famous opera houses, known for its Art Nouveau exterior and Art Deco interior.' : m.desc),
+      category: m.id === 'el-rule' ? 'Exhibition / Event' : (m.category === 'Museo / Teatro' ? 'Museum / Theater' : (m.category === 'Museo / Castillo' ? 'Museum / Castle' : (m.category === 'Museo Histórico' ? 'Historical Museum' : 'Historical Monument'))),
+      cta: m.id === 'el-rule' ? 'View Event' : 'View guide',
+      guide: m.id === 'el-rule'
+        ? 'Welcome to El Rule Cultural Center! We invite you to the multilingual and multisensorial exhibition "Nombrar el Orgullo Neo". This exhibition, presented by Metalingua in partnership with TuriMap and Unesco, celebrates identity and cultural diversity through contemporary art, social dialogue, and inclusion.'
+        : `Welcome to the ${m.name}! This emblematic site is a key piece of cultural heritage. Here, you can contemplate stunning architecture and learn about its artistic, social, and historical evolution through time. Enjoy the detailed self-guided tour through its main halls and uncover the secrets written in its walls.`,
+    },
+    señas: {
+      name: `${m.name} (LSM)`,
+      desc: 'Guía adaptada en Lengua de Señas Mexicana (LSM) con subtítulos y videos de alta visibilidad.',
+      category: 'Accesibilidad / LSM',
+      cta: 'Ver LSM',
+      guide: `Esta es la guía accesible en Lengua de Señas Mexicana (LSM) para el ${m.name}. Explicamos la historia, el contexto y los murales o detalles artísticos más representativos para garantizar el acceso pleno a la cultura para la comunidad con discapacidad auditiva.`,
+      videoUrl: 'https://www.youtube.com/embed/82pGUhn0CsY?si=H7ZvUDJAPU3THjjU',
+    },
+    ...(m.id === 'el-rule' ? {
+      native: {
+        name: 'El Rule (Lenguas Originarias)',
+        desc: 'Traducción multilingüe y multisensorial de la exposición "Nombrar el Orgullo Neo" en lenguas originarias.',
+        category: 'Multilingüe',
+        cta: 'Ver Trad.',
+        guide: 'Esta guía y exposición cuenta con traducción a lenguas originarias mexicanas.\n\nPodés acceder a la página traducida a las lenguas originarias visitando el portal oficial de MetaLingua: https://www.metalinguamx.org/\n\nLeé la nota de prensa de la exposición "Nombrar el Orgullo Neo" en SinEmbargo: https://www.sinembargo.mx/4810195/nombrar-el-orgullo-neo-exposicion-multilingue-y-multisensorial-de-la-unesco/',
+      }
+    } : {})
+  };
+
+  const rData = ratings[m.id] || { rating: 4.8, reviewCount: 15, price: 'Gratis' };
+
+  return {
+    id: m.id,
+    title: m.name,
+    description: m.desc,
+    image: m.image,
+    lat: m.lat,
+    lng: m.lng,
+    category: m.id === 'el-rule' ? 'eventos' : 'museo',
+    tagColor: m.id === 'el-rule' ? 'blue' : 'sky',
+    url: '#',
+    cta: m.id === 'el-rule' ? 'Ver Evento' : 'Ver guía',
+    rating: rData.rating,
+    reviewCount: rData.reviewCount,
+    price: rData.price,
+    translations,
+  };
+});
+
+
+
+// Generar experiencias para monumentos remotos (sitio-remoto), por ejemplo Pirámides del Sol.
+// Estos monumentos NO aparecen en el mapa (filtrados en mapa-app.ts) pero sí en Explorar.
+const sitioRemotoExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'sitio-remoto').map((m) => {
+  const translations = {
+    es: {
+      name: m.name,
+      desc: m.desc,
+      category: m.category,
+      cta: 'Ver experiencia',
+      guide: `¡Bienvenido a ${m.name}! Esta experiencia remota forma parte del patrimonio cultural histórico. A través de esta guía podés conocer la historia, el contexto y los detalles más importantes del sitio, complementado con una experiencia inmersiva en realidad virtual (VR) que te permite recorrerlo sin salir de tu casa.`,
+    },
+    en: {
+      name: m.name,
+      desc: m.desc,
+      category: m.category,
+      cta: 'View experience',
+      guide: `Welcome to ${m.name}! This remote experience is part of the world's cultural heritage. Through this guide you can learn the history, context, and most important details of the site, complemented by an immersive virtual reality (VR) experience that lets you tour it from anywhere.`,
+    },
+    señas: {
+      name: `${m.name} (LSM)`,
+      desc: 'Guía accesible en Lengua de Señas Mexicana (LSM) con subtítulos y descripción visual del sitio.',
+      category: 'Accesibilidad / LSM',
+      cta: 'Ver LSM',
+      guide: `Esta es la guía accesible en Lengua de Señas Mexicana (LSM) para ${m.name}. Explicamos la historia, el contexto arqueológico y los detalles más representativos del sitio para garantizar el acceso pleno a la cultura para la comunidad con discapacidad auditiva.`,
+      videoUrl: 'https://www.youtube.com/embed/WEvDk9y1e_E?si=m8XYBMkzBom_wtPl',
+    },
+  };
+
+  return {
+    id: m.id,
+    title: m.name,
+    description: m.desc,
+    image: m.image,
+    lat: m.lat,
+    lng: m.lng,
+    category: 'sitio-remoto',
+    tagColor: 'accent',
+    url: '#',
+    cta: 'Ver experiencia VR',
+    rating: 4.95,
+    reviewCount: 287,
+    price: 'Gratis',
+    translations,
+    videoUrl: m.videoUrl,
+    isVRAvailable: m.isVRAvailable,
+  };
+});
+
+const todasLasExperiencias: Experience[] = [...experiencias, ...museosExperiencias, ...sitioRemotoExperiencias];
+
+const tagStyles: Record<
+  Experience['tagColor'],
+  { badge: string; pill: string }
+> = {
+  emerald: {
+    badge:
+      'border-emerald-200/50 bg-emerald-50 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-400',
+    pill: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400',
+  },
+  accent: {
+    badge:
+      'border-accent-200/50 bg-accent-50 text-accent-700 dark:border-accent-800/50 dark:bg-accent-950/40 dark:text-accent-400',
+    pill: 'border-accent-200 bg-accent-50 text-accent-700 dark:border-accent-800 dark:bg-accent-950/30 dark:text-accent-400',
+  },
+  amber: {
+    badge:
+      'border-amber-200/50 bg-amber-50 text-amber-700 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-400',
+    pill: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400',
+  },
+  rose: {
+    badge:
+      'border-rose-200/50 bg-rose-50 text-rose-700 dark:border-rose-800/50 dark:bg-rose-950/40 dark:text-rose-400',
+    pill: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400',
+  },
+  sky: {
+    badge:
+      'border-purple-200/50 bg-purple-50 text-purple-700 dark:border-purple-800/50 dark:bg-purple-950/40 dark:text-purple-400',
+    pill: 'border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950/30 dark:text-purple-400',
+  },
+  blue: {
+    badge:
+      'border-violet-200/50 bg-violet-50 text-violet-700 dark:border-violet-800/50 dark:bg-violet-950/40 dark:text-violet-400',
+    pill: 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-400',
+  },
+};
+
+// Orden visual de los chips (izquierda → derecha) y de las secciones
+// en el feed. La sección 'sitio-remoto' absorbe también las experiencias
+// con category 'patrimonio' y 'cultura' (ver categorias.map); ambas se
+// mantienen como filtros de chip pero no renderizan secciones propias
+// para evitar duplicados.
+const categoryLabel: Record<Category, string> = {
+  todos: 'Todos',
+  turismo: 'Turismo',
+  'sitio-remoto': 'Sitios Turísticos',
+  patrimonio: 'Patrimonio',
+  cultura: 'Cultura',
+  museo: 'Museos',
+  gastronomia: 'Gastronomía',
+  eventos: 'Eventos / Exposiciones',
+  educacion: 'Educación y Ciencia',
+};
+
+const categories: Exclude<Category, 'todos'>[] = [
+  'turismo',
+  'sitio-remoto',
+  'museo',
+  'educacion',
+  'gastronomia',
+  'eventos',
+];
+
+// Helper: convierte un Tour en Experience para mezclarlo en el carousel de Turismo
+function toExperience(tour: Tour): Experience {
+  return {
+    id: tour.id,
+    title: tour.title,
+    description: tour.description,
+    image: tour.image,
+    category: 'turismo',
+    tagColor: 'accent',
+    url: '#',
+    cta: 'Reservar',
+    rating: 4.98,
+    reviewCount: 67,
+    price: `$${tour.pricePerPerson} MXN`,
+    highlights: tour.highlights,
+    meetingPoint: tour.meetingPoint,
+    currency: tour.currency,
+    duration: tour.duration,
+    isTour: true,
+  };
+}
+
+function optimizeImageUrl(url: string, width: number = 400, quality: number = 75): string {
+  if (!url) return '';
+  if (url.includes('unsplash.com')) {
+    try {
+      const u = new URL(url);
+      u.searchParams.set('w', String(width));
+      u.searchParams.set('q', String(quality));
+      u.searchParams.set('fit', 'crop');
+      u.searchParams.set('auto', 'format');
+      return u.toString();
+    } catch {
+      return url;
+    }
+  }
+  return url;
+}
+
+const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYMENT_ADDRESS?: string })?.TURIMAP_PAYMENT_ADDRESS;
+---
+
+<Layout title="TuriMap - Explorar">
+  <script is:inline define:vars={{ paymentAddress }}>
+    window.__TURIMAP_PAYMENT_ADDRESS__ = paymentAddress || '';
+  </script>
+  <script is:inline define:vars={{ experiencesMap: Object.fromEntries(todasLasExperiencias.map(e => [e.id, { title: e.title, image: e.image, category: e.category }])) }}>
+    window.__TURIMAP_EXPERIENCES__ = experiencesMap;
+  </script>
+  <script is:inline define:vars={{ toursData: TOURS }}>
+    window.__TURIMAP_TOURS__ = toursData || [];
+  </script>
+  <script is:inline define:vars={{ monumentsList: MONUMENTS.map(m => ({ id: m.id, name: m.name, lat: m.lat, lng: m.lng, image: m.image })) }}>
+    // For proximity notifications in Layout.astro
+    window.__TURIMAP_MONUMENTS__ = monumentsList;
+  </script>
+
+
+  <div class="unified-search-layer">
+    <UnifiedSearchBar
+      inputId="explore-search-input"
+      clearId="explore-search-clear"
+      suggestionsId="explore-search-suggestions"
+      placeholder="Buscar experiencias, patrimonio, cultura..."
+      ariaLabel="Buscar experiencias, patrimonio, cultura"
+      i18nPlaceholder="explore.search_placeholder"
+    />
+  </div>
+
+  <div class="unified-search-spacer" aria-hidden="true"></div>
+
+  <div class="flex flex-col gap-7">
+    <!-- Hero -->
+    <header class="text-center pt-4 pb-2">
+      <h1 class="text-[2.1rem] sm:text-[2.6rem] font-bold tracking-tight leading-[1.15] text-slate-900 dark:text-white mb-3" data-i18n-html="explorar.hero.title">
+        Encuentra tu próxima<br>
+        experiencia
+      </h1>
+      <p class="text-[14px] sm:text-[15px] text-slate-500 dark:text-slate-400 max-w-xs sm:max-w-sm mx-auto mb-6 leading-relaxed" data-i18n="explorar.hero.subtitle">
+        Cultura, patrimonio y lugares únicos cerca de ti.
+      </p>
+      <div id="explore-location-status" role="status" aria-live="polite" class="explore-location-pill inline-flex items-center gap-2 px-4 py-2 text-[11px] font-medium transition-colors duration-300">
+        <span id="explore-location-icon" class="material-symbols-outlined text-[15px] shrink-0 text-slate-500 dark:text-slate-400">near_me</span>
+        <span id="explore-location-text" data-i18n="explorar.location.detecting">Obteniendo ubicación…</span>
+      </div>
+      <div id="explore-public-info" class="hidden"></div>
+    </header>
+
+    <!-- Category Chips -->
+    <div
+      class="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:justify-center sm:px-0"
+      role="tablist"
+      aria-label="Filtrar por categoría"
+      data-i18n-attr="aria-label|explorar.a11y.filter_category"
+    >
+      {
+        (Object.keys(categoryLabel) as Category[]).map((cat) => (
+          <button
+            type="button"
+            data-filter={cat}
+            data-i18n={`explorar.categories.${cat.replace('-', '_')}`}
+            class="filter-chip rounded-full border px-4 py-2.5 text-[12px] font-semibold transition-all active:scale-95"
+            aria-pressed={cat === 'todos' ? 'true' : 'false'}
+          >
+            {categoryLabel[cat]}
+          </button>
+        ))
+      }
+    </div>
+
+    <!-- Experience Sections (Horizontal Carousels) -->
+    <div id="experiences-sections-container" class="flex flex-col gap-6">
+      {
+        categories.map((cat, catIdx) => {
+          const catExp = cat === 'turismo'
+            ? [...todasLasExperiencias.filter(exp => exp.category === cat), ...TOURS.map(toExperience)]
+            : cat === 'sitio-remoto'
+              ? todasLasExperiencias.filter(exp => exp.category === 'sitio-remoto' || exp.category === 'cultura' || exp.category === 'patrimonio')
+              : todasLasExperiencias.filter(exp => exp.category === cat);
+          if (catExp.length === 0 && cat !== 'educacion') return null;
+
+          return (
+            <section
+              data-category={cat}
+              data-render-categories={cat === 'sitio-remoto' ? "sitio-remoto,cultura,patrimonio" : cat}
+              class="category-section w-full py-2 border-b border-slate-100/60 dark:border-slate-800/60 last:border-0"
+            >
+              <div class="mb-3 flex items-center justify-between">
+                <h2 class="font-bold text-base md:text-lg tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                  <span class="h-2 w-2 rounded-full bg-brand-500"></span>
+                  <span data-i18n={`explorar.categories.${cat.replace('-', '_')}`}>{categoryLabel[cat]}</span>
+                </h2>
+                <div class="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    class="scroll-left-btn h-7 w-7 rounded-full border border-slate-200 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors active:scale-90"
+                    aria-label="Deslizar a la izquierda"
+                    title="Deslizar izquierda"
+                    data-i18n-attr="aria-label|explorar.a11y.scroll_left,title|explorar.a11y.scroll_left_title"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="scroll-right-btn h-7 w-7 rounded-full border border-slate-200 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors active:scale-90"
+                    aria-label="Deslizar a la derecha"
+                    title="Deslizar derecha"
+                    data-i18n-attr="aria-label|explorar.a11y.scroll_right,title|explorar.a11y.scroll_right_title"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+
+              <div
+                class="scroll-container no-scrollbar -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-3 scroll-smooth"
+              >
+                {catExp.map((exp, expIdx) => (
+                    <article
+                      data-category={exp.category}
+                      data-translations={exp.translations ? JSON.stringify(exp.translations) : undefined}
+                      data-rating={exp.rating}
+                      data-image={exp.image}
+                      data-images={exp.images ? JSON.stringify(exp.images) : undefined}
+                      data-price={exp.price}
+                      data-sku={exp.sku}
+                      data-is-product="false"
+                      data-title={exp.title}
+                      data-desc={exp.description}
+                      data-id={exp.id}
+                      data-country={exp.isTour ? (TOURS.find((tour) => tour.id === exp.id)?.countryCode || '') : 'MX'}
+                      data-lat={exp.lat ?? ''}
+                      data-lng={exp.lng ?? ''}
+                      data-is-vr={exp.isVRAvailable ? 'true' : 'false'}
+                      data-vr-url={exp.videoUrl || ''}
+                      data-tour-id={exp.isTour ? exp.id : undefined}
+                      data-tour-title={exp.isTour ? exp.title : undefined}
+                      data-tour-meeting={exp.isTour ? (exp.meetingPoint || '') : undefined}
+                      data-tour-image={exp.isTour ? exp.image : undefined}
+                      class={`exp-card hidden-card group relative flex h-[350px] w-[250px] sm:w-[270px] flex-none snap-start flex-col overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md ${exp.translations ? 'cursor-pointer' : ''}`}
+                    >
+                      {/* Image */}
+                      <div class="relative h-44 w-full overflow-hidden rounded-t-2xl bg-slate-100 dark:bg-slate-850">
+                        <img
+                          src={optimizeImageUrl(exp.image, 450, 75)}
+                          alt={exp.title}
+                          loading={catIdx === 0 && expIdx < 2 ? "eager" : "lazy"}
+                          fetchpriority={catIdx === 0 && expIdx === 0 ? "high" : undefined}
+                          class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        {/* VR Badge: aparece arriba a la derecha cuando hay experiencia VR */}
+                        {exp.isVRAvailable && exp.videoUrl && (
+                          <a
+                            href={exp.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-accent-500 to-accent-700 text-white shadow-md backdrop-blur-md transition-all hover:from-accent-600 hover:to-accent-800 active:scale-95"
+                            title="Ver en VR"
+                            aria-label="Ver experiencia en Realidad Virtual"
+                            data-i18n-attr="title|explorar.a11y.vr_view,aria-label|explorar.a11y.vr_view_aria"
+                            onclick="event.stopPropagation()"
+                          >
+                            <span class="material-symbols-outlined text-[16px]">view_in_ar</span>
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          class={`favorite-btn absolute ${exp.isVRAvailable ? 'top-12' : 'top-3'} right-3 z-10 rounded-full bg-white/80 dark:bg-slate-900/80 text-neutral-700 dark:text-neutral-300 backdrop-blur-sm hover:bg-white/90 dark:hover:bg-slate-900 hover:text-rose-500 dark:hover:text-rose-400 p-1.5 transition-all shadow-sm active:scale-90`}
+                          title="Añadir a favoritos"
+                          data-i18n-attr="title|explorar.a11y.favorite_add"
+                        >
+                          <svg class="h-4 w-4 fill-none stroke-current stroke-[2px]" viewBox="0 0 24 24">
+                            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                          </svg>
+                        </button>
+                        <span
+                          class={`absolute top-3 left-3 rounded-lg px-2 py-0.5 font-bold text-[10px] uppercase tracking-wider backdrop-blur-md border ${tagStyles[exp.tagColor].badge}`}
+                          data-i18n={exp.customBadge ? undefined : `explorar.categories.${exp.category.replace('-', '_')}`}
+                        >
+                          {exp.customBadge ?? categoryLabel[exp.category]}
+                        </span>
+                      </div>
+
+                      {/* Body */}
+                      <div class="flex flex-1 flex-col justify-between p-4 bg-white dark:bg-slate-900">
+                        <div>
+                          <h2 class="text-sm font-bold tracking-tight text-slate-800 dark:text-slate-100 line-clamp-1 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                            {exp.title}
+                          </h2>
+                          <p class="text-slate-500 dark:text-slate-400 text-xs tracking-tight mt-1.5 line-clamp-2 leading-relaxed">
+                            {exp.description}
+                          </p>
+                        </div>
+
+                        {/* Highlights (solo para tours) */}
+                        {exp.isTour && exp.highlights && (
+                          <div class="px-3 pt-2 pb-1 flex flex-wrap gap-1">
+                            {exp.highlights.slice(0, 2).map((h) => (
+                              <span class="text-[9px] bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded-full border border-brand-200/50 font-semibold">
+                                {h.length > 30 ? h.substring(0, 30) + '…' : h}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Footer */}
+                        <div class="mt-auto pt-3 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/60">
+                          {exp.rating && (
+                            <span class="flex items-center gap-0.5 text-amber-500">
+                              <span class="material-symbols-outlined text-[14px] !font-bold">star</span>
+                              <span class="text-slate-800 dark:text-slate-200">{exp.rating.toFixed(2)}</span>
+                            </span>
+                          )}
+                          {exp.reviewCount && (
+                            <span class="text-slate-400 dark:text-slate-500 font-normal">
+                              ({exp.reviewCount})
+                            </span>
+                          )}
+                          {exp.price && (
+                            <span class="text-slate-400 dark:text-slate-500 font-normal ml-0.5">
+                              · {exp.price}
+                            </span>
+                          )}
+
+                          {
+                            exp.isTour ? (
+                              <button
+                                type="button"
+                                class="ml-auto inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-accent-600 to-accent-700 hover:from-accent-700 hover:to-accent-800 text-white font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97] tour-reserve-btn"
+                              >
+                                <span class="material-symbols-outlined text-[12px]">event_available</span>
+                                {exp.cta}
+                              </button>
+                            ) : exp.translations ? (
+                              <button
+                                type="button"
+                                class="ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97] guide-trigger-btn"
+                              >
+                                {exp.cta}
+                                <span class="material-symbols-outlined text-[12px] transition-transform duration-200 group-hover:translate-x-0.5">arrow_forward</span>
+                              </button>
+                            ) : (
+                              <a
+                                href={exp.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]"
+                              >
+                                {exp.cta}
+                                <span class="material-symbols-outlined text-[12px] transition-transform duration-200 group-hover:translate-x-0.5">arrow_forward</span>
+                              </a>
+                            )
+                          }
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+            </section>
+          );
+        })
+      }
+
+
+
+      <!-- Empty state (shown by JS when no matches) -->
+      <div
+        id="empty-state"
+        class="hidden flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300/60 bg-white/60 p-10 text-center dark:border-slate-700/60 dark:bg-slate-900/40"
+      >
+        <span class="material-symbols-outlined text-3xl text-slate-400"
+          >search_off</span
+        >
+        <p class="text-sm font-semibold text-slate-700 dark:text-slate-300" data-i18n="explorar.empty.title">
+          No hay experiencias en esta categoría todavía
+        </p>
+        <p class="text-[12px] text-slate-500 dark:text-slate-400" data-i18n="explorar.empty.body">
+          Probá con otra categoría o volvé a "Todos".
+        </p>
+      </div>
+    </div>
+
+    <!-- Recorridos Guiados: ahora viven DENTRO del carousel de Turismo (cards .exp-card con isTour) -->
+      <!-- (Sección estática de tours removida; ahora viven dentro del carousel de Turismo) -->
+
+  <!-- Museum/Guide Details Modal (Overlay) -->
+  <div
+    id="guide-modal"
+    slot="overlays"
+    class="fixed inset-0 z-[200] [&:not(.hidden)]:flex hidden items-end justify-center bg-slate-900/80 p-0 backdrop-blur-md sm:items-center sm:p-4"
+  >
+    <div
+      id="guide-modal-panel"
+      class="w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/90 dark:border-slate-800/60 dark:bg-slate-900/90 p-4 sm:p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100dvh-32px)] sm:max-h-[90vh] overflow-hidden"
+    >
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-850">
+        <div>
+          <span id="guide-modal-badge" class="inline-flex items-center rounded-full bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider" data-i18n="explorar.guide.badge_default">
+            Museo
+          </span>
+          <h2 id="guide-modal-title" class="text-lg font-bold text-slate-800 dark:text-white mt-1" data-i18n="explorar.guide.loading">
+            Cargando...
+          </h2>
+        </div>
+        <button
+          type="button"
+          id="btn-close-guide"
+          aria-label="Cerrar guía"
+          data-i18n-attr="aria-label|explorar.a11y.close_guide"
+          class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors"
+        >
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="flex-1 overflow-y-auto py-4 space-y-4 no-scrollbar overscroll-contain">
+        <!-- Image Banner -->
+        <div class="relative h-36 sm:h-44 w-full overflow-hidden rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-850">
+          <img
+            id="guide-modal-image"
+            src=""
+            alt=""
+            class="h-full w-full object-cover"
+          />
+        </div>
+
+        <!-- Language Selector Tabs -->
+        <div class="flex gap-2 p-1 bg-slate-150 dark:bg-slate-800 rounded-xl">
+          <button
+            type="button"
+            data-guide-lang="es"
+            class="guide-lang-tab flex-1 py-2 text-[11px] font-bold rounded-lg transition-all text-brand-700 dark:text-brand-300 bg-white dark:bg-slate-700 shadow-sm"
+          >
+            🇪🇸 ES
+          </button>
+          <button
+            type="button"
+            data-guide-lang="en"
+            class="guide-lang-tab flex-1 py-2 text-[11px] font-bold rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-350"
+          >
+            🇺🇸 EN
+          </button>
+          <button
+            type="button"
+            data-guide-lang="señas"
+            class="guide-lang-tab flex-1 py-2 text-[11px] font-bold rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-350"
+          >
+            🤟 LSM
+          </button>
+          <button
+            type="button"
+            id="btn-guide-lang-native"
+            data-guide-lang="native"
+            class="guide-lang-tab flex-1 py-2 text-[11px] font-bold rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-350 hidden"
+            data-i18n="explorar.guide.lang_native"
+          >
+            🇲🇽 Nativo
+          </button>
+        </div>
+
+        <!-- Translated Content -->
+        <div class="space-y-2">
+          <h3 id="guide-modal-subtitle" class="font-bold text-[12px] text-slate-700 dark:text-slate-300 uppercase tracking-wider" data-i18n="explorar.guide.subtitle">
+            Guía de Audio e Información
+          </h3>
+          <p id="guide-modal-text" class="text-xs leading-relaxed text-slate-600 dark:text-slate-300" data-i18n="explorar.guide.loading">
+            Cargando...
+          </p>
+        </div>
+
+        <!-- LSM Video Container -->
+        <div id="guide-modal-video-container" class="hidden space-y-2">
+          <h4 class="font-bold text-[11px] text-slate-700 dark:text-slate-300" data-i18n="explorar.guide.lsm_title">
+            Intérprete en Lengua de Señas Mexicana (LSM)
+          </h4>
+          <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-slate-200 dark:border-slate-800">
+            <iframe
+              id="guide-modal-video"
+              class="absolute inset-0 w-full h-full"
+              src=""
+              title="LSM Guide Video"
+              data-i18n-attr="title|explorar.guide.lsm_video_title"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          </div>
+        </div>
+
+        <!-- Reviews section: lista de reviews existentes + form para dejar una -->
+        <div class="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-[11px] text-slate-700 dark:text-slate-300 uppercase tracking-wider" data-i18n="explorar.guide.reviews_title">
+              Reseñas de visitantes
+            </h3>
+            <span id="guide-modal-reviews-meta" class="text-[10px] text-slate-400 dark:text-slate-500"></span>
+          </div>
+
+          <div id="guide-modal-reviews-list" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar overscroll-contain"></div>
+
+          <!-- Proximity gate: shown while checking location -->
+          <div id="review-proximity-gate" class="hidden flex-col items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 p-3 text-center">
+            <span class="material-symbols-outlined text-[22px] text-amber-500">location_searching</span>
+            <p id="review-proximity-msg" class="text-[11px] font-semibold text-amber-700 dark:text-amber-300" data-i18n="explorar.guide.review_verifying">
+              Verificando tu ubicación…
+            </p>
+          </div>
+
+          <form id="guide-modal-review-form" class="space-y-2 pt-1 hidden">
+            <input type="hidden" name="targetId" />
+            <input type="hidden" name="targetType" value="museum" />
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase" data-i18n="explorar.guide.your_rating">Tu rating</span>
+              <div id="guide-modal-rating-stars" class="flex items-center gap-0.5" data-rating="0">
+                <!-- estrellas se renderizan por JS -->
+              </div>
+            </div>
+            <textarea
+              name="text"
+              rows="2"
+              maxlength="500"
+              placeholder="Contá tu experiencia (opcional, máx 500 caracteres)"
+              data-i18n-placeholder="explorar.guide.review_placeholder"
+              class="w-full rounded-xl border border-slate-200 bg-white/60 px-3 py-2 text-xs outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-900/40 resize-none"
+            ></textarea>
+            <div class="flex items-center justify-between gap-2">
+              <span id="guide-modal-review-feedback" class="text-[10px] text-slate-400"></span>
+              <button
+                type="submit"
+                class="rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-95"
+                data-i18n="explorar.guide.review_submit"
+              >
+                Publicar (+5 pts)
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+        <div class="flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px] text-amber-500" style="font-variation-settings:'FILL' 1">star</span>
+          <span id="guide-modal-rating" class="text-xs font-bold text-slate-800 dark:text-slate-200">4.97</span>
+        </div>
+        <button
+          type="button"
+          id="btn-go-to-map-route"
+          class="inline-flex items-center gap-1.5 rounded-xl bg-accent-600 hover:bg-accent-700 text-white font-bold px-4 py-2 text-xs shadow-sm transition-all active:scale-[0.97]"
+        >
+          <span class="material-symbols-outlined text-[16px]">map</span>
+          <span data-i18n="explorar.guide.view_route">Ver ruta en el mapa</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Tour Reservation Modal (Overlay) -->
+  <div
+    id="tour-modal"
+    slot="overlays"
+    class="fixed inset-0 z-[200] hidden items-center justify-center p-4 sm:p-0"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tour-modal-title"
+  >
+    <div class="ios-backdrop absolute inset-0" data-tour-modal-dismiss></div>
+    <div
+      class="ios-modal relative mx-auto flex w-full flex-col overflow-hidden sm:max-w-lg"
+      style="max-height: 92dvh;"
+    >
+      <header class="flex items-start justify-between gap-3 border-b border-slate-200/60 px-5 sm:px-6 pb-4 pt-5 dark:border-slate-700/60">
+        <div class="min-w-0 flex-1">
+          <p class="ios-badge self-start bg-accent-500/15 text-accent-700 dark:text-accent-300">
+            <span class="material-symbols-outlined text-[12px]">tour</span>
+            <span data-i18n="explorar.tour.badge">Recorrido guiado</span>
+          </p>
+          <h2 id="tour-modal-title" class="ios-text-title3 mt-2 text-slate-900 dark:text-white" data-i18n="explorar.tour.modal_title">
+            Reservar tour
+          </h2>
+          <p id="tour-modal-subtitle" class="ios-text-footnote mt-0.5 text-accent-700 dark:text-accent-300">
+            -
+          </p>
+        </div>
+        <button
+          type="button"
+          id="tour-modal-close"
+          class="ios-stepper-btn shrink-0"
+          aria-label="Cerrar"
+          data-i18n-attr="aria-label|explorar.a11y.close"
+          data-tour-modal-dismiss
+        >
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </header>
+
+      <div class="flex-1 overflow-y-auto px-5 sm:px-6 py-5 no-scrollbar">
+        <!-- Tour summary -->
+        <div class="ios-card p-4">
+          <p class="ios-text-footnote text-slate-600 dark:text-slate-300" data-i18n-html="explorar.tour.summary">
+            <strong>Incluye:</strong> guía e intérprete para los acompañantes.<br/>
+            <strong>Precio:</strong> $480 MXN por persona.<br/>
+            <strong>Guía:</strong> Mtro. Henryk Karol Kocyba (Universidad de Varsovia).
+          </p>
+        </div>
+
+        <!-- Form -->
+        <form id="tour-reservation-form" class="mt-4 flex flex-col gap-3">
+          <input type="hidden" id="tour-id-input" name="tourId" />
+
+          <div class="ios-field">
+            <label for="tour-name" class="ios-field-label" data-i18n="reserva.modal.fields.name">Nombre completo</label>
+            <input type="text" id="tour-name" name="name" required class="ios-input" placeholder="Tu nombre" data-i18n-placeholder="explorar.tour.form.name_placeholder" autocomplete="name" />
+          </div>
+
+          <div class="ios-field">
+            <label for="tour-email" class="ios-field-label" data-i18n="explorar.tour.form.email">Email</label>
+            <input type="email" id="tour-email" name="email" required class="ios-input" placeholder="tu@email.com" autocomplete="email" />
+          </div>
+
+          <div class="ios-field">
+            <label for="tour-phone" class="ios-field-label" data-i18n="explorar.tour.form.phone">Teléfono</label>
+            <input type="tel" id="tour-phone" name="phone" required class="ios-input" placeholder="+52 55 1234 5678" autocomplete="tel" inputmode="tel" />
+          </div>
+
+          <div class="flex flex-col gap-3 sm:grid sm:grid-cols-2">
+            <div class="ios-field">
+              <label for="tour-date" class="ios-field-label" data-i18n="explorar.tour.form.date">Fecha preferida</label>
+              <input type="date" id="tour-date" name="date" required class="ios-input" />
+            </div>
+            <div class="ios-field">
+              <label for="tour-people" class="ios-field-label" data-i18n="reserva.modal.fields.people">Personas</label>
+              <input type="number" id="tour-people" name="people" required min="1" max="20" value="2" class="ios-input text-center" />
+            </div>
+          </div>
+
+          <div class="ios-field">
+            <label for="tour-notes" class="ios-field-label" data-i18n="explorar.tour.form.notes">Notas (opcional)</label>
+            <textarea id="tour-notes" name="notes" rows="2" class="ios-input resize-none" placeholder="Algún requerimiento especial..." data-i18n-placeholder="explorar.tour.form.notes_placeholder" style="min-height: 64px; padding: 12px 14px;"></textarea>
+          </div>
+
+          <!-- Total -->
+          <div class="ios-card flex items-center justify-between p-4">
+            <span class="ios-text-headline text-slate-900 dark:text-white" data-i18n="explorar.tour.total">Total estimado</span>
+            <div class="text-right">
+              <span id="tour-total" class="ios-text-title3 font-bold text-accent-700 dark:text-accent-400">$960 MXN</span>
+              <span id="tour-total-usdc" class="ios-text-footnote block text-slate-400 dark:text-slate-500">≈ $0.00 USDC</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-col gap-2 pt-1">
+            <button type="button" id="tour-pay-usdc-btn" class="ios-btn ios-btn-primary w-full">
+              <span class="material-symbols-outlined mr-2 text-[18px]">account_balance_wallet</span>
+              <span id="tour-pay-usdc-label" data-i18n="explorar.tour.pay_usdc">Pagar con USDC en Polygon</span>
+            </button>
+            <button type="submit" id="tour-submit-btn" class="ios-btn ios-btn-ghost w-full">
+              <span class="material-symbols-outlined mr-2 text-[14px]">send</span>
+              <span data-i18n="explorar.tour.submit_request">Solo enviar solicitud (pendiente de pago)</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Success state (hidden by default) -->
+        <div id="tour-success-state" class="hidden mt-4 flex-col items-center gap-4 rounded-[var(--ios-radius-lg)] bg-emerald-500/15 p-5 text-center">
+          <span class="material-symbols-outlined text-4xl text-emerald-600 dark:text-emerald-400">check_circle</span>
+          <h3 class="ios-text-title3 text-emerald-900 dark:text-emerald-200" data-i18n="explorar.tour.success_title">¡Solicitud enviada!</h3>
+          <p class="ios-text-footnote text-emerald-800 dark:text-emerald-300" data-i18n="explorar.tour.success_body">
+            Te contactaremos por email y WhatsApp para confirmar disponibilidad y coordinar el pago.
+          </p>
+          <button type="button" id="tour-success-close" class="ios-btn ios-btn-secondary w-full" data-i18n="explorar.tour.success_close">Entendido</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<style>
+  /* iOS 26 glass pill for the location status — page-local, mirrors the shared
+     liquid-glass recipe without touching the global ios-* classes. States only
+     swap icon + text color on the same glass base. */
+  .explore-location-pill {
+    border: 0.5px solid rgba(148, 163, 184, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.62);
+    color: #475569; /* slate-600 */
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 8px 24px -12px rgba(15, 23, 42, 0.12),
+      0 1px 2px rgba(15, 23, 42, 0.04);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  }
+
+  :global(.dark) .explore-location-pill {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.55);
+    color: #cbd5e1; /* slate-300 */
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  .explore-location-pill.is-success {
+    color: #059669; /* emerald-600 */
+  }
+  :global(.dark) .explore-location-pill.is-success {
+    color: #34d399; /* emerald-400 */
+  }
+
+  .explore-location-pill.is-warning {
+    color: #d97706; /* amber-600 */
+  }
+  :global(.dark) .explore-location-pill.is-warning {
+    color: #fbbf24; /* amber-400 */
+  }
+
+  @media (max-width: 639px) {
+    #tour-modal {
+      padding-top: max(1rem, env(safe-area-inset-top, 0px));
+      padding-right: max(1rem, env(safe-area-inset-right, 0px));
+      padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+      padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    }
+
+    #tour-modal > .ios-modal {
+      max-height: calc(
+        100dvh - 2rem - env(safe-area-inset-top, 0px) -
+          env(safe-area-inset-bottom, 0px)
+      );
+      margin-bottom: 0;
+      border-radius: 1.5rem;
+    }
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .filter-chip {
+    flex-shrink: 0;
+    border-color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.74);
+    color: #64748b;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.96),
+      0 6px 18px -12px rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+  }
+
+  .filter-chip:hover {
+    border-color: rgba(148, 163, 184, 0.28);
+    color: #0f172a;
+  }
+
+  .filter-chip[aria-pressed='true'] {
+    border-color: rgba(15, 23, 42, 0.92);
+    background: #0f172a;
+    color: #ffffff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 10px 24px -14px rgba(15, 23, 42, 0.75);
+  }
+
+  .category-section {
+    border-color: rgba(226, 232, 240, 0.58);
+  }
+
+  .exp-card {
+    border-color: rgba(255, 255, 255, 0.92) !important;
+    border-radius: 1.45rem !important;
+    box-shadow:
+      0 18px 38px -28px rgba(15, 23, 42, 0.42),
+      0 2px 8px rgba(15, 23, 42, 0.05);
+  }
+
+  .exp-card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 24px 48px -28px rgba(15, 23, 42, 0.48),
+      0 8px 18px rgba(15, 23, 42, 0.08);
+  }
+
+  .exp-card.hidden-card {
+    display: none !important;
+  }
+  .category-section.hidden-section {
+    display: none !important;
+  }
+
+  @keyframes bounce-slow {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  .animate-bounce-slow {
+    animation: bounce-slow 4s infinite ease-in-out;
+  }
+
+  @media (max-width: 639px) {
+    #tour-modal .no-scrollbar {
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+    }
+  }
+</style>
+
+<script>
+  import { MONUMENTS } from '../data/monuments';
+  import type { Tour } from '../data/tours';
+  import { detectLocale, pickLocalized } from '../lib/i18n';
+  import { navigate } from 'astro:transitions/client';
+
+  type I18nDict = Record<string, unknown>;
+
+  const TOURS: Tour[] = (window as unknown as { __TURIMAP_TOURS__?: Tour[] }).__TURIMAP_TOURS__ || [];
+
+  document.addEventListener('astro:page-load', () => {
+    // --- i18n runtime (mirrors tienda.astro; dicts injected globally by Layout) ---
+    // The handler re-runs on every astro:page-load, so abort the previous
+    // controller to drop stale document/window-level listeners before re-binding.
+    const win = window as unknown as {
+      __TURIMAP_I18N__?: { es: I18nDict; en: I18nDict };
+      __turimapExplorarController?: AbortController;
+    };
+    if (win.__turimapExplorarController) {
+      win.__turimapExplorarController.abort();
+    }
+    const explorarController = new AbortController();
+    win.__turimapExplorarController = explorarController;
+
+    const DICTS = (win.__TURIMAP_I18N__ || { es: {}, en: {} });
+    function getDict(): I18nDict {
+      return detectLocale() === 'en' ? DICTS.en : DICTS.es;
+    }
+    const _dict = getDict();
+    function resolve(dict: I18nDict, key: string): string {
+      const parts = key.split('.');
+      let cur: unknown = dict;
+      for (const p of parts) {
+        if (cur && typeof cur === 'object' && p in cur) cur = (cur as I18nDict)[p];
+        else return key;
+      }
+      return typeof cur === 'string' ? cur : key;
+    }
+    function tr(key: string, vars?: Record<string, string | number>): string {
+      let s = resolve(_dict, key);
+      if (!vars) return s;
+      s = s.replace(/\{(\w+)\}/g, function (_, n) {
+        return n in vars ? String(vars[n]) : '{' + n + '}';
+      });
+      return s;
+    }
+    function applyI18n() {
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (!key) return;
+        el.innerHTML = tr(key);
+      });
+      document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-html');
+        if (!key) return;
+        el.innerHTML = tr(key);
+      });
+      document.querySelectorAll('[data-i18n-attr]').forEach((el) => {
+        const v = el.getAttribute('data-i18n-attr');
+        if (!v) return;
+        // Supports comma-separated attr|key pairs (e.g. aria-label + title).
+        v.split(',').forEach((pair) => {
+          const [attr, key] = pair.split('|');
+          if (attr && key) el.setAttribute(attr, tr(key));
+        });
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key) el.setAttribute('placeholder', tr(key));
+      });
+    }
+
+    // Helpers para conversión USDC
+    const MXN_PER_USDC = 17;
+    function mxnToUsdc(mxn: number): number {
+      return Math.round((mxn / MXN_PER_USDC) * 100) / 100;
+    }
+    function rawUsdc(usdc: number): string {
+      const [w, d = ''] = String(usdc).split('.');
+      const decPadded = (d + '0'.repeat(6)).slice(0, 6);
+      const raw = BigInt(w) * BigInt(1000000) + BigInt(decPadded || '0');
+      return raw.toString();
+    }
+    // Filtrado y búsqueda client-side de experiencias con secciones horizontales.
+    const chips = document.querySelectorAll<HTMLButtonElement>('.filter-chip');
+    const sections = document.querySelectorAll<HTMLElement>('.category-section');
+    const emptyState = document.getElementById('empty-state');
+    const searchInput = document.getElementById('explore-search-input') as HTMLInputElement;
+    const searchClear = document.getElementById('explore-search-clear');
+
+    let activeCategory = 'todos';
+    let searchQuery = '';
+    // Do not expose country-targeted managed/static cards before the browser has
+    // produced a confirmed country. Unknown, denied, and failed resolution are
+    // intentionally empty rather than defaulting to Mexico.
+    let activeCountry = '__unknown__';
+
+    const locationStatus = document.getElementById('explore-location-status');
+    function setLocationStatus(message: string, iconName: string = 'near_me', state: 'neutral' | 'success' | 'warning' = 'neutral') {
+      if (!locationStatus) return;
+      const textEl = locationStatus.querySelector('#explore-location-text') || locationStatus;
+      const iconEl = locationStatus.querySelector('#explore-location-icon');
+      if (textEl) textEl.textContent = message;
+      if (iconEl) iconEl.textContent = iconName;
+
+      const baseClasses = 'explore-location-pill inline-flex items-center gap-2 px-4 py-2 text-[11px] font-medium transition-colors duration-300';
+      if (state === 'success') {
+        locationStatus.className = `${baseClasses} is-success`;
+        if (iconEl) iconEl.className = 'material-symbols-outlined text-[15px] shrink-0 text-emerald-600 dark:text-emerald-400';
+      } else if (state === 'warning') {
+        locationStatus.className = `${baseClasses} is-warning`;
+        if (iconEl) iconEl.className = 'material-symbols-outlined text-[15px] shrink-0 text-amber-600 dark:text-amber-400';
+      } else {
+        locationStatus.className = baseClasses;
+        if (iconEl) iconEl.className = 'material-symbols-outlined text-[15px] shrink-0 text-slate-500 dark:text-slate-400';
+      }
+    }
+    function calculateKmDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * (Math.PI / 180);
+      const dLon = (lon2 - lon1) * (Math.PI / 180);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    function escapeHtml(str: unknown): string {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function injectPublicItemsIntoCategories(items: Array<{ title: string; description: string; sourceName?: string; sourceUrl?: string; imageUrl?: string }>) {
+      if (!items || !items.length) return;
+      const defaultPhoto = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80';
+
+      items.forEach((item) => {
+        if (!item.title) return;
+        const wikiId = `wiki-${item.title.replace(/\s+/g, '-').toLowerCase()}`;
+        if (document.querySelector(`[data-id="${wikiId}"]`)) return;
+
+        // Use server-side category hint when available (set by targeted text queries).
+        // Fall back to keyword detection only when hint is absent.
+        // Education is checked first to prevent universities from landing in museo/turismo.
+        let cat: string = (item as { categoryHint?: string }).categoryHint || 'turismo';
+        if (!(item as { categoryHint?: string }).categoryHint) {
+          const titleDesc = `${item.title} ${item.description || ''}`.toLowerCase();
+          if (/\buniversidad\b|university|\bpolitécnico\b|politecnic|\btecnológico\b|\bescuela (de |superior|nacional|politécnica)|\binstituto tecnol|\bfacultad (de |nacional)/.test(titleDesc)) {
+            cat = 'educacion';
+          } else if (/\bmuseo\b|museum|\bgaler[íi]a\b|\bteatro\b|\bauditorio\b/.test(titleDesc)) {
+            cat = 'museo';
+          } else if (/gastronom[íi]|restaurante|restauran\b/.test(titleDesc)) {
+            cat = 'gastronomia';
+          } else if (/\bevento\b|\bfestival\b|\bconcierto\b|exposici[oó]n/.test(titleDesc)) {
+            cat = 'eventos';
+          }
+        }
+
+        const targetSection = document.querySelector<HTMLElement>(`.category-section[data-render-categories*="${cat}"], .category-section[data-category="${cat}"]`);
+        const container = targetSection?.querySelector<HTMLElement>('.scroll-container');
+        if (!container) return;
+
+        const card = document.createElement('article');
+        card.className = 'exp-card group relative flex h-[350px] w-[250px] sm:w-[270px] flex-none snap-start flex-col overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-md';
+        card.setAttribute('data-category', cat);
+        card.setAttribute('data-title', item.title);
+        card.setAttribute('data-desc', item.description || '');
+        card.setAttribute('data-id', wikiId);
+        card.setAttribute('data-country', activeCountry);
+        card.setAttribute('data-is-product', 'false');
+        card.setAttribute('data-is-vr', 'false');
+
+        const imgUrl = item.imageUrl || defaultPhoto;
+        const sourceLabel = item.sourceName || 'Wikipedia';
+
+        card.innerHTML = `
+          <div class="relative h-44 w-full overflow-hidden rounded-t-2xl bg-slate-100 dark:bg-slate-850">
+            <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(item.title)}" loading="lazy" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" onerror="this.src='${defaultPhoto}'" />
+            <span class="absolute top-3 left-3 rounded-lg px-2 py-0.5 font-bold text-[10px] uppercase tracking-wider backdrop-blur-md border border-sky-200/60 bg-sky-50/90 text-sky-700 dark:border-sky-800/60 dark:bg-sky-950/80 dark:text-sky-300">
+              ${escapeHtml(sourceLabel)}
+            </span>
+          </div>
+          <div class="flex flex-1 flex-col justify-between p-4 bg-white dark:bg-slate-900">
+            <div>
+              <h2 class="text-sm font-bold tracking-tight text-slate-800 dark:text-slate-100 line-clamp-1 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">${escapeHtml(item.title)}</h2>
+              <p class="text-slate-500 dark:text-slate-400 text-xs tracking-tight mt-1.5 line-clamp-2 leading-relaxed">${escapeHtml(item.description || '')}</p>
+            </div>
+            <div class="mt-auto pt-3 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/60">
+              <span class="text-slate-400 dark:text-slate-500 font-normal">${tr('explorar.cards.recommended')}</span>
+              ${item.sourceUrl ? `
+                <a href="${escapeHtml(item.sourceUrl)}" target="_blank" rel="noopener noreferrer" class="ml-auto inline-flex items-center gap-1 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold px-3 py-1.5 text-[11px] shadow-sm transition-all active:scale-[0.97]">
+                  <span>${tr('explorar.cards.view_article')}</span>
+                  <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+                </a>
+              ` : ''}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      updateList();
+    }
+
+    function renderLocationResults(data: { managed?: Array<{ title: string; description: string; imageUrl?: string }>; publicInfo?: Array<{ title: string; description: string; sourceName: string; sourceUrl: string; imageUrl?: string }> }) {
+      if (data.publicInfo && data.publicInfo.length > 0) {
+        injectPublicItemsIntoCategories(data.publicInfo);
+      }
+    }
+
+    function sortCardsByProximity(userLat: number, userLng: number) {
+      document.querySelectorAll<HTMLElement>('.category-section').forEach((section) => {
+        const container = section.querySelector<HTMLElement>('.scroll-container');
+        if (!container) return;
+        const cards = Array.from(container.querySelectorAll<HTMLElement>('.exp-card'));
+        cards.sort((a, b) => {
+          const latA = parseFloat(a.dataset.lat || '');
+          const lngA = parseFloat(a.dataset.lng || '');
+          const latB = parseFloat(b.dataset.lat || '');
+          const lngB = parseFloat(b.dataset.lng || '');
+          const distA = (!isNaN(latA) && !isNaN(lngA)) ? calculateKmDistance(userLat, userLng, latA, lngA) : 999999;
+          const distB = (!isNaN(latB) && !isNaN(lngB)) ? calculateKmDistance(userLat, userLng, latB, lngB) : 999999;
+          return distA - distB;
+        });
+
+        cards.forEach((card) => {
+          const lat = parseFloat(card.dataset.lat || '');
+          const lng = parseFloat(card.dataset.lng || '');
+          if (!isNaN(lat) && !isNaN(lng)) {
+            const dist = calculateKmDistance(userLat, userLng, lat, lng);
+            const distStr = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
+            let distBadge = card.querySelector<HTMLElement>('.card-distance-badge');
+            if (!distBadge) {
+              distBadge = document.createElement('span');
+              distBadge.className = 'card-distance-badge ml-auto text-[10px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/40 px-2 py-0.5 rounded-md border border-brand-200/50';
+              const footer = card.querySelector('.mt-auto');
+              if (footer) footer.insertBefore(distBadge, footer.firstChild);
+            }
+            distBadge.textContent = tr('explorar.cards.distance_away', { dist: distStr });
+          }
+          container.appendChild(card);
+        });
+      });
+    }
+
+    function filterLocationCards(countryCode: string) {
+      activeCountry = countryCode.toUpperCase();
+      updateList();
+    }
+
+    function requestExploreLocation() {
+      if (!navigator.geolocation) { setLocationStatus(tr('explorar.location.unsupported'), 'location_off', 'warning'); updateList(); return; }
+      setLocationStatus(tr('explorar.location.searching'), 'near_me', 'neutral');
+      navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+        try {
+          sortCardsByProximity(coords.latitude, coords.longitude);
+          const response = await fetch('/api/explore/location', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ latitude: coords.latitude, longitude: coords.longitude }) });
+          const data = await response.json();
+          if (data.location?.status !== 'resolved') { setLocationStatus(tr('explorar.location.unresolved'), 'location_off', 'warning'); return; }
+          const countryCode = data.location.countryCode;
+          const city = data.location.city;
+          const hasManaged = (data.managed && data.managed.length > 0);
+          const hasPublic = (data.publicInfo && data.publicInfo.length > 0);
+
+          filterLocationCards(countryCode);
+          renderLocationResults(data);
+
+          if (hasManaged || hasPublic) {
+            const sourceLabel = data.publicInfo?.[0]?.sourceName ? tr('explorar.location.source_via', { source: data.publicInfo[0].sourceName }) : '';
+            const msg = city ? tr('explorar.location.available_city', { place: city, source: sourceLabel }) : (countryCode === 'MX' ? tr('explorar.location.available_mx', { source: sourceLabel }) : tr('explorar.location.available_country', { code: countryCode, source: sourceLabel }));
+            setLocationStatus(msg, 'check_circle', 'success');
+          } else {
+            const msg = city ? tr('explorar.location.unavailable_place', { place: city }) : tr('explorar.location.unavailable_region', { code: countryCode });
+            setLocationStatus(msg, 'location_off', 'warning');
+          }
+        } catch { setLocationStatus(tr('explorar.location.error'), 'signal_wifi_off', 'warning'); }
+      }, () => {
+        // Location permission was denied or unavailable
+        setLocationStatus(tr('explorar.location.denied'), 'location_off', 'warning');
+        updateList();
+      }, { timeout: 8000, maximumAge: 300000 });
+    }
+    applyI18n();
+    updateList();
+    requestExploreLocation();
+
+    function updateList() {
+      let totalVisibleCount = 0;
+
+    sections.forEach((section) => {
+      const sectionCategory = section.dataset.category || '';
+      const renderCats = (section.dataset.renderCategories || sectionCategory).split(',');
+      const cards = section.querySelectorAll<HTMLElement>('.exp-card');
+      let visibleCardsInSection = 0;
+
+      cards.forEach((card) => {
+        const title = card.querySelector('h2, h3')?.textContent?.toLowerCase() || '';
+        const desc = card.getAttribute('data-desc')?.toLowerCase() || card.querySelector('p')?.textContent?.toLowerCase() || '';
+
+        const matchesCategory = activeCategory === 'todos' || renderCats.includes(activeCategory);
+        const matchesSearch = title.includes(searchQuery) || desc.includes(searchQuery);
+
+        const cardCountry = (card.dataset.country || '').toUpperCase();
+        const matchesCountry = cardCountry ? activeCountry === cardCountry : true;
+        const isVisible = matchesCategory && matchesSearch && matchesCountry;
+        card.classList.toggle('hidden-card', !isVisible);
+        if (isVisible) {
+          visibleCardsInSection++;
+        }
+      });
+
+      // Si la categoría activa no aplica a esta sección, o si no hay cartas visibles, ocultamos la sección
+      const isSectionVisible = (activeCategory === 'todos' || renderCats.includes(activeCategory)) && (visibleCardsInSection > 0);
+      section.classList.toggle('hidden-section', !isSectionVisible);
+
+      totalVisibleCount += visibleCardsInSection;
+    });
+
+    if (emptyState) {
+      emptyState.classList.toggle('hidden', totalVisibleCount > 0);
+      emptyState.classList.toggle('flex', totalVisibleCount === 0);
+    }
+  }
+
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const alreadyActive = chip.getAttribute('aria-pressed') === 'true';
+      chips.forEach((c) => {
+        c.setAttribute('aria-pressed', 'false');
+        c.classList.remove('shadow-sm');
+      });
+      if (alreadyActive && chip.dataset.filter !== 'todos') {
+        // Toggle off: vuelve a "Todos"
+        activeCategory = 'todos';
+        const todosChip = document.querySelector<HTMLButtonElement>('[data-filter="todos"]');
+        todosChip?.setAttribute('aria-pressed', 'true');
+      } else {
+        chip.setAttribute('aria-pressed', 'true');
+        chip.classList.add('shadow-sm');
+        activeCategory = chip.dataset.filter ?? 'todos';
+      }
+      updateList();
+    });
+  });
+
+  const suggestionsEl = document.getElementById('explore-search-suggestions');
+  let activeSuggestionIndex = -1;
+
+  function setExploreClearVisible(visible: boolean) {
+    searchClear?.classList.toggle('hidden', !visible);
+    searchClear?.classList.toggle('flex', visible);
+  }
+
+  function closeSuggestions() {
+    if (suggestionsEl) {
+      suggestionsEl.classList.add('hidden');
+      suggestionsEl.innerHTML = '';
+    }
+    activeSuggestionIndex = -1;
+  }
+
+  function highlightSuggestion(items: NodeListOf<HTMLButtonElement>, index: number) {
+    items.forEach((item, idx) => {
+      if (idx === index) {
+        item.classList.add('bg-slate-150', 'dark:bg-slate-800');
+        item.focus();
+      } else {
+        item.classList.remove('bg-slate-150', 'dark:bg-slate-800');
+      }
+    });
+  }
+
+  function handleSelectSuggestion(id: string, type: 'tour' | 'monument' | 'experience', name: string) {
+    closeSuggestions();
+    
+    if (searchInput) {
+      searchInput.value = name;
+      setExploreClearVisible(true);
+      searchQuery = name.toLowerCase().trim();
+      updateList();
+    }
+
+    // Attempt to locate card and scroll/highlight
+    const card = document.querySelector(`[data-id="${id}"], [data-tour-id="${id}"]`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Temporary highlight animation
+      card.classList.add('ring-4', 'ring-brand-500/55', 'scale-[1.02]');
+      setTimeout(() => {
+        card.classList.remove('ring-4', 'ring-brand-500/55', 'scale-[1.02]');
+      }, 2000);
+    } else if (type === 'monument') {
+      // Redirect to the map view zoomed on the monument
+      navigate(`/mapa?placeId=${id}`);
+    }
+  }
+
+  if (searchInput) {
+    searchClear?.addEventListener('click', () => {
+      searchInput.value = '';
+      searchQuery = '';
+      setExploreClearVisible(false);
+      closeSuggestions();
+      updateList();
+      searchInput.focus();
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+      if (!suggestionsEl || suggestionsEl.classList.contains('hidden')) return;
+      const items = suggestionsEl.querySelectorAll<HTMLButtonElement>('button.suggestion-item');
+      if (items.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+        highlightSuggestion(items, activeSuggestionIndex);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
+        highlightSuggestion(items, activeSuggestionIndex);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeSuggestionIndex >= 0 && items[activeSuggestionIndex]) {
+          items[activeSuggestionIndex].click();
+        }
+      } else if (e.key === 'Escape') {
+        closeSuggestions();
+      }
+    });
+
+    searchInput.addEventListener('focus', () => {
+      if (searchInput.value.trim()) {
+        searchInput.dispatchEvent(new Event('input'));
+      }
+    });
+
+    searchInput.addEventListener('input', (e) => {
+      const q = (e.target as HTMLInputElement).value.toLowerCase().trim();
+      setExploreClearVisible(Boolean((e.target as HTMLInputElement).value));
+      searchQuery = q;
+      updateList();
+
+      if (!q) {
+        closeSuggestions();
+        return;
+      }
+
+      const locale = detectLocale();
+
+      // 1) Filter local monuments matching search query
+      const monumentMatches = MONUMENTS.filter(m => {
+        const name = pickLocalized(m, 'name', locale).toLowerCase();
+        const desc = pickLocalized(m, 'desc', locale).toLowerCase();
+        const cat = pickLocalized(m, 'category', locale).toLowerCase();
+        return name.includes(q) || desc.includes(q) || cat.includes(q);
+      }).slice(0, 4);
+
+      // 2) Filter tours matching search query
+      const tourMatches = TOURS.filter(t => {
+        const title = pickLocalized(t, 'title', locale).toLowerCase();
+        const desc = pickLocalized(t, 'description', locale).toLowerCase();
+        const highlights = (t.highlights || []).join(' ').toLowerCase();
+        return title.includes(q) || desc.includes(q) || highlights.includes(q);
+      }).slice(0, 4);
+
+      if (monumentMatches.length === 0 && tourMatches.length === 0) {
+        if (suggestionsEl) {
+          suggestionsEl.innerHTML = `<div class="p-4 text-center text-xs text-slate-400 dark:text-slate-500">${tr('explorar.search.no_suggestions')}</div>`;
+          suggestionsEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      let suggestionsHtml = '<div class="py-1.5">';
+
+      if (tourMatches.length > 0) {
+        suggestionsHtml += `
+          <div>
+            <div class="text-[9px] font-bold text-accent-600 dark:text-accent-400 uppercase tracking-wider px-3.5 py-1 select-none">
+              ${tr('explorar.search.suggested_tours')}
+            </div>
+            <div class="flex flex-col">
+        `;
+        tourMatches.forEach(t => {
+          const title = pickLocalized(t, 'title', locale);
+          const desc = pickLocalized(t, 'description', locale);
+          suggestionsHtml += `
+            <button
+              type="button"
+              class="suggestion-item w-full flex items-center gap-3 px-3.5 py-2 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-all text-left group outline-none focus:bg-slate-150 dark:focus:bg-slate-800"
+              data-id="${t.id}"
+              data-type="tour"
+              data-name="${title.replace(/"/g, '&quot;')}"
+            >
+              <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-lg group-hover:scale-105 transition-transform">
+                🎟️
+              </span>
+              <div class="min-w-0 flex-grow">
+                <p class="truncate text-[12px] font-bold text-slate-800 dark:text-white group-hover:text-accent-600 dark:group-hover:text-accent-400 transition-colors">${title}</p>
+                <p class="truncate text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">${desc}</p>
+              </div>
+            </button>
+          `;
+        });
+        suggestionsHtml += `</div></div>`;
+      }
+
+      if (monumentMatches.length > 0) {
+        const borderClass = tourMatches.length > 0 ? 'border-t border-slate-200/50 dark:border-slate-800/50 mt-1.5 pt-1.5' : '';
+        suggestionsHtml += `
+          <div class="${borderClass}">
+            <div class="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-3.5 py-1 select-none">
+              ${tr('explorar.search.suggested_places')}
+            </div>
+            <div class="flex flex-col">
+        `;
+        monumentMatches.forEach(m => {
+          const name = pickLocalized(m, 'name', locale);
+          const desc = pickLocalized(m, 'desc', locale);
+          suggestionsHtml += `
+            <button
+              type="button"
+              class="suggestion-item w-full flex items-center gap-3 px-3.5 py-2 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-all text-left group outline-none focus:bg-slate-150 dark:focus:bg-slate-800"
+              data-id="${m.id}"
+              data-type="monument"
+              data-name="${name.replace(/"/g, '&quot;')}"
+            >
+              <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-lg group-hover:scale-105 transition-transform">
+                ${m.emoji || '🏛️'}
+              </span>
+              <div class="min-w-0 flex-grow">
+                <p class="truncate text-[12px] font-bold text-slate-800 dark:text-white group-hover:text-accent-600 dark:group-hover:text-accent-400 transition-colors">${name}</p>
+                <p class="truncate text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">${desc}</p>
+              </div>
+            </button>
+          `;
+        });
+        suggestionsHtml += `</div></div>`;
+      }
+
+      suggestionsHtml += '</div>';
+
+      if (suggestionsEl) {
+        suggestionsEl.innerHTML = suggestionsHtml;
+        suggestionsEl.classList.remove('hidden');
+
+        const items = suggestionsEl.querySelectorAll<HTMLButtonElement>('button.suggestion-item');
+        items.forEach(item => {
+          item.addEventListener('click', () => {
+            const id = item.getAttribute('data-id') || '';
+            const type = (item.getAttribute('data-type') || 'experience') as 'tour' | 'monument' | 'experience';
+            const name = item.getAttribute('data-name') || '';
+            handleSelectSuggestion(id, type, name);
+          });
+        });
+      }
+      activeSuggestionIndex = -1;
+    });
+  }
+
+  // Click outside to close
+  document.addEventListener('click', (e) => {
+    const target = e.target as Node;
+    if (searchInput && !searchInput.contains(target) && suggestionsEl && !suggestionsEl.contains(target)) {
+      closeSuggestions();
+    }
+  }, { signal: explorarController.signal });
+
+  // Manejar el scroll horizontal con los botones chevron
+  document.querySelectorAll('.category-section').forEach((section) => {
+    const container = section.querySelector('.scroll-container');
+    const leftBtn = section.querySelector('.scroll-left-btn');
+    const rightBtn = section.querySelector('.scroll-right-btn');
+
+    if (container) {
+      leftBtn?.addEventListener('click', () => {
+        container.scrollBy({ left: -280, behavior: 'smooth' });
+      });
+      rightBtn?.addEventListener('click', () => {
+        container.scrollBy({ left: 280, behavior: 'smooth' });
+      });
+    }
+  });
+
+  // Hacer interactivos los botones de favoritos (corazón) y persistirlos
+  function loadFavoritesState() {
+    let favorites: string[] = [];
+    try {
+      favorites = JSON.parse(localStorage.getItem('turimap_favorites') || '[]');
+    } catch {}
+
+    document.querySelectorAll<HTMLButtonElement>('.favorite-btn').forEach(btn => {
+      const card = btn.closest<HTMLElement>('.exp-card');
+      if (!card) return;
+      const expId = card.dataset.id;
+      if (!expId) return;
+
+      const svg = btn.querySelector('svg');
+      if (svg) {
+        const isFav = favorites.includes(expId);
+        if (isFav) {
+          svg.classList.remove('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
+          svg.classList.add('fill-rose-500', 'text-rose-500');
+        } else {
+          svg.classList.remove('fill-rose-500', 'text-rose-500');
+          svg.classList.add('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
+        }
+      }
+    });
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.favorite-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = btn.closest<HTMLElement>('.exp-card');
+      if (!card) return;
+      const expId = card.dataset.id;
+      if (!expId) return;
+
+      let favorites: string[] = [];
+      try {
+        favorites = JSON.parse(localStorage.getItem('turimap_favorites') || '[]');
+      } catch {}
+
+      const svg = btn.querySelector('svg');
+      if (svg) {
+        const index = favorites.indexOf(expId);
+        if (index > -1) {
+          favorites.splice(index, 1);
+          svg.classList.remove('fill-rose-500', 'text-rose-500');
+          svg.classList.add('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
+        } else {
+          favorites.push(expId);
+          svg.classList.remove('fill-none', 'text-neutral-700', 'dark:text-neutral-300');
+          svg.classList.add('fill-rose-500', 'text-rose-500');
+        }
+      }
+      localStorage.setItem('turimap_favorites', JSON.stringify(favorites));
+    });
+  });
+
+  loadFavoritesState();
+
+  // Lógica del modal de guías y traducciones
+  const guideModal = document.getElementById('guide-modal');
+  const btnCloseGuide = document.getElementById('btn-close-guide');
+  const btnGoToMapRoute = document.getElementById('btn-go-to-map-route');
+
+  const guideTitle = document.getElementById('guide-modal-title');
+  const guideBadge = document.getElementById('guide-modal-badge');
+  const guideImage = document.getElementById('guide-modal-image') as HTMLImageElement;
+  const guideText = document.getElementById('guide-modal-text');
+  const guideRating = document.getElementById('guide-modal-rating');
+  const guideVideoContainer = document.getElementById('guide-modal-video-container');
+  const guideVideo = document.getElementById('guide-modal-video') as HTMLIFrameElement;
+  const guideVideoTitle = guideVideoContainer?.querySelector('h4');
+  const guideModalPanel = document.getElementById('guide-modal-panel');
+
+  const langTabs = document.querySelectorAll<HTMLButtonElement>('.guide-lang-tab');
+
+  type TranslationData = { name: string; desc: string; category: string; cta: string; guide: string; videoUrl?: string };
+  let currentTranslations: Record<string, TranslationData> | null = null;
+  let currentMuseumId = '';
+  let currentIsVR = false;
+  let currentVRUrl = '';
+
+  function openGuideModal(card: HTMLElement) {
+    const rawTranslations = card.getAttribute('data-translations');
+    if (!rawTranslations) return;
+
+    try {
+      currentTranslations = JSON.parse(rawTranslations);
+    } catch (e) {
+      console.error('Error parsing translations JSON:', e);
+      return;
+    }
+
+    currentMuseumId = card.getAttribute('data-id') || '';
+    const reviewTargetInput = document.querySelector<HTMLInputElement>('#guide-modal-review-form input[name="targetId"]');
+    if (reviewTargetInput) reviewTargetInput.value = currentMuseumId;
+    const rating = card.getAttribute('data-rating') || '4.8';
+    const imageSrc = card.getAttribute('data-image') || '';
+    const cardLat = parseFloat(card.getAttribute('data-lat') || '');
+    const cardLng = parseFloat(card.getAttribute('data-lng') || '');
+
+    // --- Proximity gate for reviews ---
+    const proximityGate = document.getElementById('review-proximity-gate');
+    const proximityMsg  = document.getElementById('review-proximity-msg');
+    const reviewForm    = document.getElementById('guide-modal-review-form');
+
+    function showReviewForm() {
+      proximityGate?.classList.add('hidden');
+      reviewForm?.classList.remove('hidden');
+    }
+    function showProximityMsg(msg: string) {
+      if (proximityMsg) proximityMsg.textContent = msg;
+      proximityGate?.classList.remove('hidden');
+      proximityGate?.classList.add('flex');
+      reviewForm?.classList.add('hidden');
+    }
+
+    if (!cardLat || !cardLng) {
+      // Sin coordenadas → permitir siempre (tienda, tours sin lat/lng)
+      showReviewForm();
+    } else if (!('geolocation' in navigator)) {
+      showProximityMsg(tr('explorar.guide.review_geo_unsupported'));
+    } else {
+      showProximityMsg(tr('explorar.guide.review_verifying'));
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          // Haversine simplificado (metros)
+          const R = 6371000;
+          const dLat = (cardLat - pos.coords.latitude) * Math.PI / 180;
+          const dLng = (cardLng - pos.coords.longitude) * Math.PI / 180;
+          const a = Math.sin(dLat/2)**2 +
+            Math.cos(pos.coords.latitude * Math.PI / 180) *
+            Math.cos(cardLat * Math.PI / 180) *
+            Math.sin(dLng/2)**2;
+          const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          if (dist <= 500) {
+            showReviewForm();
+          } else {
+            showProximityMsg(tr('explorar.guide.review_too_far', { dist: Math.round(dist) }));
+          }
+        },
+        () => {
+          showProximityMsg(tr('explorar.guide.review_geo_error'));
+        },
+        { timeout: 8000, maximumAge: 60000 }
+      );
+    }
+
+    if (guideTitle) guideTitle.textContent = currentTranslations?.es?.name || '';
+    if (guideImage) {
+      guideImage.src = imageSrc;
+      guideImage.alt = currentTranslations?.es?.name || '';
+    }
+    if (guideRating) guideRating.textContent = parseFloat(rating).toFixed(2);
+
+    // Mostrar u ocultar pestaña de lengua nativa
+    const nativeTab = document.getElementById('btn-guide-lang-native');
+    if (nativeTab) {
+      if (currentTranslations && currentTranslations.native) {
+        nativeTab.classList.remove('hidden');
+      } else {
+        nativeTab.classList.add('hidden');
+      }
+    }
+
+    // Reset video state before loading the selected experience.
+    if (guideVideoContainer) guideVideoContainer.classList.add('hidden');
+    if (guideVideo) guideVideo.src = '';
+    if (guideVideoTitle) guideVideoTitle.textContent = tr('explorar.guide.lsm_title');
+
+    // Default a español
+    setGuideLanguage('es');
+
+    // Si la card tiene experiencia VR, mostrar el iframe en el slot del video
+    // y renombrar el título del bloque. La lógica de tabs sigue funcionando encima.
+    currentIsVR = card.getAttribute('data-is-vr') === 'true';
+    currentVRUrl = card.getAttribute('data-vr-url') || '';
+    if (currentIsVR && currentVRUrl && guideVideoContainer && guideVideo) {
+      guideVideoContainer.classList.remove('hidden');
+      if (guideVideoTitle) guideVideoTitle.textContent = tr('explorar.guide.vr_title');
+      guideVideo.src = currentVRUrl;
+    }
+
+    if (guideModal) {
+      guideModal.classList.remove('hidden');
+      document.body.classList.add('modal-open');
+      guideModalPanel?.classList.remove('scale-95');
+      guideModalPanel?.classList.add('scale-100');
+    }
+  }
+
+  function closeGuideModal() {
+    if (guideModal) {
+      guideModal.classList.add('hidden');
+      if (guideVideo) guideVideo.src = ''; // Detener video si se está reproduciendo
+      if (guideVideoContainer) guideVideoContainer.classList.add('hidden');
+      if (guideVideoTitle) guideVideoTitle.textContent = tr('explorar.guide.lsm_title');
+      guideModalPanel?.classList.remove('scale-100');
+      guideModalPanel?.classList.add('scale-95');
+      document.body.classList.remove('modal-open');
+      currentIsVR = false;
+      currentVRUrl = '';
+    }
+  }
+
+  function setGuideLanguage(lang: string) {
+    if (!currentTranslations || !currentTranslations[lang]) return;
+
+    const data = currentTranslations[lang];
+
+    if (guideTitle) guideTitle.textContent = data.name;
+    if (guideBadge) guideBadge.textContent = data.category;
+    if (guideText) {
+      let guideHtml = data.guide || '';
+      // Convertir URLs en enlaces cliqueables
+      guideHtml = guideHtml.replace(
+        /(https?:\/\/[^\s)]+)/g,
+        (url: string) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-accent-600 dark:text-accent-400 underline font-semibold hover:text-accent-700">${url.replace('https://', '')}</a>`
+      );
+      // Reemplazar saltos de línea por <br>
+      guideHtml = guideHtml.replace(/\n/g, '<br>');
+      guideText.innerHTML = guideHtml;
+    }
+
+    // Actualizar tabs activas visualmente
+    langTabs.forEach((tab) => {
+      const isSelected = tab.getAttribute('data-guide-lang') === lang;
+      tab.classList.toggle('bg-white', isSelected);
+      tab.classList.toggle('dark:bg-slate-700', isSelected);
+      tab.classList.toggle('shadow-sm', isSelected);
+      tab.classList.toggle('text-brand-700', isSelected);
+      tab.classList.toggle('dark:text-brand-300', isSelected);
+
+      tab.classList.toggle('text-slate-500', !isSelected);
+      tab.classList.toggle('dark:text-slate-400', !isSelected);
+      tab.classList.toggle('hover:text-slate-700', !isSelected);
+      tab.classList.toggle('dark:hover:text-slate-350', !isSelected);
+    });
+
+    // Manejar video de LSM o VR
+    if (currentIsVR && currentVRUrl) {
+      // Experiencia VR: el iframe queda fijo, los tabs solo cambian el texto guía
+      if (guideVideoContainer) guideVideoContainer.classList.remove('hidden');
+      if (guideVideo) guideVideo.src = currentVRUrl;
+    } else if (lang === 'señas' && data.videoUrl) {
+      if (guideVideoContainer) guideVideoContainer.classList.remove('hidden');
+      if (guideVideo) guideVideo.src = data.videoUrl;
+    } else {
+      if (guideVideoContainer) guideVideoContainer.classList.add('hidden');
+      if (guideVideo) guideVideo.src = '';
+    }
+  }
+
+  // Escuchar clics en tarjetas (museos y tienda)
+  document.querySelectorAll<HTMLElement>('.exp-card').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      // Ignorar si pulsó el botón de favoritos u otros botones internos
+      const target = e.target as HTMLElement;
+      if (target.closest('.favorite-btn') || target.closest('.guide-trigger-btn')) {
+        if (target.closest('.favorite-btn')) return;
+      }
+
+      if (card.getAttribute('data-translations')) {
+        openGuideModal(card);
+      }
+    });
+  });
+
+  // También escuchar en botones específicos de acción
+  document.querySelectorAll<HTMLButtonElement>('.guide-trigger-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = btn.closest('.exp-card') as HTMLElement;
+      if (card) openGuideModal(card);
+    });
+  });
+
+  // Escuchar clics en los tabs de idioma del modal de guía
+  langTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const lang = tab.getAttribute('data-guide-lang');
+      if (lang) setGuideLanguage(lang);
+    });
+  });
+
+  btnCloseGuide?.addEventListener('click', closeGuideModal);
+
+  // Cerrar haciendo clic afuera del modal de guía
+  guideModal?.addEventListener('click', (e) => {
+    if (e.target === guideModal) {
+      closeGuideModal();
+    }
+  });
+
+  // Redirigir al mapa con la ruta activa
+  btnGoToMapRoute?.addEventListener('click', () => {
+    if (currentMuseumId) {
+      navigate(`/mapa?route=${currentMuseumId}&play=true`);
+    }
+  });
+
+
+
+  // --- TOUR RESERVATION MODAL ---
+
+  const tourModal = document.getElementById('tour-modal');
+  const tourModalClose = document.getElementById('tour-modal-close');
+  const tourModalTitle = document.getElementById('tour-modal-title');
+  const tourModalSubtitle = document.getElementById('tour-modal-subtitle');
+  const tourIdInput = document.getElementById('tour-id-input') as HTMLInputElement | null;
+  const tourForm = document.getElementById('tour-reservation-form') as HTMLFormElement | null;
+  const tourTotalEl = document.getElementById('tour-total');
+  const tourTotalUsdcEl = document.getElementById('tour-total-usdc');
+  const tourPayUsdcBtn = document.getElementById('tour-pay-usdc-btn') as HTMLButtonElement | null;
+  const tourPayUsdcLabel = document.getElementById('tour-pay-usdc-label');
+  const tourSuccess = document.getElementById('tour-success-state');
+  const tourSuccessClose = document.getElementById('tour-success-close');
+  const tourPeopleInput = document.getElementById('tour-people') as HTMLInputElement | null;
+  const tourSubmitBtn = document.getElementById('tour-submit-btn') as HTMLButtonElement | null;
+
+  const TOUR_PRICE = 480;
+
+  function openTourModal(tourId: string, title: string, subtitle: string) {
+    if (!tourModal) return;
+    if (tourIdInput) tourIdInput.value = tourId;
+    if (tourModalTitle) tourModalTitle.textContent = title;
+    if (tourModalSubtitle) tourModalSubtitle.textContent = subtitle;
+    updateTourTotal();
+    if (tourSuccess) tourSuccess.classList.add('hidden');
+    if (tourForm) tourForm.classList.remove('hidden');
+    tourModal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    if (tourPeopleInput) tourPeopleInput.value = '2';
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateInput = document.getElementById('tour-date') as HTMLInputElement | null;
+    if (dateInput) dateInput.min = tomorrow.toISOString().split('T')[0];
+  }
+
+  function closeTourModal() {
+    if (!tourModal) return;
+    tourModal.classList.add('hidden');
+    document.body.classList.remove('modal-open');
+  }
+
+  function updateTourTotal() {
+    const n = parseInt(tourPeopleInput?.value || '1', 10) || 1;
+    const mxn = n * TOUR_PRICE;
+    if (tourTotalEl) {
+      tourTotalEl.textContent = `$${mxn.toLocaleString('es-MX')} MXN`;
+    }
+    if (tourTotalUsdcEl) {
+      const usdc = mxnToUsdc(mxn);
+      tourTotalUsdcEl.textContent = `≈ $${usdc.toFixed(2)} USDC`;
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.tour-reserve-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = btn.closest<HTMLElement>('[data-tour-id]');
+      if (!card) return;
+      openTourModal(
+        card.dataset.tourId || '',
+        card.dataset.tourTitle || tr('explorar.tour.title_fallback'),
+        card.dataset.tourMeeting || ''
+      );
+    });
+  });
+
+  // Listener para el AI Agent
+  window.addEventListener('ai-reserve-tour', (e: Event) => {
+    const monumentId = (e as CustomEvent<{ monumentId?: string }>).detail?.monumentId;
+    if (!monumentId) return;
+    const btn = document.querySelector(`[data-tour-id="${monumentId}"]`) as HTMLElement;
+    if (btn) {
+      openTourModal(
+        btn.dataset.tourId || '',
+        btn.dataset.tourTitle || tr('explorar.tour.title_fallback'),
+        btn.dataset.tourMeeting || ''
+      );
+    } else {
+      // Fallback genérico si no se encuentra en el DOM actual
+      openTourModal(monumentId, tr('explorar.tour.special_tour'), '');
+    }
+  }, { signal: explorarController.signal });
+
+  tourPeopleInput?.addEventListener('input', updateTourTotal);
+
+  tourModalClose?.addEventListener('click', closeTourModal);
+  tourSuccessClose?.addEventListener('click', closeTourModal);
+  tourModal?.addEventListener('click', (e) => {
+    if (e.target === tourModal || (e.target as HTMLElement).hasAttribute('data-tour-modal-dismiss')) {
+      closeTourModal();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (guideModal && !guideModal.classList.contains('hidden')) closeGuideModal();
+    else if (tourModal && !tourModal.classList.contains('hidden')) closeTourModal();
+  }, { signal: explorarController.signal });
+
+  tourPayUsdcBtn?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!tourForm || !tourPayUsdcBtn || !tourPayUsdcLabel) return;
+
+    // Obtener los datos del formulario
+    const tourId = tourIdInput?.value || '';
+    const tourCard = document.querySelector<HTMLElement>(`[data-tour-id="${tourId}"]`);
+    const tourTitle = tourCard?.dataset.tourTitle || tr('explorar.tour.title_fallback');
+    const tourImage = tourCard?.dataset.tourImage || '';
+
+    const formData = new FormData(tourForm);
+    const data: Record<string, unknown> = {
+      tourId,
+      name: formData.get('name'),
+      email: formData.get('email'),
+      phone: formData.get('phone'),
+      date: formData.get('date'),
+      people: parseInt(formData.get('people') as string, 10) || 1,
+      notes: formData.get('notes') || '',
+    };
+
+    if (!data.name || !data.email || !data.phone || !data.date || !data.people) {
+      alert(tr('explorar.tour.alert_fill_payment'));
+      return;
+    }
+
+    // 1. Conectar wallet
+    let walletAddress = '';
+    try {
+      if (typeof (window as unknown as { ethereum?: unknown }).ethereum === 'undefined') {
+        alert(tr('explorar.tour.alert_web3_required'));
+        return;
+      }
+      const accounts = await (window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } }).ethereum.request({ method: 'eth_requestAccounts' });
+      walletAddress = accounts[0];
+    } catch (err: unknown) {
+      alert((err as Error)?.message || tr('explorar.tour.alert_wallet_connect_failed'));
+      return;
+    }
+
+    // 2. Calcular total USDC y firmar la tx
+    const totalMXN = (data.people as number) * TOUR_PRICE;
+    const totalUSDC = mxnToUsdc(totalMXN);
+    const rawAmount = rawUsdc(totalUSDC);
+
+    const originalLabel = tourPayUsdcLabel.textContent;
+    tourPayUsdcLabel.textContent = tr('explorar.tour.pay_waiting_signature');
+    tourPayUsdcBtn.disabled = true;
+
+    try {
+      const { BrowserWalletProvider } = await import('../lib/onchain/client');
+      const wallet = new BrowserWalletProvider();
+
+      const txHash = await wallet.sendUsdcTransfer({
+        to: window.__TURIMAP_PAYMENT_ADDRESS__ || '0xD540067d763bc792b81f816a677bB25d7e6d4B0B',
+        rawAmount,
+      });
+
+      tourPayUsdcLabel.textContent = tr('explorar.tour.pay_confirming');
+
+      // 3. Enviar al server la reserva con el txHash de USDC
+      data.txHash = txHash;
+      data.walletAddress = walletAddress;
+      data.totalUSDC = totalUSDC;
+
+      const response = await fetch('/api/reservar-tour', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || tr('explorar.tour.error_server_payment'));
+      }
+
+      const result = await response.json();
+
+      // Persistir reserva en localStorage
+      try {
+        const STORAGE_KEY = 'turimap_reservations';
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<Record<string, unknown>>;
+        const reservation = {
+          id: result.reservationId || `RES-${Date.now()}`,
+          tourId: data.tourId,
+          tourTitle,
+          tourImage,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          date: data.date,
+          people: data.people,
+          totalMXN,
+          totalUSDC,
+          txHash,
+          status: 'paid',
+          createdAt: new Date().toISOString(),
+        };
+        existing.push(reservation);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      } catch (storageErr) {
+        console.warn('No se pudo guardar la reserva en localStorage:', storageErr);
+      }
+
+      // Cerrar y mostrar éxito
+      if (tourSuccess) tourSuccess.classList.remove('hidden');
+      if (tourForm) tourForm.classList.add('hidden');
+      tourForm.reset();
+      if (tourPeopleInput) tourPeopleInput.value = '2';
+    } catch (err: unknown) {
+      console.error('Error al realizar el pago del tour:', err);
+      alert((err as Error)?.message || tr('explorar.tour.alert_payment_error'));
+    } finally {
+      tourPayUsdcBtn.disabled = false;
+      tourPayUsdcLabel.textContent = originalLabel;
+    }
+  });
+
+  tourForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!tourSubmitBtn || !tourForm) return;
+
+    // Snapshot de datos de la card ANTES del await (puede re-renderizarse)
+    const tourId = tourIdInput?.value || '';
+    const tourCard = document.querySelector<HTMLElement>(`[data-tour-id="${tourId}"]`);
+    const tourTitle = tourCard?.dataset.tourTitle || tr('explorar.tour.title_fallback');
+    const tourImage = tourCard?.dataset.tourImage || '';
+
+    const formData = new FormData(tourForm);
+    const data = {
+      tourId,
+      name: formData.get('name'),
+      email: formData.get('email'),
+      phone: formData.get('phone'),
+      date: formData.get('date'),
+      people: parseInt(formData.get('people') as string, 10) || 1,
+      notes: formData.get('notes') || '',
+    };
+
+    if (!data.name || !data.email || !data.phone || !data.date || !data.people) {
+      alert(tr('explorar.tour.alert_fill_required'));
+      return;
+    }
+
+    tourSubmitBtn.disabled = true;
+    const originalText = tourSubmitBtn.innerHTML;
+    tourSubmitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> ' + tr('explorar.tour.submitting');
+
+    try {
+      const response = await fetch('/api/reservar-tour', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error(tr('explorar.tour.error_server'));
+
+      const result = await response.json();
+
+      // Persistir reserva en localStorage para que aparezca en /yo
+      try {
+        const STORAGE_KEY = 'turimap_reservations';
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<Record<string, unknown>>;
+        const reservation = {
+          id: result.reservationId || `RES-${Date.now()}`,
+          tourId: data.tourId,
+          tourTitle,
+          tourImage,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          date: data.date,
+          people: data.people,
+          totalMXN: result.totalMXN || 0,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+        existing.push(reservation);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      } catch (storageErr) {
+        console.warn('No se pudo guardar la reserva en localStorage:', storageErr);
+      }
+
+      if (tourSuccess) tourSuccess.classList.remove('hidden');
+      if (tourForm) tourForm.classList.add('hidden');
+      tourForm.reset();
+      if (tourPeopleInput) tourPeopleInput.value = '2';
+    } catch (err) {
+      console.error('Error al reservar:', err);
+      alert(tr('explorar.tour.alert_submit_error'));
+    } finally {
+      tourSubmitBtn.disabled = false;
+      tourSubmitBtn.innerHTML = originalText;
+    }
+  });
+});
+</script>
+<AiAgent />
+</Layout>

@@ -10,13 +10,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const apiKey = env.GEMINI_API_KEY;
 
-  if (!apiKey) {
-    throw new Error('La variable de entorno GEMINI_API_KEY no está configurada.');
-  }
-
   let messages: ChatMessage[] = [];
 
   try {
+    if (!apiKey) {
+      throw new Error('La variable de entorno GEMINI_API_KEY no esta configurada.');
+    }
     const body = (await request.json()) as { messages?: unknown; userLocation?: { lat: number; lng: number } };
     const rawMessages = body.messages;
 
@@ -65,7 +64,7 @@ Recomienda monumentos indicando explícitamente la distancia (en metros) y calcu
       locationPromptAddition = `UBICACIÓN ACTUAL DEL USUARIO: No disponible. Menciona que lo ideal para recorrer estas atracciones en el Centro Histórico es ir a pie, salvo que las distancias sean muy largas, en cuyo caso es mejor ir en auto.`;
     }
 
-    const systemInstruction = `Eres el asistente de IA de EdificARTE, una audioguía turística inteligente para la Ciudad de México (CDMX).
+    const systemInstruction = `Eres el asistente de IA de EdificARTE, una guía interactiva inteligente para el patrimonio y cultura de la Ciudad de México (CDMX).
 
 REGLAS DE PERSONALIDAD:
 - Habla en español mexicano natural y cálido (tuteo, nada de voseo).
@@ -102,11 +101,12 @@ FORMATO DE RESPUESTA (JSON estricto):
 
     // Hacer la petición a la API de Gemini 3.5 Flash
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
         },
         body: JSON.stringify({
           contents: formattedContents,
@@ -150,6 +150,7 @@ FORMATO DE RESPUESTA (JSON estricto):
       status: 200,
       headers: {
         'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
       },
     });
 
@@ -163,7 +164,7 @@ FORMATO DE RESPUESTA (JSON estricto):
     const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
     let fallbackRoute: string[] = [];
     
-    if (lastMessage.includes('ruta') || lastMessage.includes('itinerario') || lastMessage.includes('paseo') || lastMessage.includes('museo')) {
+    if (lastMessage.includes('ruta') || lastMessage.includes('itinerario') || lastMessage.includes('paseo')) {
       fallbackRoute = ['bellas-artes', 'catedral', 'templo-mayor'];
       fallbackReply = '¡Hola! Como ando con un problemita de conexión, te armé una ruta rápida que arranca en el Palacio de Bellas Artes, pasa por la Catedral Metropolitana y termina en el Templo Mayor. ¡Disfruta el recorrido!';
     }
@@ -172,6 +173,7 @@ FORMATO DE RESPUESTA (JSON estricto):
       JSON.stringify({
         reply: fallbackReply,
         route: fallbackRoute,
+        action: fallbackRoute.length > 0 ? 'route' : 'chat',
         isFallback: true,
         errorMessage: err instanceof Error ? err.message : String(err)
       }),

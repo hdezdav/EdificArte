@@ -12,15 +12,16 @@ interface Env {
   // URL del RPC público de Polygon. Fallback si ALCHEMY_KEY no está
   // disponible. En prod conviene ALCHEMY_KEY (más rápido + SLA).
   POLYGON_RPC_URL?: string;
-  // Address del contrato EdificARteBadge. Vacía hasta deploy.
+  // Address del contrato TuriMapBadge. Vacía hasta deploy.
   PUBLIC_BADGE_CONTRACT_ADDRESS?: string;
-  // Address del contrato EdificARteReviews. Vacía hasta deploy.
+  // Address del contrato TuriMapReviews. Vacía hasta deploy.
   PUBLIC_REVIEW_CONTRACT_ADDRESS?: string;
-  // Wallet receptora de pagos USDC (recomendado: multisig).
+  // Wallet receptora de pagos USDC (EDIFICARTE).
   EDIFICARTE_PAYMENT_ADDRESS?: string;
-  // Wallet receptora de donaciones USDC (free-form). Puede ser la misma
-  // que EDIFICARTE_PAYMENT_ADDRESS.
+  TURIMAP_PAYMENT_ADDRESS?: string;
+  // Wallet receptora de donaciones USDC.
   EDIFICARTE_DONATION_ADDRESS?: string;
+  TURIMAP_DONATION_ADDRESS?: string;
 
   // === Secrets (set via `wrangler secret put` or .dev.vars) ===
   // Admin wallet private key (la que deploya + firma mints/emits).
@@ -32,10 +33,19 @@ interface Env {
   // secret en prod (no hardcodear en wrangler.jsonc). Si está, se usa
   // ALCHEMY_KEY; si no, fallback a POLYGON_RPC_URL.
   ALCHEMY_KEY?: string;
+  // Mapbox GL JS public token
+  MAPBOX_TOKEN?: string;
+  // === Admin ===
+  ADMIN_PASSWORD_HASH?: string;
 }
 
 declare namespace App {
   interface Locals {
+    user: import('./lib/auth').User | null;
+    actorId: string | null;
+    adminAuthorized: boolean;
+    requestId: string;
+    csrfToken: string | null;
     runtime: {
       env: Env;
       cf: IncomingRequestCfProperties;

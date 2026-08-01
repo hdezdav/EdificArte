@@ -1,0 +1,93 @@
+{
+  "schema": "itmap.static-catalog-import-evidence/v1",
+  "generatedAt": "2026-07-23T17:50:56Z",
+  "executedAt": "2026-07-23T17:50:56Z",
+  "executionStatus": "executed",
+  "manifest": {
+    "sourceName": "static_catalog",
+    "sourceSha256": "a7254b4d689b708e04ffad8af08565a35b44fca17e05a32e94eae252a7b8bb5e",
+    "canonicalSha256": "e1632c5efe4fc27114a5cc1911dddd96eb75382286ee539694671967792af9db",
+    "expectedRows": 9
+  },
+  "counts": {
+    "staged": 9,
+    "rejected": 0,
+    "mapped": null,
+    "places": 9,
+    "translations": 18
+  },
+  "stableMaps": [
+    {
+      "entityType": "place",
+      "legacyKey": "angel",
+      "catalogId": "3c6eba4b-9d5f-53b5-8bf9-7ff20357db57"
+    },
+    {
+      "entityType": "place",
+      "legacyKey": "bellas-artes",
+      "catalogId": "f398761f-6eca-5e91-a5a2-d4a785aa623e"
+    },
+    {
+      "entityType": "place",
+      "legacyKey": "catedral",
+      "catalogId": "fdeae852-117a-5ba0-8793-bf4c6652055f"
+    },
+    {
+      "entityType": "place",
+      "legacyKey": "chapultepec",
+      "catalogId": "34af77e9-cce3-553d-8088-a5c661ef5842"
+    },
+    {
+      "entityType": "place",
+      "legacyKey": "palacio-nacional",
+      "catalogId": "a133c515-1d78-5c52-9e48-f4e07076d9aa"
+    },
+    {
+      "entityType": "place",
+      "legacyKey": "piramides-sol",
+      "catalogId": "aba6e6a6-eb9d-5ac4-80c9-3bfa0ff53f56"
+    },
+    {
+      "entityType": "place",
+      "legacyKey": "revolucion",
+      "catalogId": "93542c88-e786-595c-ba34-4e824dd648f3"
+    },
+    {
+      "entityType": "place",
+      "legacyKey": "templo-mayor",
+      "catalogId": "ca266159-df8c-5454-aa0f-3dbbc418c004"
+    },
+    {
+      "entityType": "place",
+      "legacyKey": "torre-latino",
+      "catalogId": "6f398787-47f9-5521-80d1-cd33af4a92b0"
+    }
+  ],
+  "sql": {
+    "path": "docs/migration/generated/static-catalog-import.sql",
+    "sha256": "bd949f39c70a3b94320304e67544b4ed4a28c40fc8e9d15c2c35db5251545169"
+  },
+  "receipt": {
+    "runId": "55992713-cada-48d0-814c-44d4fdb75137",
+    "sourceSha256": "a7254b4d689b708e04ffad8af08565a35b44fca17e05a32e94eae252a7b8bb5e",
+    "canonicalSha256": "e1632c5efe4fc27114a5cc1911dddd96eb75382286ee539694671967792af9db",
+    "accepted": 9,
+    "rejected": 0,
+    "mapped": 9
+  },
+  "reconciliation": {
+    "expected": "9 staged/0 rejected; receipt mapped_count=current run first_run_id count (9 fresh, 0 all reused); exact source/map/place/locale parity; non-draft publication preserved",
+    "executed": true,
+    "actual": {
+      "staged": 9,
+      "rejected": 0,
+      "mapped": 9,
+      "places": 9,
+      "translations": 18,
+      "draft": 9,
+      "idParityMismatches": 0,
+      "coordinateMismatches": 0,
+      "unsupportedFieldsPreserved": 9
+    }
+  }
+}

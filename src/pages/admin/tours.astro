@@ -1,0 +1,313 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { isAdmin } from '../../lib/admin';
+
+const loggedIn = isAdmin(Astro.locals);
+if (!loggedIn) return Astro.redirect('/admin/login');
+---
+<AdminLayout title="Tours" activePage="tours">
+  <!-- Header -->
+  <div class="mb-6 flex items-center justify-between gap-4">
+    <div class="relative max-w-md flex-1">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-500">search</span>
+      <input
+        type="text"
+        id="tour-search"
+        placeholder="Buscar por título, ciudad o país..."
+        class="w-full rounded-xl border border-slate-700 bg-slate-800/50 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+      />
+    </div>
+    <button id="new-tour-btn" class="flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2.5 text-sm transition-all active:scale-[0.98] shadow-lg shadow-purple-600/20">
+      <span class="material-symbols-outlined text-[18px]">add</span>
+      Nuevo
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="rounded-2xl border border-slate-800 bg-slate-900/50 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-800 text-left">
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Título</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Duración</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Precio</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ciudad</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Publicado</th>
+            <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tours-tbody" class="divide-y divide-slate-800/60">
+          <tr><td colspan="6" class="px-5 py-8 text-center text-slate-600">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="tours-pagination" class="flex items-center justify-between px-5 py-3 border-t border-slate-800">
+      <p id="tours-count" class="text-xs text-slate-500"></p>
+      <div class="flex gap-2">
+        <button id="tours-prev" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30" disabled>‹ Anterior</button>
+        <button id="tours-next" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30" disabled>Siguiente ›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="tour-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-5">
+        <h2 id="tour-modal-title" class="text-lg font-bold text-white">Nuevo tour</h2>
+        <button id="tour-modal-close" class="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-all">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+      <form id="tour-form" class="space-y-4">
+        <input type="hidden" id="tour-id" />
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Título (EN) *</label>
+          <input type="text" id="tour-title" required class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Subtítulo</label>
+            <input type="text" id="tour-subtitle" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Duración</label>
+            <input type="text" id="tour-duration" placeholder="4-5 hours" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Precio / persona</label>
+            <input type="number" id="tour-price" min="0" step="1" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Moneda</label>
+            <input type="text" id="tour-currency" value="MXN" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Categoría</label>
+            <input type="text" id="tour-category" value="tour" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Imagen (URL)</label>
+          <input type="text" id="tour-image" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Highlights (uno por línea)</label>
+          <textarea id="tour-highlights" rows="3" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Descripción (EN)</label>
+          <textarea id="tour-description" rows="3" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Punto de encuentro</label>
+            <input type="text" id="tour-meeting" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+          <div>
+           <label for="tour-country" class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Country code (ISO alpha-2)</label>
+            <input type="text" id="tour-country" placeholder="MX" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+        </div>
+        <div>
+           <label for="tour-city" class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">City (display only)</label>
+          <input type="text" id="tour-city" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Guía — Nombre</label>
+            <input type="text" id="tour-guide-name" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Guía — Título</label>
+            <input type="text" id="tour-guide-title" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Guía — Bio</label>
+            <input type="text" id="tour-guide-bio" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+          </div>
+        </div>
+
+        <!-- ES translation -->
+        <details class="rounded-xl border border-slate-800 bg-slate-800/30 p-4">
+          <summary class="cursor-pointer text-sm font-semibold text-slate-300">Traducción ES</summary>
+          <div class="mt-4 space-y-3">
+            <input type="text" id="tour-es-title" placeholder="Título (ES)" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+            <input type="text" id="tour-es-subtitle" placeholder="Subtítulo (ES)" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+            <textarea id="tour-es-description" rows="2" placeholder="Descripción (ES)" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"></textarea>
+            <input type="text" id="tour-es-meeting" placeholder="Punto de encuentro (ES)" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all" />
+            <textarea id="tour-es-guidebio" rows="2" placeholder="Bio del guía (ES)" class="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"></textarea>
+          </div>
+        </details>
+
+        <label class="flex items-center gap-2.5 cursor-pointer">
+          <input type="checkbox" id="tour-published" checked class="h-4 w-4 rounded border-slate-700 bg-slate-800 text-purple-600 focus:ring-purple-500/20" />
+          <span class="text-sm text-slate-300">Publicado</span>
+        </label>
+        <div id="tour-error" class="hidden rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm text-red-400"></div>
+        <div class="flex justify-end gap-3 pt-2">
+          <button type="button" id="tour-cancel" class="rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 font-semibold px-4 py-2.5 text-sm transition-all">Cancelar</button>
+          <button type="submit" id="tour-save" class="rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2.5 text-sm transition-all active:scale-[0.98]">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let currentSearch = '';
+    const limit = 20;
+    let editingId: string | null = null;
+    let lastTours: any[] = [];
+
+    const modal = document.getElementById('tour-modal')!;
+    const form = document.getElementById('tour-form') as HTMLFormElement;
+    const errorEl = document.getElementById('tour-error')!;
+
+    function val(id: string) { return (document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement).value.trim(); }
+    function setVal(id: string, v: string) { (document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement).value = v ?? ''; }
+
+    function openModal(tour?: any) {
+      editingId = tour?.id ?? null;
+      document.getElementById('tour-modal-title')!.textContent = tour ? 'Editar tour' : 'Nuevo tour';
+      document.getElementById('tour-id')!.setAttribute('value', tour?.id ?? '');
+      setVal('tour-title', tour?.title ?? '');
+      setVal('tour-subtitle', tour?.subtitle ?? '');
+      setVal('tour-duration', tour?.duration ?? '');
+      setVal('tour-price', tour?.pricePerPerson != null ? String(tour.pricePerPerson) : '');
+      setVal('tour-currency', tour?.currency ?? 'MXN');
+      setVal('tour-category', tour?.category ?? 'tour');
+      setVal('tour-image', tour?.image ?? '');
+      setVal('tour-highlights', (tour?.highlights ?? []).join('\n'));
+      setVal('tour-description', tour?.description ?? '');
+      setVal('tour-meeting', tour?.meetingPoint ?? '');
+       setVal('tour-country', tour?.countryCode ?? tour?.country ?? '');
+      setVal('tour-city', tour?.city ?? '');
+      setVal('tour-guide-name', tour?.guide?.name ?? '');
+      setVal('tour-guide-title', tour?.guide?.title ?? '');
+      setVal('tour-guide-bio', tour?.guide?.bio ?? '');
+      const es = tour?.translations?.es ?? {};
+      setVal('tour-es-title', es.title ?? '');
+      setVal('tour-es-subtitle', es.subtitle ?? '');
+      setVal('tour-es-description', es.description ?? '');
+      setVal('tour-es-meeting', es.meetingPoint ?? '');
+      setVal('tour-es-guidebio', es.guideBio ?? '');
+      (document.getElementById('tour-published') as HTMLInputElement).checked = tour ? tour.is_published : true;
+      errorEl.classList.add('hidden');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      editingId = null;
+    }
+
+    function collectBody() {
+      const highlights = (document.getElementById('tour-highlights') as HTMLTextAreaElement)
+        .value.split('\n').map(s => s.trim()).filter(Boolean);
+      const es: Record<string, string> = {};
+      const esTitle = val('tour-es-title'); if (esTitle) es.title = esTitle;
+      const esSubtitle = val('tour-es-subtitle'); if (esSubtitle) es.subtitle = esSubtitle;
+      const esDesc = val('tour-es-description'); if (esDesc) es.description = esDesc;
+      const esMeeting = val('tour-es-meeting'); if (esMeeting) es.meetingPoint = esMeeting;
+      const esBio = val('tour-es-guidebio'); if (esBio) es.guideBio = esBio;
+      return {
+        title: val('tour-title'),
+        subtitle: val('tour-subtitle'),
+        duration: val('tour-duration'),
+        pricePerPerson: Number(val('tour-price') || 0),
+        currency: val('tour-currency') || 'MXN',
+        image: val('tour-image'),
+        highlights,
+        description: val('tour-description'),
+        meetingPoint: val('tour-meeting'),
+        city: val('tour-city'),
+        country: val('tour-country'),
+        countryCode: val('tour-country').toUpperCase(),
+        guide: { name: val('tour-guide-name'), title: val('tour-guide-title'), bio: val('tour-guide-bio') },
+        category: val('tour-category') || 'tour',
+        translations: Object.keys(es).length ? { es } : {},
+        is_published: (document.getElementById('tour-published') as HTMLInputElement).checked,
+      };
+    }
+
+    async function loadTours() {
+      const params = new URLSearchParams({ page: String(currentPage), limit: String(limit) });
+      if (currentSearch) params.set('search', currentSearch);
+      try {
+        const res = await fetch(`/api/admin/tours?${params}`);
+        const data = await res.json();
+        if (!data.ok) return;
+        lastTours = data.tours ?? [];
+        const tbody = document.getElementById('tours-tbody')!;
+        if (!lastTours.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-8 text-center text-slate-600">Sin resultados</td></tr>';
+        } else {
+          tbody.innerHTML = lastTours.map((t: any) => `
+            <tr class="hover:bg-slate-800/30 transition-colors">
+              <td class="px-5 py-3 font-semibold text-white text-sm">${escapeHtml(t.title || '—')}</td>
+              <td class="px-5 py-3 text-slate-400 text-sm">${escapeHtml(t.duration || '—')}</td>
+              <td class="px-5 py-3 text-right"><span class="font-bold text-purple-400">${t.pricePerPerson ?? 0}</span> <span class="text-slate-500 text-xs">${escapeHtml(t.currency || '')}</span></td>
+              <td class="px-5 py-3 text-slate-400 text-sm">${escapeHtml(t.city || '—')}</td>
+              <td class="px-5 py-3">${t.is_published ? '<span class="text-emerald-400 text-xs font-semibold">Sí</span>' : '<span class="text-slate-500 text-xs">No</span>'}</td>
+              <td class="px-5 py-3 text-right whitespace-nowrap">
+                <button data-edit="${t.id}" class="edit-btn px-2 py-1 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all">Editar</button>
+                <button data-delete="${t.id}" class="delete-btn px-2 py-1 rounded-lg text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all">Eliminar</button>
+              </td>
+            </tr>
+          `).join('');
+          tbody.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', () => onEdit((b as HTMLElement).dataset.edit!)));
+          tbody.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', () => onDelete((b as HTMLElement).dataset.delete!)));
+        }
+        document.getElementById('tours-count')!.textContent = `${data.total} tour(s) total`;
+        (document.getElementById('tours-prev') as HTMLButtonElement).disabled = currentPage <= 1;
+        (document.getElementById('tours-next') as HTMLButtonElement).disabled = currentPage * limit >= data.total;
+      } catch {
+        document.getElementById('tours-tbody')!.innerHTML = '<tr><td colspan="6" class="px-5 py-8 text-center text-red-400">Error al cargar</td></tr>';
+      }
+    }
+
+    function escapeHtml(s: string) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+    }
+
+    function onEdit(id: string) {
+      const tour = lastTours.find((t: any) => t.id === id);
+      if (tour) openModal(tour);
+    }
+
+    async function onDelete(id: string) {
+      if (!confirm('¿Eliminar este tour?')) return;
+      const res = await fetch('/api/admin/tours', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      const data = await res.json();
+      if (data.ok) loadTours();
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.classList.add('hidden');
+      const body = collectBody();
+      if (!body.title) { errorEl.textContent = 'El título es obligatorio'; errorEl.classList.remove('hidden'); return; }
+      const method = editingId ? 'PATCH' : 'POST';
+      const payload = editingId ? { ...body, id: editingId } : body;
+      const res = await fetch('/api/admin/tours', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.ok) { closeModal(); loadTours(); }
+      else { errorEl.textContent = data.error || 'Error al guardar'; errorEl.classList.remove('hidden'); }
+    });
+
+    document.getElementById('new-tour-btn')?.addEventListener('click', () => openModal());
+    document.getElementById('tour-modal-close')?.addEventListener('click', closeModal);
+    document.getElementById('tour-cancel')?.addEventListener('click', closeModal);
+    document.getElementById('tour-search')?.addEventListener('input', (e) => { currentSearch = (e.target as HTMLInputElement).value; currentPage = 1; loadTours(); });
+    document.getElementById('tours-prev')?.addEventListener('click', () => { currentPage--; loadTours(); });
+    document.getElementById('tours-next')?.addEventListener('click', () => { currentPage++; loadTours(); });
+
+    loadTours();
+  </script>
+</AdminLayout>

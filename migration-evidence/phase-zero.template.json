@@ -1,0 +1,34 @@
+{
+  "source": {
+    "owner": "",
+    "system": "",
+    "deployedRuntime": "",
+    "deployedSourceIdentity": "",
+    "inventory": [{ "exportId": "", "expectedRecordCount": -1 }]
+  },
+  "exports": [
+    { "exportId": "", "artifact": "", "sha256": "", "recordCount": -1 }
+  ],
+  "backup": {
+    "artifact": "",
+    "sha256": "",
+    "recordCount": -1,
+    "completedAt": ""
+  },
+  "restoreDrill": {
+    "successful": false,
+    "artifact": "",
+    "sha256": "",
+    "recordCount": -1,
+    "completedAt": ""
+  },
+  "verifiedEvidenceSha256": "",
+  "approval": {
+    "decision": "not-approved",
+    "approver": "",
+    "approvedAt": "",
+    "reasons": [],
+    "keyId": "",
+    "signature": ""
+  }
+}

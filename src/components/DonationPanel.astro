@@ -1,9 +1,9 @@
 ---
 /**
- * DonationPanel — free-form USDC donation panel.
+ * DonationPanel - free-form USDC donation panel.
  *
  * Renders below the artesanías (tienda) section on the home page.
- * Uses window.__EDIFICARTE_DONATION_ADDRESS__ (injected server-side via
+ * Uses window.__TURIMAP_DONATION_ADDRESS__ (injected server-side via
  * `define:vars` in src/pages/index.astro) as the destination. The
  * donate button handler lives inline in index.astro and reuses
  * BrowserWalletProvider from src/lib/onchain/client.ts (same pattern
@@ -17,15 +17,15 @@
 <section
   id="donation-panel"
   aria-labelledby="donation-panel-title"
-  class="relative overflow-hidden rounded-3xl border border-brand-200/40 bg-gradient-to-br from-brand-50 via-white to-purple-50/60 p-5 sm:p-7 shadow-sm dark:border-brand-800/40 dark:from-brand-950/40 dark:via-slate-900 dark:to-purple-950/30"
+  class="relative overflow-hidden rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white via-slate-50 to-accent-50/60 p-5 sm:p-7 shadow-sm dark:border-slate-800/60 dark:from-slate-900 dark:via-slate-900 dark:to-accent-950/30"
 >
-  <div class="pointer-events-none absolute -top-12 -right-12 h-40 w-40 rounded-full bg-brand-500/10 blur-2xl"></div>
-  <div class="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-purple-500/10 blur-2xl"></div>
+  <div class="pointer-events-none absolute -top-12 -right-12 h-40 w-40 rounded-full bg-accent-500/10 blur-2xl"></div>
+  <div class="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-accent-400/10 blur-2xl"></div>
 
   <div class="relative flex flex-col gap-4">
     <div class="flex items-start gap-3">
       <div
-        class="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-500 to-purple-600 text-white shadow-md"
+        class="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-gradient-to-tr from-accent-500 to-accent-700 text-white shadow-md"
         aria-hidden="true"
       >
         <span class="material-symbols-outlined text-[22px]">volunteer_activism</span>
@@ -34,24 +34,25 @@
         <h2
           id="donation-panel-title"
           class="text-lg sm:text-xl font-bold tracking-tight text-slate-800 dark:text-white"
+          data-i18n="donation.title"
         >
-          Apoyá EdificARTE
+          Support TuriMap
         </h2>
-        <p class="mt-0.5 text-[12px] sm:text-sm text-slate-500 dark:text-slate-400">
-          Tu donación ayuda a mantener el proyecto. 100% va al desarrollo.
+        <p class="mt-0.5 text-[12px] sm:text-sm text-slate-500 dark:text-slate-400" data-i18n="donation.subtitle">
+          Your donation helps keep the project alive. 100% goes to development.
         </p>
       </div>
     </div>
 
     <fieldset
       class="flex flex-wrap items-center gap-2"
-      aria-label="Montos sugeridos en USDC"
+      aria-label="Suggested amounts in USDC"
     >
-      <legend class="sr-only">Elegí un monto sugerido o ingresá uno personalizado</legend>
+      <legend class="sr-only">Pick a suggested amount or enter a custom one</legend>
 
       <button
         type="button"
-        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-accent-300 hover:bg-accent-50/60 hover:text-accent-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-accent-700 dark:hover:bg-accent-950/40 dark:hover:text-accent-300"
         data-amount="5"
         aria-pressed="false"
       >
@@ -59,7 +60,7 @@
       </button>
       <button
         type="button"
-        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-accent-300 hover:bg-accent-50/60 hover:text-accent-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-accent-700 dark:hover:bg-accent-950/40 dark:hover:text-accent-300"
         data-amount="10"
         aria-pressed="false"
       >
@@ -67,7 +68,7 @@
       </button>
       <button
         type="button"
-        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-accent-300 hover:bg-accent-50/60 hover:text-accent-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-accent-700 dark:hover:bg-accent-950/40 dark:hover:text-accent-300"
         data-amount="25"
         aria-pressed="false"
       >
@@ -75,7 +76,7 @@
       </button>
       <button
         type="button"
-        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-accent-300 hover:bg-accent-50/60 hover:text-accent-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-accent-700 dark:hover:bg-accent-950/40 dark:hover:text-accent-300"
         data-amount="50"
         aria-pressed="false"
       >
@@ -83,22 +84,24 @@
       </button>
       <button
         type="button"
-        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+        class="donation-chip rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 hover:border-accent-300 hover:bg-accent-50/60 hover:text-accent-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-accent-700 dark:hover:bg-accent-950/40 dark:hover:text-accent-300"
         data-amount="custom"
         aria-pressed="false"
         aria-controls="donation-custom-amount"
+        data-i18n="donation.custom"
       >
-        Otro
+        Custom
       </button>
     </fieldset>
 
-    <!-- Custom amount input (shown when "Otro" chip is selected) -->
+    <!-- Custom amount input (shown when "Custom" chip is selected) -->
     <div id="donation-custom-amount-wrapper" class="hidden">
       <label
         for="donation-custom-amount"
         class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1"
+        data-i18n="donation.custom_label"
       >
-        Monto personalizado
+        Custom amount
       </label>
       <div class="relative">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-slate-400">$</span>
@@ -108,14 +111,15 @@
           step="0.01"
           min="0.01"
           inputmode="decimal"
-          placeholder="Monto en USDC"
+          data-i18n-placeholder="donation.custom_placeholder"
+          placeholder="Amount in USDC"
           aria-describedby="donation-custom-amount-help"
-          class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-7 pr-20 text-sm text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-brand-400"
+          class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-7 pr-20 text-sm text-slate-800 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-accent-400"
         />
         <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">USDC</span>
       </div>
-      <p id="donation-custom-amount-help" class="mt-1 text-[10px] text-slate-400">
-        Mínimo $0.01 USDC.
+      <p id="donation-custom-amount-help" class="mt-1 text-[10px] text-slate-400" data-i18n="donation.custom_help">
+        Minimum $0.01 USDC.
       </p>
     </div>
 
@@ -123,10 +127,10 @@
     <button
       type="button"
       id="btn-donate"
-      class="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white font-bold py-3 text-xs sm:text-sm shadow-md transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+      class="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-accent-600 hover:bg-accent-700 text-white font-bold py-3 text-xs sm:text-sm shadow-md transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
     >
       <span class="material-symbols-outlined text-[18px]" aria-hidden="true">favorite</span>
-      <span id="btn-donate-label">Donar con USDC</span>
+      <span id="btn-donate-label" data-i18n="donation.cta">Donate with USDC</span>
     </button>
 
     <!-- Status / result area -->
@@ -142,15 +146,15 @@
         href="#"
         target="_blank"
         rel="noopener noreferrer"
-        class="mt-1.5 inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 font-semibold"
+        class="mt-1.5 inline-flex items-center gap-1 text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300 font-semibold"
       >
-        Ver en PolygonScan
+        <span data-i18n="donation.view_polygonscan">View on PolygonScan</span>
         <span class="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
       </a>
     </div>
 
-    <p class="text-[10px] text-slate-400 dark:text-slate-500 text-center">
-      Pagás directo desde tu wallet. Sin intermediarios. Red: Polygon · USDC.
+    <p class="text-[10px] text-slate-400 dark:text-slate-500 text-center" data-i18n="donation.footer">
+      Pay directly from your wallet. No intermediaries. Network: Polygon · USDC.
     </p>
   </div>
 </section>

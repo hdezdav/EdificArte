@@ -14,13 +14,6 @@ interface ReservationPayload {
   totalUSDC?: number;
 }
 
-const TOURS_INFO: Record<string, { title: string; pricePerPerson: number }> = {
-  'coyoacan-anahuacalli': { title: 'Recorrido 1: Centro Histórico de Coyoacán y Museo Anahuacalli', pricePerPerson: 480 },
-  'san-angel-chimalistac': { title: 'Recorrido 2: San Ángel y Chimalistac', pricePerPerson: 480 },
-  'xochimilco': { title: 'Recorrido 3: Xochimilco', pricePerPerson: 480 },
-  'templo-mayor': { title: 'Recorrido Histórico: Templo Mayor y Centro Mexica', pricePerPerson: 480 },
-};
-
 const USDC_DECIMALS = 6;
 
 function toRawUsdc(humanAmount: number): string {
@@ -61,7 +54,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
       );
     }
 
-    const tourInfo = TOURS_INFO[body.tourId];
+    const tourInfo = await env.DB.prepare(
+      'SELECT title, price_per_person, currency FROM tours WHERE id = ? AND is_published = 1'
+    ).bind(body.tourId).first<{ title: string; price_per_person: number; currency: string }>();
     if (!tourInfo) {
       return new Response(
         JSON.stringify({ ok: false, error: 'Tour no encontrado' }),
@@ -69,12 +64,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
       );
     }
 
-    const totalMXN = tourInfo.pricePerPerson * body.people;
+    const totalMXN = tourInfo.price_per_person * body.people;
     let isPaid = false;
 
     // Si se intentó pagar con USDC, validar la tx en Polygon
     if (body.txHash && body.walletAddress && body.totalUSDC) {
-      const paymentAddress = env.EDIFICARTE_PAYMENT_ADDRESS;
+      const paymentAddress = env.EDIFICARTE_PAYMENT_ADDRESS || env.TURIMAP_PAYMENT_ADDRESS;
       if (!paymentAddress) {
         return new Response(
           JSON.stringify({ ok: false, error: 'Pagos USDC no configurados en el servidor (EDIFICARTE_PAYMENT_ADDRESS).' }),
@@ -112,6 +107,37 @@ export const POST: APIRoute = async ({ request, locals }) => {
       isPaid = true;
     }
 
+    // Idempotencia: si ya existe una reserva con este txHash, devolverla
+    if (body.txHash) {
+      const existingRes = await env.DB.prepare('SELECT id FROM orders WHERE tx_hash = ?')
+        .bind(body.txHash).first<{ id: string }>();
+      if (existingRes) {
+        return new Response(
+          JSON.stringify({ ok: true, reservationId: existingRes.id, alreadyExists: true, totalMXN, status: isPaid ? 'paid' : 'pending' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Persistir la reserva en orders (reutilizamos la tabla orders para trazabilidad)
+    const reservationId = `RES-${crypto.randomUUID()}`;
+    if (body.txHash && body.walletAddress) {
+      try {
+        await env.DB.prepare(
+          'INSERT INTO orders (id, user_id, wallet_address, tx_hash, total_usdc, items_json, status) VALUES (?, NULL, ?, ?, ?, ?, ?)'
+        ).bind(
+          reservationId,
+          body.walletAddress,
+          body.txHash,
+          String(body.totalUSDC || 0),
+          JSON.stringify({ tourId: body.tourId, name: body.name, email: body.email, phone: body.phone, date: body.date, people: body.people }),
+          isPaid ? 'paid' : 'pending'
+        ).run();
+      } catch (err) {
+        console.error('[api/reservar-tour] DB insert error:', err);
+      }
+    }
+
     // STUB: loguear la reserva
     console.log('[RESERVAR TOUR]', {
       timestamp: new Date().toISOString(),
@@ -131,7 +157,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(
       JSON.stringify({
         ok: true,
-        reservationId: `RES-${Date.now()}`,
+        reservationId,
         tour: tourInfo.title,
         totalMXN,
         status: isPaid ? 'paid' : 'pending',

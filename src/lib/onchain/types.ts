@@ -10,7 +10,7 @@
  *
  * Live = llama a los contratos reales en Polygon mainnet vía RPC público.
  * Requiere: PUBLIC_BADGE_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS,
- * EDIFICARTE_PAYMENT_ADDRESS, POLYGON_RPC_URL.
+ * TURIMAP_PAYMENT_ADDRESS, POLYGON_RPC_URL.
  */
 
 export type ChainId = 137; // Polygon mainnet
@@ -51,7 +51,7 @@ export interface UsdcTransfer {
   txHash: string;
   /** Address que envió el USDC (el cliente). */
   from: string;
-  /** Debe coincidir con EDIFICARTE_PAYMENT_ADDRESS. */
+  /** Debe coincidir con TURIMAP_PAYMENT_ADDRESS. */
   to: string;
   /** Monto en USDC con 6 decimales (formato raw: "1000000" = 1 USDC). */
   rawAmount: string;
@@ -76,7 +76,7 @@ export interface UsdcVerifier {
 export interface BadgeMinter {
   /**
    * Mint a badge NFT. Naming follows the OZ 5.x baseline
-   * (`safeMint`) — the legacy name `mintBadge` shadowed the
+   * (`safeMint`) - the legacy name `mintBadge` shadowed the
    * virtual `tokenURI` function and was renamed.
    */
   safeMint(params: MintBadgeParams): Promise<TxResult>;
@@ -84,7 +84,7 @@ export interface BadgeMinter {
 
 /**
  * Emitter de eventos de review. Se loguea on-chain para tener trazabilidad
- * pública (no requiere que el usuario pague gas — el server puede emitir
+ * pública (no requiere que el usuario pague gas - el server puede emitir
  * desde su propia wallet si está configurada; por ahora mock).
  */
 export interface ReviewEmitter {

@@ -8,8 +8,8 @@
  * El usuario (cliente) firma con su propia wallet. El server solo:
  *   1. Llama a `safeMint()` para acuñar NFTs cuando un usuario gana un badge.
  *      Esto requiere que el server tenga una wallet admin (PRIVATE_KEY +
- *      EDIFICARTE_ADMIN_ADDRESS) configurada. Si no está, la acuñación falla
- *      silenciosamente y se loguea — el usuario sigue teniendo su badge off-chain.
+ *      TURIMAP_ADMIN_ADDRESS) configurada. Si no está, la acuñación falla
+ *      silenciosamente y se loguea - el usuario sigue teniendo su badge off-chain.
  *   2. Verifica que una tx de pago USDC del cliente es válida.
  *
  * Esto sigue el principio de "el cliente es dueño de sus assets, el server
@@ -22,7 +22,6 @@ import {
   parseEventLogs,
   getAddress,
   type Hash,
-  type Hex,
 } from 'viem';
 import { polygon } from 'viem/chains';
 import type {
@@ -104,7 +103,7 @@ function makePublicClient(rpcUrl: string) {
 /**
  * Mintea un badge NFT. Requiere que el server tenga ADMIN_PRIVATE_KEY
  * configurada. Si no, devuelve un TxResult con mode:'mock' y loguea warning
- * (no rompe el flujo — el badge off-chain ya se guardó en D1).
+ * (no rompe el flujo - el badge off-chain ya se guardó en D1).
  */
 export class LiveBadgeMinter implements BadgeMinter {
   constructor(
@@ -116,7 +115,7 @@ export class LiveBadgeMinter implements BadgeMinter {
   async safeMint(params: MintBadgeParams): Promise<TxResult> {
     if (!this.adminPrivateKey) {
       console.warn(
-        '[ONCHAIN LIVE] ADMIN_PRIVATE_KEY no configurada — saltando mint on-chain. ' +
+        '[ONCHAIN LIVE] ADMIN_PRIVATE_KEY no configurada - saltando mint on-chain. ' +
           'El badge queda registrado off-chain en D1.'
       );
       // Devolvemos string vacío en vez de un hash zero real para no
@@ -177,10 +176,10 @@ export class LiveReviewEmitter implements ReviewEmitter {
   async emitReview(params: EmitReviewParams): Promise<TxResult> {
     // Si falta el contrato deployado o la admin key, caemos a mock
     // (mismo patrón que LiveBadgeMinter). La review off-chain en D1 queda
-    // persistida — el cliente solo no recibe prueba on-chain.
+    // persistida - el cliente solo no recibe prueba on-chain.
     if (!this.adminPrivateKey) {
       console.warn(
-        '[ONCHAIN LIVE] ADMIN_PRIVATE_KEY no configurada — emit quedaría mock. ' +
+        '[ONCHAIN LIVE] ADMIN_PRIVATE_KEY no configurada - emit quedaría mock. ' +
           'La review queda registrada off-chain en D1.'
       );
       return {

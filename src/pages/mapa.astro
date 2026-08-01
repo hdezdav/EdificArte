@@ -1,257 +1,62 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import AiAgent from '../components/AiAgent.astro';
+import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
+// In Cloudflare adapter mode, .dev.vars are available via runtime env, not import.meta.env
+const runtimeEnv = Astro.locals?.runtime?.env;
+const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || '';
 ---
 
-<Layout title="EdificARTE - Mapa" fullScreen={true}>
+<Layout title="EdificARTE - Explore" fullScreen={true}>
   <!-- Floating Search Bar -->
   <div
-    class="pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col items-center gap-2 px-5"
-    style="padding-top: calc(env(safe-area-inset-top, 0px) + 16px);"
+    class="unified-search-map-layer pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col items-center gap-2 px-4 pt-2"
   >
-    <div class="relative w-full max-w-lg">
-      <div
-        class="pointer-events-auto flex w-full items-center rounded-full border border-black/[0.06] bg-white/90 px-4 py-3 shadow-[0_2px_16px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all"
-      >
-        <span
-          class="material-symbols-outlined mr-2.5 text-[20px] text-[#3f043a]"
-          >search</span
-        >
-        <input
-          type="text"
-          id="search-input"
-          placeholder="Buscar monumentos o audioguías..."
-          aria-label="Buscar monumentos o audioguías"
-          class="w-full min-w-0 flex-grow border-none bg-transparent p-0 text-[16px] sm:text-[16px] font-medium text-[#1b1c1c] placeholder-[#999] outline-none focus:ring-0"
-        />
-        <button
-          id="btn-search-filters"
-          class="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#3f043a] text-white transition-all active:scale-90"
-          aria-label="Filtros avanzados"
-        >
-          <span class="material-symbols-outlined text-[16px]">tune</span>
-        </button>
-      </div>
-
-      <!-- Search Filters Dropdown -->
-      <div
-        id="search-filters-dropdown"
-        class="pointer-events-auto absolute left-0 right-0 z-40 mt-2 hidden rounded-3xl border border-white/50 bg-white/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-2xl transition-all duration-200"
-      >
-        <h3
-          class="mb-3 flex items-center gap-1.5 text-[13px] font-bold text-[#1b1c1c]"
-        >
-          <span class="material-symbols-outlined text-[16px]">tune</span> Filtros
-          de Búsqueda
-        </h3>
-
-        <div class="space-y-4">
-          <!-- Sort Option -->
-          <div>
-            <span
-              class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-[#5c5c5c]"
-              >Ordenar por</span
-            >
-            <div class="grid grid-cols-2 gap-2">
-              <label
-                class="flex cursor-pointer items-center gap-2 rounded-xl border border-black/[0.04] bg-white/50 p-2 text-[12px] font-medium text-[#1b1c1c] hover:bg-white/80"
-              >
-                <input
-                  type="radio"
-                  name="sort-by"
-                  value="distance"
-                  checked
-                  class="text-[#3f043a] focus:ring-[#3f043a]"
-                />
-                <span>Distancia</span>
-              </label>
-              <label
-                class="flex cursor-pointer items-center gap-2 rounded-xl border border-black/[0.04] bg-white/50 p-2 text-[12px] font-medium text-[#1b1c1c] hover:bg-white/80"
-              >
-                <input
-                  type="radio"
-                  name="sort-by"
-                  value="name"
-                  class="text-[#3f043a] focus:ring-[#3f043a]"
-                />
-                <span>Nombre</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Visited Option -->
-          <div>
-            <span
-              class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-[#5c5c5c]"
-              >Estado de Visita</span
-            >
-            <div class="grid grid-cols-3 gap-1.5">
-              <label
-                class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-black/[0.04] bg-white/50 p-2 text-center text-[11px] font-medium text-[#1b1c1c] hover:bg-white/80"
-              >
-                <input
-                  type="radio"
-                  name="filter-visited"
-                  value="all"
-                  checked
-                  class="mb-1 text-[#3f043a]"
-                />
-                <span>Todos</span>
-              </label>
-              <label
-                class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-black/[0.04] bg-white/50 p-2 text-center text-[11px] font-medium text-[#1b1c1c] hover:bg-white/80"
-              >
-                <input
-                  type="radio"
-                  name="filter-visited"
-                  value="visited"
-                  class="mb-1 text-[#3f043a]"
-                />
-                <span>Visitados</span>
-              </label>
-              <label
-                class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-black/[0.04] bg-white/50 p-2 text-center text-[11px] font-medium text-[#1b1c1c] hover:bg-white/80"
-              >
-                <input
-                  type="radio"
-                  name="filter-visited"
-                  value="unvisited"
-                  class="mb-1 text-[#3f043a]"
-                />
-                <span>No Visitados</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Feature Toggles -->
-          <div>
-            <span
-              class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-[#5c5c5c]"
-              >Características</span
-            >
-            <div class="space-y-2">
-              <label
-                class="flex cursor-pointer items-center justify-between rounded-xl border border-black/[0.04] bg-white/50 p-2 px-3 text-[12px] font-medium text-[#1b1c1c] hover:bg-white/80"
-              >
-                <span class="flex items-center gap-1.5">
-                  <span
-                    class="material-symbols-outlined text-[16px] text-[#3f043a]"
-                    >headphones</span
-                  >
-                  Con Audioguía
-                </span>
-                <input
-                  type="checkbox"
-                  id="filter-audioguide"
-                  class="rounded text-[#3f043a] focus:ring-[#3f043a]"
-                />
-              </label>
-              <label
-                class="flex cursor-pointer items-center justify-between rounded-xl border border-black/[0.04] bg-white/50 p-2 px-3 text-[12px] font-medium text-[#1b1c1c] hover:bg-white/80"
-              >
-                <span class="flex items-center gap-1.5">
-                  <span
-                    class="material-symbols-outlined text-[16px] text-yellow-500"
-                    >star</span
-                  >
-                  Sitio Destacado
-                </span>
-                <input
-                  type="checkbox"
-                  id="filter-featured"
-                  class="rounded text-[#3f043a] focus:ring-[#3f043a]"
-                />
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-4 flex gap-2">
-          <button
-            id="btn-reset-filters"
-            class="flex-1 rounded-xl bg-slate-100 py-2 text-[12px] font-bold text-[#5c5c5c] transition-colors hover:bg-slate-200"
-          >
-            Restablecer
-          </button>
-          <button
-            id="btn-apply-filters"
-            class="flex-1 rounded-xl bg-[#3f043a] py-2 text-[12px] font-bold text-white transition-colors hover:bg-[#52074c]"
-          >
-            Aplicar
-          </button>
-        </div>
-      </div>
-    </div>
+    <UnifiedSearchBar
+      inputId="search-input"
+      clearId="map-search-clear"
+      suggestionsId="search-suggestions"
+      placeholder="Buscar lugares, ciudades y monumentos..."
+      ariaLabel="Buscar lugares"
+      i18nPlaceholder="mapa.search_placeholder"
+      outerClass="pointer-events-auto"
+    />
 
     <!-- Filter Chips -->
-    <div
-      class="no-scrollbar pointer-events-auto -mx-5 flex w-full max-w-lg gap-2 overflow-x-auto scroll-smooth px-5 pb-4 pt-2"
-    >
-      <button
-        data-filter="all"
-        class="filter-chip active flex-shrink-0 rounded-full bg-[#3f043a] px-4 py-[7px] text-[11px] font-semibold text-white shadow-sm transition-all active:scale-95"
-      >
-        Todos
+    <div id="map-filter-chips" class="no-scrollbar pointer-events-auto -mx-4 flex w-full max-w-lg gap-2 overflow-x-auto sm:overflow-x-visible sm:flex-wrap sm:justify-center scroll-smooth px-4 pb-3 pt-1">
+      <button data-filter="all" data-i18n="mapa.filters.all" class="filter-chip active flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+        All
       </button>
-      <button
-        data-filter="museo"
-        class="filter-chip flex-shrink-0 rounded-full border border-white/50 bg-white/75 px-4 py-[7px] text-[11px] font-semibold text-[#1b1c1c] shadow-sm backdrop-blur-lg transition-all active:scale-95"
-      >
-        🏛️ Museos
+      <button data-filter="museum" data-i18n="mapa.filters.museums" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+        🏛️ Museums
       </button>
-      <button
-        data-filter="templo"
-        class="filter-chip flex-shrink-0 rounded-full border border-white/50 bg-white/75 px-4 py-[7px] text-[11px] font-semibold text-[#1b1c1c] shadow-sm backdrop-blur-lg transition-all active:scale-95"
-      >
-        ⛪ Templos
+      <button data-filter="temple" data-i18n="mapa.filters.temples" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+        ⛪ Temples
       </button>
-      <button
-        data-filter="arqueologia"
-        class="filter-chip flex-shrink-0 rounded-full border border-white/50 bg-white/75 px-4 py-[7px] text-[11px] font-semibold text-[#1b1c1c] shadow-sm backdrop-blur-lg transition-all active:scale-95"
-      >
-        🏺 Arqueología
+      <button data-filter="park" data-i18n="mapa.filters.parks" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+        🌳 Parks
       </button>
-      <button
-        data-filter="rascacielos"
-        class="filter-chip flex-shrink-0 rounded-full border border-white/50 bg-white/75 px-4 py-[7px] text-[11px] font-semibold text-[#1b1c1c] shadow-sm backdrop-blur-lg transition-all active:scale-95"
-      >
-        🗼 Miradores
+      <button data-filter="historic" data-i18n="mapa.filters.historic" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+        🏰 Historic
+      </button>
+      <button data-filter="viewpoint" data-i18n="mapa.filters.viewpoints" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+        🔭 Viewpoints
       </button>
     </div>
+  </div>
 
-    </div>
-
-  <!-- Floating Controls (vertically centered on screen) -->
+  <!-- Floating Controls -->
   <div
     id="map-floating-controls"
-    class="pointer-events-auto fixed right-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-end gap-2 transition-all duration-300 ease-in-out sm:right-4"
+    class="pointer-events-auto fixed right-3 z-30 flex flex-col items-end gap-2 transition-all duration-300 ease-in-out sm:right-4"
+    style="bottom: calc(8.25rem + env(safe-area-inset-bottom, 0px));"
   >
     <button
-      id="btn-clear-route"
-      class="hidden [&:not(.hidden)]:flex h-10 w-auto items-center gap-1.5 rounded-full bg-rose-600 px-3.5 text-xs font-bold text-white shadow-lg transition-all hover:scale-105 hover:bg-rose-700 active:scale-90 sm:h-11 sm:px-4 sm:text-xs backdrop-blur-md"
-      aria-label="Quitar ruta"
-      title="Quitar ruta activa"
-    >
-      <span class="material-symbols-outlined text-[16px] sm:text-[18px]">close</span>
-      <span>Quitar Ruta</span>
-    </button>
-    <button
       id="btn-locate"
-      class="flex h-10 w-10 items-center justify-center rounded-full bg-[#3f043a] text-white shadow-lg transition-all active:scale-90 sm:h-11 sm:w-11"
-      aria-label="Centrar ubicación"
+      class="flex h-11 w-11 items-center justify-center rounded-full liquid-glass text-slate-700 dark:text-slate-200 shadow-lg transition-all active:scale-90"
+      aria-label="Center location"
     >
-      <span
-        class="material-symbols-outlined text-[18px] sm:text-[20px]"
-        id="locate-icon">my_location</span
-      >
-    </button>
-    <button
-      id="btn-style-toggle"
-      class="flex h-10 w-10 items-center justify-center rounded-full bg-[#3f043a] text-white shadow-lg transition-all active:scale-90 sm:h-11 sm:w-11"
-      aria-label="Cambiar estilo"
-    >
-      <span class="material-symbols-outlined text-[18px] sm:text-[20px]"
-        >layers</span
-      >
+      <span class="material-symbols-outlined text-[20px]" id="locate-icon">my_location</span>
     </button>
   </div>
 
@@ -261,36 +66,23 @@ import Layout from '../layouts/Layout.astro';
   <!-- Bottom Sheet -->
   <div
     id="bottom-sheet"
-    class="absolute left-3 right-3 z-20 mx-auto max-w-lg overflow-hidden rounded-3xl border border-white/50 bg-white/85 shadow-[0_-8px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl transition-all duration-300"
-    style="bottom: calc(5rem + env(safe-area-inset-bottom, 0px));"
+    class="absolute left-3 right-3 z-20 mx-auto max-w-lg overflow-hidden rounded-3xl liquid-glass transition-all duration-300"
+    style="bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));"
   >
     <!-- Drag Handle & Toggle Header -->
-    <div
-      id="sheet-header"
-      class="flex w-full cursor-pointer select-none flex-col items-center pb-2 pt-3"
-    >
-      <div class="mb-2 h-[5px] w-10 rounded-full bg-black/15"></div>
+    <div id="sheet-header" class="flex w-full cursor-pointer select-none flex-col items-center pb-2 pt-3">
+      <div class="mb-2 h-[5px] w-10 rounded-full bg-slate-300 dark:bg-slate-700"></div>
       <div class="flex w-full items-center justify-between px-4">
-        <h2
-          class="flex items-center gap-1.5 text-[14px] font-bold text-[#1b1c1c]"
-        >
-          <span class="material-symbols-outlined text-[18px]">location_on</span>
-          Monumentos Cercanos
+        <h2 class="flex items-center gap-1.5 text-[14px] font-bold text-slate-800 dark:text-white">
+          <span class="material-symbols-outlined text-[18px] text-accent-600 dark:text-accent-400">explore</span>
+          <span data-i18n="mapa.sheet.title">Nearby Places</span>
         </h2>
         <div class="flex items-center gap-2">
-          <span
-            id="geo-status"
-            class="inline-flex items-center gap-1 text-[10px] font-semibold text-[#5c5c5c]"
-          >
-            <span id="geo-dot" class="h-1.5 w-1.5 rounded-full bg-[#c0c0c0]"
-            ></span>
-            <span id="geo-text">Inactivo</span>
+          <span id="geo-status" class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 cursor-pointer">
+            <span id="geo-dot" class="h-2 w-2 rounded-full bg-slate-350 dark:bg-slate-750"></span>
+            <span id="geo-text" data-i18n="mapa.sheet.inactive">Inactive</span>
           </span>
-          <span
-            id="sheet-chevron"
-            class="material-symbols-outlined text-[20px] text-black/40 transition-transform duration-300"
-            >keyboard_arrow_up</span
-          >
+          <span id="sheet-chevron" class="material-symbols-outlined text-[20px] text-slate-450 dark:text-slate-500 transition-transform duration-300">keyboard_arrow_up</span>
         </div>
       </div>
     </div>
@@ -299,933 +91,297 @@ import Layout from '../layouts/Layout.astro';
     <div
       id="sheet-body"
       class="overflow-y-auto px-4 pb-5 transition-all duration-300 ease-in-out"
-      style="max-height: 0px; opacity: 0; pointer-events: none;"
     >
+      <!-- Loading state -->
+      <div id="places-loading" class="hidden py-8 text-center">
+        <span class="material-symbols-outlined animate-spin text-[24px] text-slate-400 dark:text-slate-500">progress_activity</span>
+        <p class="mt-2 text-[12px] text-slate-500 dark:text-slate-400" data-i18n="mapa.sheet.loading">Finding places near you...</p>
+      </div>
+
       <!-- List View -->
       <div id="view-list">
-        <div
-          class="no-scrollbar flex flex-col gap-2"
-          id="monuments-list-container"
-        >
+        <div class="no-scrollbar flex flex-col gap-2" id="places-list-container">
+          <p class="py-6 text-center text-[12px] text-slate-400 dark:text-slate-500" data-i18n="mapa.sheet.empty_cta">Enable location to discover nearby places</p>
         </div>
       </div>
 
       <!-- Detail View -->
       <div id="view-detail" class="hidden">
-        <!-- Monument Image -->
-        <div
-          class="mb-3 h-36 overflow-hidden rounded-2xl border border-black/[0.04] bg-slate-100"
-        >
-          <img
-            id="detail-image"
-            src=""
-            alt="Monument image"
-            class="h-full w-full object-cover"
-          />
-        </div>
-
-        <div class="mb-3 flex items-start justify-between">
-          <div class="flex gap-3">
-            <span
-              id="detail-emoji"
-              class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-[#f5f3ff] text-2xl"
-              >🏛️</span
-            >
+        <div class="mb-2.5 flex items-start justify-between">
+          <div class="flex gap-2.5">
+            <span id="detail-emoji" class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-xl">📍</span>
             <div>
-              <h3
-                id="detail-name"
-                class="text-[15px] font-bold leading-tight text-[#1b1c1c]"
-              >
-                Palacio de Bellas Artes
-              </h3>
-              <p
-                id="detail-category"
-                class="mt-0.5 text-[12px] font-medium text-[#5c5c5c]"
-              >
-                Museo / Teatro · <span
-                  id="detail-dist"
-                  class="font-semibold text-[#1b1c1c]">0.3 km</span
-                >
-              </p>
+              <h3 id="detail-name" class="text-[13px] font-bold leading-tight text-slate-800 dark:text-white">Place Name</h3>
+              <p id="detail-category" class="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">Category</p>
             </div>
           </div>
-          <div class="flex items-center gap-1.5">
-            <button
-              id="detail-favorite-btn"
-              type="button"
-              class="rounded-full p-1.5 text-neutral-400 hover:bg-black/5 hover:text-rose-500 transition-colors"
-              title="Añadir a favoritos"
-            >
-              <svg class="h-5 w-5 fill-none stroke-current stroke-[2px]" viewBox="0 0 24 24">
-                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-              </svg>
-            </button>
-            <button
-              id="btn-close-detail"
-              class="rounded-full p-1.5 text-[#a0a0a0] transition-colors hover:bg-black/5"
-              aria-label="Cerrar detalle"
-            >
-              <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
-        </div>
-
-        <p
-          id="detail-desc"
-          class="mb-3 text-[12px] leading-relaxed text-[#5c5c5c]"
-        >
-          Una de las casas de ópera más famosas del mundo.
-        </p>
-
-        <!-- Tour Promotion Card (Visible only when the monument has a tour) -->
-        <div id="tour-promo-card" class="mb-3 hidden rounded-2xl border border-[#3f043a]/20 dark:border-purple-500/20 bg-[#3f043a]/5 dark:bg-purple-950/10 p-3.5 [&:not(.hidden)]:flex flex-col gap-2">
-          <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0 flex-1">
-              <span class="inline-flex items-center gap-1 rounded-full bg-[#3f043a]/10 dark:bg-purple-950/40 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#3f043a] dark:text-purple-300">
-                Recorrido Guiado
-              </span>
-              <h4 id="tour-promo-title" class="text-xs font-bold text-slate-800 dark:text-slate-200 mt-1 truncate">
-                Recorrido
-              </h4>
-              <p id="tour-promo-desc" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
-                Explorá este sitio de la mano de un guía experto.
-              </p>
-            </div>
-            <div class="text-right flex-shrink-0">
-              <span id="tour-promo-price" class="text-xs font-extrabold text-[#3f043a] dark:text-purple-300 block">$480 MXN</span>
-              <span class="text-[9px] text-slate-400 dark:text-slate-500 block">por persona</span>
-            </div>
-          </div>
-          <button
-            id="btn-book-tour"
-            type="button"
-            class="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#3f043a] to-purple-700 hover:from-[#52074c] hover:to-purple-800 text-white font-bold py-2 text-xs shadow-sm transition-all active:scale-[0.97]"
-          >
-            <span class="material-symbols-outlined text-[14px]">event_available</span>
-            <span>Reservar Recorrido</span>
+          <button id="btn-close-detail" class="rounded-full p-1 text-slate-400 dark:text-slate-500 transition-colors hover:bg-slate-150 dark:hover:bg-slate-800" aria-label="Close detail">
+            <span class="material-symbols-outlined text-[18px]">close</span>
           </button>
         </div>
 
-        <!-- Audio Player -->
-        <div class="mb-3 rounded-2xl border border-black/5 bg-[#f8f7f7] p-3.5">
-          <button
-            id="btn-play-audio"
-            class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#3f043a] px-4 py-2.5 font-semibold text-white shadow-md shadow-[#3f043a]/20 transition-all active:scale-[0.97]"
-          >
-            <span
-              class="material-symbols-outlined text-[18px]"
-              style="font-variation-settings:'FILL' 1">play_arrow</span
-            >
-            <span class="text-[12px]"
-              >Escuchar Audioguía (<span id="detail-duration">4:15</span>)</span
-            >
-          </button>
+        <p id="detail-address" class="mb-3 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400"></p>
 
-          <div id="audio-player" class="hidden space-y-3 pt-3">
-            <div class="flex items-center justify-between">
-              <span
-                class="flex items-center gap-1.5 text-[11px] font-bold text-[#3f043a]"
-              >
-                <span class="relative flex h-2 w-2">
-                  <span
-                    class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#3f043a] opacity-60"
-                  ></span>
-                  <span
-                    class="relative inline-flex h-2 w-2 rounded-full bg-[#3f043a]"
-                  ></span>
-                </span>
-                Escuchando...
-              </span>
-              <span
-                id="player-time"
-                class="font-mono text-[10px] font-semibold text-[#5c5c5c]"
-                >0:00 / 4:15</span
-              >
-            </div>
-            <div
-              class="bg-black/8 h-1.5 w-full cursor-pointer overflow-hidden rounded-full"
-              id="progress-bar-container"
-            >
-              <div
-                id="progress-bar-fill"
-                class="h-full w-0 rounded-full bg-[#3f043a] transition-all duration-100"
-              >
-              </div>
-            </div>
-            <div class="flex items-center justify-center gap-6">
-              <button id="btn-player-rw" class="text-[#5c5c5c] active:scale-90" aria-label="Retroceder 10 segundos"
-                ><span class="material-symbols-outlined text-[20px]"
-                  >replay_10</span
-                ></button
-              >
-              <button
-                id="btn-player-toggle"
-                class="flex h-10 w-10 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a] transition-all active:scale-90"
-                aria-label="Pausar"
-              >
-                <span
-                  class="material-symbols-outlined text-[22px]"
-                  id="player-toggle-icon">pause</span
-                >
-              </button>
-              <button id="btn-player-ff" class="text-[#5c5c5c] active:scale-90" aria-label="Avanzar 10 segundos"
-                ><span class="material-symbols-outlined text-[20px]"
-                  >forward_10</span
-                ></button
-              >
-            </div>
+        <!-- Wikipedia enrichment: hidden until a match is found -->
+        <div id="detail-wiki" class="hidden mb-3.5 overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-900/60">
+          <div class="relative h-32 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+            <img id="detail-wiki-img" src="" alt="" class="h-full w-full object-cover" loading="lazy" />
           </div>
-        </div>
-
-        <!-- Visited & Review Section -->
-        <div
-          id="visit-section"
-          class="space-y-3 rounded-2xl border border-black/5 bg-[#fbfbfa] p-3.5"
-        >
-          <div class="flex items-center justify-between">
-            <span
-              class="flex items-center gap-1 text-[12px] font-bold text-[#1b1c1c]"
-            >
-              <span class="material-symbols-outlined text-[16px] text-[#3f043a]"
-                >task_alt</span
-              >
-              Registro de Visita
+          <div class="flex items-center justify-between px-3 py-2">
+            <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93v15.86zm2 0V4.07c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93z"/></svg>
+              Wikipedia
             </span>
-            <span
-              id="visit-status-tag"
-              class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500"
-              >No visitado</span
-            >
+            <a id="detail-wiki-link" href="#" target="_blank" rel="noopener noreferrer"
+              class="inline-flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-[10px] font-bold text-brand-600 dark:text-brand-400 shadow-xs transition-all hover:bg-brand-50 dark:hover:bg-brand-950/30 active:scale-95">
+              Ver artículo
+              <span class="material-symbols-outlined text-[11px]">open_in_new</span>
+            </a>
           </div>
+        <!-- VR Video Experience Container: shown when isVRAvailable or videoUrl exists -->
+        <div id="detail-vr-container" class="hidden mb-3.5 overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-950 p-2 shadow-md">
+          <div class="mb-2 flex items-center justify-between px-1.5 pt-1">
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-amber-400">
+              <span class="material-symbols-outlined text-[16px]">view_in_ar</span>
+              Experiencia Realidad Virtual (360 VR)
+            </span>
+            <span class="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-amber-300">VR 360</span>
+          </div>
+          <div class="relative w-full aspect-video overflow-hidden rounded-xl bg-black shadow-inner">
+            <iframe
+              id="detail-vr-iframe"
+              src=""
+              title="VR Video Experience"
+              class="h-full w-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+            ></iframe>
+          </div>
+        </div>
 
-          <!-- GPS distance warning if far -->
-          <div
-            id="visit-far-warning"
-            class="flex items-start gap-1.5 rounded-xl bg-amber-50 p-2.5 text-[11px] text-[#854d0e]"
+        <!-- Action buttons -->
+        <div class="flex gap-2">
+          <button
+            id="btn-navigate"
+            data-i18n="mapa.detail.navigate"
+            class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent-600 hover:bg-accent-700 px-4 py-2 font-semibold text-white shadow-lg shadow-accent-600/20 transition-all active:scale-[0.97]"
           >
-            <span class="material-symbols-outlined flex-shrink-0 text-[16px]"
-              >info</span
-            >
-            <span
-              >Debes estar a menos de 200 metros para registrar tu visita y
-              opinar. <span id="visit-distance-text" class="font-bold"
-              ></span></span
-            >
-          </div>
+            <span class="material-symbols-outlined text-[16px]">directions</span>
+            <span class="text-[11px]">Navigate</span>
+          </button>
+          <button
+            id="btn-share"
+            class="flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-slate-600 dark:text-slate-400 transition-all hover:bg-slate-100 dark:hover:bg-slate-800/80 active:scale-[0.97]"
+            aria-label="Share"
+            data-i18n-attr="aria-label|mapa.detail.share"
+          >
+            <span class="material-symbols-outlined text-[16px]">share</span>
+          </button>
+        </div>
 
-          <!-- Active form if near -->
-          <div id="visit-near-form" class="hidden space-y-2.5">
+        <!-- Route info (shown when navigating) -->
+        <div id="route-info" class="mt-3 hidden">
+          <div class="flex items-center justify-between rounded-xl border border-accent-500/20 bg-accent-500/10 px-3 py-2.5">
+            <div class="flex items-center gap-2">
+              <span id="route-mode-icon" class="material-symbols-outlined text-[18px] text-accent-400">directions</span>
+              <span id="route-info-text" class="text-[12px] font-semibold text-accent-300" data-i18n="mapa.detail.calculating">Calculating...</span>
+            </div>
             <button
-              id="btn-mark-visited"
-              class="w-full rounded-xl bg-[#3f043a] py-2 text-[12px] font-bold text-white shadow-md transition-all hover:bg-[#3f043a]/90 active:scale-[0.98]"
+              id="btn-cancel-route"
+              data-i18n="mapa.detail.cancel"
+              class="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/70 transition-all hover:bg-white/15 active:scale-95"
             >
-              Marcar como visitado
+              <span class="material-symbols-outlined text-[14px]">close</span>
+              Cancel
             </button>
-            <div id="review-fields" class="hidden space-y-2">
-              <div class="flex items-center gap-1">
-                <span class="mr-1 text-[11px] font-semibold text-slate-600"
-                  >Tu calificación:</span
-                >
-                <div class="flex gap-0.5 text-amber-400" id="rating-stars">
-                  <span
-                    class="material-symbols-outlined cursor-pointer text-[18px]"
-                    data-val="1"
-                    style="font-variation-settings:'FILL' 1">star</span
-                  >
-                  <span
-                    class="material-symbols-outlined cursor-pointer text-[18px]"
-                    data-val="2"
-                    style="font-variation-settings:'FILL' 1">star</span
-                  >
-                  <span
-                    class="material-symbols-outlined cursor-pointer text-[18px]"
-                    data-val="3"
-                    style="font-variation-settings:'FILL' 1">star</span
-                  >
-                  <span
-                    class="material-symbols-outlined cursor-pointer text-[18px]"
-                    data-val="4"
-                    style="font-variation-settings:'FILL' 1">star</span
-                  >
-                  <span
-                    class="material-symbols-outlined cursor-pointer text-[18px]"
-                    data-val="5"
-                    style="font-variation-settings:'FILL' 1">star</span
-                  >
-                </div>
-              </div>
-              <textarea
-                id="review-input"
-                placeholder="Escribe tu reseña..."
-                class="h-16 w-full resize-none rounded-xl border border-black/10 bg-white p-2.5 text-[11px] placeholder-[#aaa] outline-none focus:border-transparent focus:ring-1 focus:ring-brand-500"
-              ></textarea>
-              <button
-                id="btn-save-review"
-                class="w-full rounded-xl bg-[#3f043a] py-2 text-[11px] font-semibold text-white transition-all hover:bg-[#3f043a]/90 active:scale-[0.98]"
-              >
-                Guardar opinión
-              </button>
-            </div>
-          </div>
-
-          <!-- Visited and reviewed display state -->
-          <div
-            id="visit-saved-display"
-            class="hidden space-y-2 rounded-xl border border-green-200/40 bg-green-50/50 p-2.5"
-          >
-            <p
-              class="flex items-center gap-1 text-[11px] font-bold text-green-700"
-            >
-              <span class="material-symbols-outlined text-[14px]">done_all</span
-              >
-              ¡Ya visitaste este lugar!
-            </p>
-            <div class="flex gap-0.5 text-amber-400" id="saved-stars-display">
-            </div>
-            <p
-              id="saved-review-text"
-              class="text-[11px] italic leading-snug text-[#5c5c5c]"
-            >
-            </p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Language Selection Modal (Overlay) -->
-  <div
-    id="lang-modal"
-    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="lang-modal-title"
-  >
-    <div
-      class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/20 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300"
-    >
-      <div
-        class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3f043a] to-[#7c1d6f] text-white shadow-lg shadow-[#3f043a]/25"
-      >
-        <span class="material-symbols-outlined text-[30px]">translate</span>
-      </div>
-      <h2 id="lang-modal-title" class="text-xl font-extrabold text-slate-900">Bienvenido a EdificARTE</h2>
-      <p class="mt-2 text-[13px] leading-relaxed text-slate-500">
-        Selecciona tu idioma para explorar la historia y arquitectura
-        de la CDMX.
-      </p>
 
-      <div class="mt-6 flex flex-col gap-2.5">
-        <button
-          data-lang="es"
-          class="lang-btn group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-[14px] font-semibold text-slate-800 shadow-sm transition-all hover:border-[#3f043a]/30 hover:shadow-md active:scale-[0.98]"
-        >
-          <span class="flex items-center gap-3">
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-lg">🇲🇽</span>
-            Español
-          </span>
-          <span class="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-[#3f043a] transition-colors">arrow_forward</span>
-        </button>
-        <button
-          data-lang="en"
-          class="lang-btn group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-[14px] font-semibold text-slate-800 shadow-sm transition-all hover:border-[#3f043a]/30 hover:shadow-md active:scale-[0.98]"
-        >
-          <span class="flex items-center gap-3">
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-lg">🇺🇸</span>
-            English
-          </span>
-          <span class="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-[#3f043a] transition-colors">arrow_forward</span>
-        </button>
-        <button
-          data-lang="señas"
-          class="lang-btn group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-[14px] font-semibold text-slate-800 shadow-sm transition-all hover:border-[#3f043a]/30 hover:shadow-md active:scale-[0.98]"
-        >
-          <span class="flex items-center gap-3">
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-lg">🤟</span>
-            Lengua de Señas
-          </span>
-          <span class="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-[#3f043a] transition-colors">arrow_forward</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Welcome & Location Modal (Overlay) -->
-  <div
-    id="welcome-modal"
-    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-center justify-center bg-black/60 p-5 backdrop-blur-md transition-opacity duration-300 opacity-0"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="welcome-modal-heading"
-  >
-    <div
-      class="w-full max-w-sm scale-100 transform rounded-[2rem] border border-white/20 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-2xl transition-all duration-300"
-    >
-      <div
-        class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3f043a] to-[#7c1d6f] text-white shadow-lg shadow-[#3f043a]/25"
-      >
-        <span class="material-symbols-outlined text-[30px]">explore</span>
-      </div>
-      <h2 id="welcome-modal-heading" class="text-xl font-extrabold text-slate-900">¡Bienvenido a EdificARTE!</h2>
-      <p class="mt-2 text-[13px] leading-relaxed text-slate-500">
-        Descubre monumentos históricos de la CDMX, escucha sus audioguías interactivas y colecciona insignias exclusivas. Activa tu GPS para ubicarte en el mapa.
-      </p>
-
-      <div class="mt-6 flex flex-col gap-2.5">
-        <button
-          id="btn-welcome-start"
-          class="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3f043a] to-[#7c1d6f] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#3f043a]/25 transition-all hover:shadow-xl active:scale-[0.98]"
-        >
-          <span class="material-symbols-outlined text-[18px]">near_me</span>
-          <span>Activar GPS y Comenzar</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Recinto histórico Modal (Overlay) -->
-  <div
-    id="recinto-modal"
-    class="fixed inset-0 z-[60] [&:not(.hidden)]:flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-5"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="recinto-modal-title"
-  >
-    <div
-      class="w-full max-w-md scale-100 transform rounded-t-3xl border border-white/20 bg-white/95 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-300 sm:rounded-[2rem] dark:bg-slate-900/95 dark:border-slate-800/50"
-    >
-      <!-- Header -->
-      <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/60">
-        <div class="flex items-start gap-3 flex-1 min-w-0">
-          <span
-            id="recinto-modal-emoji"
-            class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-[#fef3c7] text-2xl"
-          >🏛️</span>
-          <div class="min-w-0 flex-1">
-            <h2
-              id="recinto-modal-title"
-              class="text-lg font-extrabold text-slate-900 dark:text-white leading-tight"
-            >
-              Nombre del Recinto
-            </h2>
-            <p
-              id="recinto-modal-era"
-              class="mt-1 text-[11px] font-semibold text-amber-700 uppercase tracking-wider"
-            >
-              Tipo · Era
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          id="recinto-modal-close"
-          class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors flex-shrink-0"
-          aria-label="Cerrar"
-        >
-          <span class="material-symbols-outlined text-[20px]">close</span>
-        </button>
-      </div>
-
-      <!-- Body -->
-      <div class="space-y-4 py-4 max-h-[60vh] overflow-y-auto no-scrollbar">
-        <div>
-          <span
-            id="recinto-modal-year"
-            class="inline-block rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300"
-          >
-            Fundado en ——
-          </span>
-        </div>
-
-        <!-- "¿Sabías que...?" callout -->
-        <div
-          id="recinto-modal-fact-container"
-          class="rounded-2xl border-l-4 border-amber-500 bg-amber-50/80 dark:bg-amber-950/20 p-4"
-        >
-          <h3 class="flex items-center gap-1.5 text-[12px] font-bold text-amber-900 dark:text-amber-300 mb-1.5">
-            <span class="material-symbols-outlined text-[16px]">lightbulb</span>
-            ¿Sabías que…?
-          </h3>
-          <p
-            id="recinto-modal-fact-text"
-            class="text-[13px] leading-relaxed text-amber-900 dark:text-amber-200 italic"
-          >
-            Hecho histórico destacado...
-          </p>
-        </div>
-
-        <!-- Descripción completa -->
-        <div>
-          <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-            Acerca de
-          </h3>
-          <p
-            id="recinto-modal-full-desc"
-            class="text-[13px] leading-relaxed text-slate-700 dark:text-slate-300"
-          >
-            Descripción completa del recinto...
-          </p>
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div class="pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center gap-2">
-        <a
-          id="recinto-modal-wiki"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#3f043a] hover:bg-[#52074c] text-white font-bold py-2.5 text-[12px] transition-all active:scale-[0.97]"
-        >
-          <span class="material-symbols-outlined text-[16px]">menu_book</span>
-          Leer en Wikipedia
-        </a>
-        <button
-          type="button"
-          id="recinto-modal-locate"
-          class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-90"
-          aria-label="Centrar en el mapa"
-          title="Centrar en el mapa"
-        >
-          <span class="material-symbols-outlined text-[18px]">my_location</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tour Reservation Modal (Overlay) -->
-  <div
-    id="tour-modal"
-    class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-end justify-center bg-black/60 p-0 backdrop-blur-md transition-opacity duration-300 opacity-0 sm:items-center sm:p-4"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="tour-modal-title"
-  >
-    <div class="w-full max-w-md scale-100 transform rounded-t-3xl border border-white/20 bg-white/95 p-5 shadow-2xl backdrop-blur-2xl transition-all duration-300 sm:rounded-[2rem] dark:border-slate-800/60 dark:bg-slate-900/95 max-h-[90vh] overflow-y-auto">
-      <!-- Header -->
-      <div class="flex items-start justify-between gap-3 pb-3 border-b border-brand-100 dark:border-brand-900/40">
-        <div class="flex-1 min-w-0">
-          <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-950/30 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300 border border-brand-200/50">
-            <span class="material-symbols-outlined text-[12px]">tour</span>
-            Recorrido guiado
-          </span>
-          <h2 id="tour-modal-title" class="mt-2 text-base font-extrabold text-slate-900 dark:text-white leading-tight">
-            Reservar tour
-          </h2>
-          <p id="tour-modal-subtitle" class="mt-0.5 text-[11px] font-medium text-brand-700 dark:text-brand-300">
-            -
-          </p>
-        </div>
-        <button type="button" id="tour-modal-close" class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors flex-shrink-0" aria-label="Cerrar">
-          <span class="material-symbols-outlined text-[20px]">close</span>
-        </button>
-      </div>
-
-      <!-- Tour summary -->
-      <div class="mt-3 rounded-2xl bg-brand-50/60 dark:bg-brand-950/20 border border-brand-100 dark:border-brand-900/40 p-3">
-        <p class="text-[11px] text-brand-900 dark:text-brand-200 leading-relaxed">
-          <strong>Incluye:</strong> guía e intérprete para los acompañantes.<br/>
-          <strong>Precio:</strong> $480 MXN por persona.<br/>
-          <strong>Guía:</strong> Mtro. Henryk Karol Kocyba (Universidad de Varsovia).
-        </p>
-      </div>
-
-      <!-- Form -->
-      <form id="tour-reservation-form" class="mt-4 space-y-3">
-        <input type="hidden" id="tour-id-input" name="tourId" />
-
-        <div>
-          <label for="tour-name" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre completo</label>
-          <input type="text" id="tour-name" name="name" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" placeholder="Tu nombre" />
-        </div>
-
-        <div>
-          <label for="tour-email" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Email</label>
-          <input type="email" id="tour-email" name="email" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" placeholder="tu@email.com" />
-        </div>
-
-        <div>
-          <label for="tour-phone" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Teléfono</label>
-          <input type="tel" id="tour-phone" name="phone" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" placeholder="+52 55 1234 5678" />
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="tour-date" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Fecha preferida</label>
-            <input type="date" id="tour-date" name="date" required class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" />
-          </div>
-          <div>
-            <label for="tour-people" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Personas</label>
-            <input type="number" id="tour-people" name="people" required min="1" max="20" value="2" class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-slate-800 dark:text-white outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400" />
-          </div>
-        </div>
-
-        <div>
-          <label for="tour-notes" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Notas (opcional)</label>
-          <textarea id="tour-notes" name="notes" rows="2" class="text-[16px] w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-white placeholder-slate-400 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400 resize-none" placeholder="Algún requerimiento especial..."></textarea>
-        </div>
-
-        <!-- Total -->
-        <div class="flex items-center justify-between rounded-xl bg-slate-100 dark:bg-slate-800 p-3">
-          <span class="text-[12px] font-bold text-slate-700 dark:text-slate-300">Total estimado</span>
-          <span id="tour-total" class="text-lg font-extrabold text-brand-700 dark:text-brand-400">$960 MXN</span>
-        </div>
-
-        <!-- Submit -->
-        <button type="submit" id="tour-submit-btn" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white font-bold py-3 text-sm shadow-sm transition-all active:scale-[0.97]">
-          <span class="material-symbols-outlined text-[18px]">send</span>
-          Enviar solicitud de reserva
-        </button>
-      </form>
-
-      <!-- Success state (hidden by default) -->
-      <div id="tour-success-state" class="hidden mt-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 p-5 text-center">
-        <span class="material-symbols-outlined text-4xl text-emerald-600 dark:text-emerald-400">check_circle</span>
-        <h3 class="mt-2 text-base font-bold text-emerald-900 dark:text-emerald-200">¡Solicitud enviada!</h3>
-        <p class="mt-1 text-[12px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
-          Te contactaremos por email y WhatsApp para confirmar disponibilidad y coordinar el pago.
-        </p>
-        <button type="button" id="tour-success-close" class="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 text-[12px] transition-all">
-          Entendido
-        </button>
-      </div>
-    </div>
-  </div>
+  <AiAgent />
 </Layout>
 
 <style>
-  :global(.leaflet-container) {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  .filter-chip {
+    background-color: rgba(255, 255, 255, 0.75) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    color: #334155 !important; /* slate-700 */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
-  :global(.leaflet-control-zoom),
-  :global(.leaflet-control-attribution) {
-    display: none !important;
+  .dark .filter-chip {
+    background-color: rgba(15, 23, 42, 0.7) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #cbd5e1 !important; /* slate-300 */
   }
-  :global(.leaflet-popup-content-wrapper) {
-    border-radius: 1rem !important;
-    border: 1px solid rgba(0, 0, 0, 0.06) !important;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1) !important;
-    padding: 0 !important;
-  }
-  :global(.leaflet-popup-content) {
-    margin: 12px 16px !important;
-  }
-  :global(.leaflet-popup-tip) {
-    background: white !important;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05) !important;
-  }
-
   .filter-chip.active {
-    background-color: #3f043a !important;
+    background-color: #9333ea !important;   /* accent-600 */
     color: #ffffff !important;
-    border-color: transparent !important;
+    border-color: #9333ea !important;
+    box-shadow: 0 4px 12px rgba(147, 51, 234, 0.25) !important;
+  }
+  .dark .filter-chip.active {
+    background-color: #a855f7 !important;   /* accent-500 */
+    color: #ffffff !important;
+    border-color: #a855f7 !important;
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35) !important;
   }
 
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  :global(.monument-pin) {
+  :global(.turimap-pin) {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: white;
-    border: 2.5px solid #e0d0ff;
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 2px solid rgba(255, 255, 255, 0.7);
     border-radius: 50%;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
     transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     cursor: pointer;
-  }
-  :global(.monument-pin:hover) {
-    transform: scale(1.12);
-  }
-  :global(.monument-pin.selected) {
-    border-color: #3f043a;
-    box-shadow:
-      0 0 0 4px rgba(63, 4, 58, 0.18),
-      0 4px 16px rgba(0, 0, 0, 0.15);
-    transform: scale(1.2) translateY(-3px);
-    z-index: 1000 !important;
-  }
-
-  :global(.monument-pin svg) {
-    display: block;
-    width: 24px;
-    height: 24px;
-    color: #3f043a;
-  }
-  :global(.monument-pin.selected svg) {
-    color: #7c1d6f;
-  }
-
-  /* Pin de recintos históricos — circular, ámbar, con icono museum */
-  :global(.recinto-pin) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: var(--pin-color, #a16207);
-    border: 2px solid white;
-    border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-    transition: transform 0.2s ease;
-    cursor: pointer;
-  }
-  :global(.recinto-pin:hover) {
-    transform: scale(1.18);
-  }
-  :global(.recinto-pin .material-symbols-outlined) {
-    color: white;
-    font-size: 16px;
-    font-variation-settings: 'FILL' 1;
-  }
-
-  /* Popup de recinto histórico */
-  :global(.recinto-leaflet-popup .leaflet-popup-content-wrapper) {
-    border-radius: 1rem !important;
-    padding: 0 !important;
-    border: 1px solid rgba(0, 0, 0, 0.06) !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
-    overflow: hidden;
-  }
-  :global(.recinto-leaflet-popup .leaflet-popup-content) {
-    margin: 0 !important;
-    width: 280px !important;
-  }
-  :global(.recinto-leaflet-popup .leaflet-popup-tip) {
-    background: white !important;
-  }
-
-  :global(.recinto-popup) {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-  }
-  :global(.recinto-popup-header) {
-    padding: 10px 14px;
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  :global(.recinto-popup-emoji) {
     font-size: 18px;
   }
-  :global(.recinto-popup-era) {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    opacity: 0.95;
+  .dark :global(.turimap-pin) {
+    background: rgba(15, 23, 42, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
-  :global(.recinto-popup-body) {
-    padding: 12px 14px 14px;
+  :global(.turimap-pin:hover) {
+    transform: scale(1.15);
+    border-color: rgba(37, 99, 235, 0.6);  /* accent-600/60 */
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
   }
-  :global(.recinto-popup-title) {
-    font-size: 14px;
+  :global(.turimap-pin.selected) {
+    border-color: rgba(37, 99, 235, 0.8);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2), 0 4px 20px rgba(37, 99, 235, 0.4);
+    transform: scale(1.25) translateY(-4px);
+    z-index: 1000 !important;
+    background: rgba(37, 99, 235, 0.3);
+  }
+
+  /* Cluster pins: same glass pin, slightly larger, accent ring + bold count. */
+  :global(.turimap-pin-cluster) {
+    width: 46px;
+    height: 46px;
+    border-color: rgba(37, 99, 235, 0.55);   /* accent-600/55 */
+    box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22);
+  }
+  .dark :global(.turimap-pin-cluster) {
+    border-color: rgba(96, 165, 250, 0.55);  /* accent-400/55 */
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  }
+  :global(.turimap-pin-cluster-count) {
+    font-size: 15px;
     font-weight: 800;
-    color: #1b1c1c;
-    margin-bottom: 2px;
-    line-height: 1.2;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: #1d4ed8;                          /* accent-700 */
   }
-  :global(.recinto-popup-year) {
-    font-size: 10px;
-    font-weight: 700;
-    color: #5c5c5c;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+  .dark :global(.turimap-pin-cluster-count) {
+    color: #93c5fd;                          /* accent-300 */
   }
-  :global(.recinto-popup-desc) {
-    font-size: 11px;
-    color: #5c5c5c;
-    line-height: 1.4;
-    margin-bottom: 10px;
-  }
-  :global(.recinto-popup-fact) {
-    background: #fef3c7;
-    border-left: 3px solid #f59e0b;
-    padding: 8px 10px;
-    border-radius: 0 0.5rem 0.5rem 0;
-    margin-bottom: 10px;
-    font-size: 11px;
-    color: #78350f;
-    line-height: 1.35;
-  }
-  :global(.recinto-popup-fact strong) {
-    display: block;
-    margin-bottom: 2px;
-    font-weight: 800;
-  }
-  :global(.recinto-popup-btn) {
-    width: 100%;
-    padding: 7px 10px;
-    background: #3f043a;
-    color: white;
-    border-radius: 0.5rem;
-    font-size: 11px;
-    font-weight: 700;
-    transition: background 0.15s;
-    cursor: pointer;
-  }
-  :global(.recinto-popup-btn:hover) {
-    background: #52074c;
+
+  @media (max-width: 767px), (pointer: coarse) {
+    :global(.turimap-pin) {
+      background: rgba(255, 255, 255, 0.96) !important;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
+      transition: transform 0.18s ease, border-color 0.18s ease;
+    }
   }
 
   :global(.user-dot) {
     position: relative;
     width: 18px;
     height: 18px;
-    background: #3f043a;
+    background: #2563eb;                   /* accent-600 */
     border: 3px solid white;
     border-radius: 50%;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.5);
   }
   :global(.user-dot::after) {
     content: '';
     position: absolute;
-    inset: -7px;
+    inset: -8px;
     border-radius: 50%;
-    background: rgba(63, 4, 58, 0.25);
+    background: rgba(37, 99, 235, 0.25);
     animation: loc-pulse 2s ease-out infinite;
   }
   @keyframes loc-pulse {
-    0% {
-      transform: scale(0.5);
-      opacity: 1;
-    }
-    100% {
-      transform: scale(2);
-      opacity: 0;
-    }
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+
+  :global(.mapboxgl-ctrl-logo) {
+    display: none !important;
+  }
+  :global(.mapboxgl-ctrl-attrib) {
+    display: none !important;
+  }
+
+  #sheet-body {
+    max-height: 0px;
+    opacity: 0;
+    pointer-events: none;
   }
 </style>
 
-<!-- Modal logic runs inline, independent of Leaflet/mapa-app to prevent breakage -->
-<script is:inline>
-  (function() {
-    // Memory fallback para navegadores con localStorage bloqueado (Safari/Firefox ITP)
-    const memoryStore = {};
-    function safeGet(key) {
-      try { return localStorage.getItem(key); }
-      catch { return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null; }
-    }
-    function safeSet(key, value) {
-      try { localStorage.setItem(key, value); }
-      catch { memoryStore[key] = String(value); }
-    }
+<div id="map-token-error" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md px-4">
+  <div class="ios-card max-w-sm p-6 text-center shadow-xl border border-slate-200/60 dark:border-slate-800/60">
+    <span class="material-symbols-outlined text-[48px] text-rose-400 mb-3 block">map</span>
+    <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Mapa no disponible</h2>
+    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+      El token de Mapbox no está configurado. Seteá la variable de entorno
+      <code class="rounded bg-rose-100 dark:bg-rose-900/40 px-1.5 py-0.5 text-rose-600 dark:text-rose-300 text-xs font-mono">MAPBOX_TOKEN</code>
+      en tu archivo <code class="rounded bg-rose-100 dark:bg-rose-900/40 px-1.5 py-0.5 text-rose-600 dark:text-rose-300 text-xs font-mono">.dev.vars</code>
+      o en las variables de entorno del deploy.
+    </p>
+  </div>
+</div>
 
-    const langModal = document.getElementById('lang-modal');
-    const welcomeModal = document.getElementById('welcome-modal');
-    const langButtons = document.querySelectorAll('.lang-btn');
-    const btnWelcomeStart = document.getElementById('btn-welcome-start');
-
-    function showModal(modal) {
-      if (!modal) return;
-      modal.classList.remove('hidden');
-      // Force reflow for transition
-      void modal.offsetHeight;
-      modal.classList.remove('opacity-0');
-      // Oculta header y BottomNav mientras el modal está abierto
-      document.body.classList.add('modal-open');
-    }
-
-    function hideModal(modal, cb) {
-      if (!modal) return;
-      modal.classList.add('opacity-0');
-      setTimeout(function() {
-        modal.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-        if (cb) cb();
-      }, 300);
-    }
-
-    function showWelcomeModal() {
-      showModal(welcomeModal);
-    }
-
-    // Entry logic — decide which modal to show
-    const hasLang = safeGet('edificarte_lang');
-    const hasWelcome = safeGet('edificarte_welcome_shown');
-
-    if (!hasLang) {
-      // No language chosen yet — show lang picker
-      showModal(langModal);
-    } else if (!hasWelcome) {
-      // Language chosen but never welcomed — show welcome
-      showWelcomeModal();
-    }
-    // else: both done, go straight to map
-
-    // Language button clicks
-    langButtons.forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        const selectedLang = btn.getAttribute('data-lang');
-        if (!selectedLang) return;
-        safeSet('edificarte_lang', selectedLang);
-        hideModal(langModal, function() {
-          if (!safeGet('edificarte_welcome_shown')) {
-            showWelcomeModal();
-          }
-          // Signal to mapa-app that modals are done
-          window.dispatchEvent(new CustomEvent('edificarte-modals-done'));
-        });
-      });
+<script is:inline define:vars={{ mapboxToken }}>
+  if (mapboxToken) {
+    window.__TURIMAP_TOKEN__ = mapboxToken;
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      const banner = document.getElementById('map-token-error');
+      if (banner) banner.style.display = 'flex';
     });
-
-    // Welcome start button
-    if (btnWelcomeStart) {
-      btnWelcomeStart.addEventListener('click', function() {
-        safeSet('edificarte_welcome_shown', 'true');
-        hideModal(welcomeModal, function() {
-          // Setear flag ANTES de dispatchar (para fallback anti-race-condition).
-          // Usar safeSet (con memoryStore fallback) + window global como respaldo,
-          // porque en Safari ITP localStorage puede estar bloqueado.
-          safeSet('edificarte_request_gps_pending', 'true');
-          window.__edificarteGpsPending = true;
-          // Signal to mapa-app to start geolocation
-          window.dispatchEvent(new CustomEvent('edificarte-modals-done'));
-          window.dispatchEvent(new CustomEvent('edificarte-request-gps'));
-        });
-      });
-    }
-  })();
+  }
 </script>
 
 <script>
-  import '../scripts/mapa-app.ts';
-</script>
+  let mapLoadRequest = 0;
+  let mapModulePromise: Promise<typeof import('../scripts/mapa-app.ts')> | null = null;
 
-<script is:inline>
-  // Toast de bienvenida post-registro (cuando venís de /yo con ?welcome=1).
-  // Lee el query param, muestra un toast verde y limpia la URL sin recargar.
-  (function () {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('welcome') === '1') {
-      const toast = document.createElement('div');
-      toast.setAttribute('role', 'status');
-      toast.className =
-        'fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-xl border border-emerald-200/50 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-200';
-      toast.innerHTML =
-        '<span class="material-symbols-outlined text-[18px]">check_circle</span>' +
-        '<span>¡Bienvenido a EdificARTE! Tu cuenta está activa.</span>';
-      document.body.appendChild(toast);
-      // Limpia la URL para que un refresh no vuelva a mostrar el toast
-      const url = new URL(window.location.href);
-      url.searchParams.delete('welcome');
-      window.history.replaceState({}, '', url.toString());
-      setTimeout(function () {
-        toast.style.transition = 'opacity 300ms';
-        toast.style.opacity = '0';
-        setTimeout(function () { toast.remove(); }, 350);
-      }, 4500);
-    }
-  })();
+  function scheduleMapLoad() {
+    const request = ++mapLoadRequest;
+    if (!document.getElementById('map')) return;
+
+    // Let the navigation shell and controls paint before parsing Mapbox GL.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(async () => {
+        if (request !== mapLoadRequest || !document.getElementById('map')) return;
+        mapModulePromise ??= import('../scripts/mapa-app.ts');
+        const mapModule = await mapModulePromise;
+        if (request !== mapLoadRequest || !document.getElementById('map')) return;
+        mapModule.mountMap();
+      });
+    });
+  }
+
+  document.addEventListener('astro:page-load', scheduleMapLoad);
+  document.addEventListener('astro:before-swap', () => {
+    mapLoadRequest++;
+  });
 </script>
-<!-- Lógica del mapa extraída a src/scripts/mapa-app.ts para mantener tipos
-     estrictos y poder testearla en aislamiento cuando se introduzca Vitest. -->

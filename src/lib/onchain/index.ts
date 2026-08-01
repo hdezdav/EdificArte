@@ -25,15 +25,15 @@ import {
  * pueden pasar `locals.runtime.env` directamente sin cast.
  *
  * POLYGON_RPC_URL es opcional (puede faltar si ALCHEMY_KEY está
- * disponible — `getRpcUrl()` resuelve la URL en runtime).
+ * disponible - `getRpcUrl()` resuelve la URL en runtime).
  */
 export interface OnchainEnv {
   USDC_CONTRACT_ADDRESS: string;
   POLYGON_RPC_URL?: string;
   PUBLIC_BADGE_CONTRACT_ADDRESS?: string;
   PUBLIC_REVIEW_CONTRACT_ADDRESS?: string;
-  EDIFICARTE_PAYMENT_ADDRESS?: string;
-  EDIFICARTE_DONATION_ADDRESS?: string;
+  TURIMAP_PAYMENT_ADDRESS?: string;
+  TURIMAP_DONATION_ADDRESS?: string;
   ADMIN_PRIVATE_KEY?: string;
   ALCHEMY_KEY?: string;
 }

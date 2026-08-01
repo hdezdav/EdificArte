@@ -1,0 +1,438 @@
+{
+  "nav": {
+    "map": "Map",
+    "explore": "Explore",
+    "profile": "Profile",
+    "shop": "Shop"
+  },
+  "layout": {
+    "wordmark": "EdificARTE",
+    "description": "EdificARTE - Discover landmarks, museums, and hidden gems anywhere in the world."
+  },
+  "mapa": {
+    "search_placeholder": "Search places, cities, landmarks...",
+    "search_aria": "Search places",
+    "filters": {
+      "all": "All",
+      "museums": "🏛️ Museums",
+      "temples": "⛪ Temples",
+      "parks": "🌳 Parks",
+      "historic": "🏰 Historic",
+      "viewpoints": "🔭 Viewpoints"
+    },
+    "welcome": {
+      "title": "Welcome to EdificARTE",
+      "body": "Discover landmarks, museums, and hidden gems anywhere in the world. Enable your GPS to find places near you.",
+      "cta": "Enable GPS & Start Exploring"
+    },
+    "sheet": {
+      "title": "Nearby Places",
+      "inactive": "Inactive",
+      "loading": "Finding places near you...",
+      "empty_cta": "Enable location to discover nearby places",
+      "zoom_hint": "Zoom in to discover nearby places"
+    },
+    "detail": {
+      "navigate": "Navigate",
+      "share": "Share",
+      "cancel": "Cancel",
+      "calculating": "Calculating..."
+    }
+  },
+  "ai": {
+    "greeting": "Hey! I'm your <strong class=\"text-accent-600 dark:text-accent-400\">EdificARTE</strong> guide. 🏛️<br/><br/>I can recommend places to visit, tell you about landmarks, or help plan a route. What would you like to explore?",
+    "online": "Online",
+    "placeholder": "Ask about any place..."
+  },
+  "donation": {
+    "title": "Support EdificARTE",
+    "subtitle": "Your donation helps keep the project alive. 100% goes to development.",
+    "custom": "Custom",
+    "custom_label": "Custom amount",
+    "custom_placeholder": "Amount in USDC",
+    "custom_help": "Minimum $0.01 USDC.",
+    "cta": "Donate with USDC",
+    "view_polygonscan": "View on PolygonScan",
+    "footer": "Pay directly from your wallet. No intermediaries. Network: Polygon · USDC."
+  },
+  "proximity": {
+    "toast_title": "You are near",
+    "toast_cta": "View",
+    "toast_dismiss": "No",
+    "toast_body": "Want to learn more?",
+    "notification_body": "Tap to see the pin on the map."
+  },
+  "locales": {
+    "es": "Español",
+    "en": "English"
+  },
+  "explore": {
+    "search_placeholder": "Search experiences, heritage, culture..."
+  },
+  "explorar": {
+    "hero": {
+      "title": "Find your next<br>experience",
+      "subtitle": "Culture, heritage, and unique places near you."
+    },
+    "categories": {
+      "todos": "All",
+      "turismo": "Tourism",
+      "sitio_remoto": "Tourist Sites",
+      "patrimonio": "Heritage",
+      "cultura": "Culture",
+      "museo": "Museums",
+      "gastronomia": "Food & Drink",
+      "eventos": "Events / Exhibitions",
+      "educacion": "Education & Science"
+    },
+    "location": {
+      "detecting": "Getting your location…",
+      "searching": "Getting your location…",
+      "unsupported": "Location is unavailable. Country-targeted content is hidden.",
+      "unresolved": "Country could not be resolved. Mexico content remains hidden.",
+      "available_city": "Nearby services and places in {place}{source}",
+      "available_mx": "Showing nearby places in Mexico{source}",
+      "available_country": "Showing places for {code}{source}",
+      "source_via": " (via {source})",
+      "unavailable_place": "No nearby services available in {place}",
+      "unavailable_region": "No nearby services available in your region ({code})",
+      "error": "Location service unavailable. Country-targeted content is hidden.",
+      "denied": "Location permission was denied or unavailable. Mexico content remains hidden."
+    },
+    "search": {
+      "no_suggestions": "No suggestions available",
+      "suggested_tours": "Recommended Tours",
+      "suggested_places": "Points of Interest / Heritage"
+    },
+    "empty": {
+      "title": "No experiences in this category yet",
+      "body": "Try another category or go back to \"All\"."
+    },
+    "cards": {
+      "recommended": "Recommended",
+      "view_article": "View article",
+      "distance_away": "📍 {dist} away"
+    },
+    "a11y": {
+      "close": "Close",
+      "close_guide": "Close guide",
+      "filter_category": "Filter by category",
+      "scroll_left": "Slide to the left",
+      "scroll_left_title": "Slide left",
+      "scroll_right": "Slide to the right",
+      "scroll_right_title": "Slide right",
+      "favorite_add": "Add to favorites",
+      "vr_view": "View in VR",
+      "vr_view_aria": "View experience in Virtual Reality"
+    },
+    "guide": {
+      "loading": "Loading...",
+      "badge_default": "Museum",
+      "subtitle": "Audio Guide & Information",
+      "lang_native": "🇲🇽 Native",
+      "lsm_title": "Mexican Sign Language (LSM) Interpreter",
+      "vr_title": "Immersive VR Experience (YouTube 360°)",
+      "lsm_video_title": "LSM guide video",
+      "reviews_title": "Visitor reviews",
+      "your_rating": "Your rating",
+      "review_placeholder": "Share your experience (optional, max 500 characters)",
+      "review_submit": "Post (+5 pts)",
+      "review_verifying": "Verifying your location…",
+      "review_geo_unsupported": "Your browser doesn't support geolocation. You can't leave a review.",
+      "review_too_far": "You need to be within 500 m of the place to leave a review. You are {dist} m away.",
+      "review_geo_error": "We couldn't get your location. Move closer to the place to leave a review.",
+      "view_route": "View route on the map"
+    },
+    "tour": {
+      "badge": "Guided tour",
+      "modal_title": "Book a tour",
+      "title_fallback": "Tour",
+      "special_tour": "Special Tour",
+      "summary": "<strong>Includes:</strong> guide and interpreter for companions.<br/><strong>Price:</strong> $480 MXN per person.<br/><strong>Guide:</strong> Mtro. Henryk Karol Kocyba (University of Warsaw).",
+      "form": {
+        "email": "Email",
+        "phone": "Phone",
+        "date": "Preferred date",
+        "notes": "Notes (optional)",
+        "name_placeholder": "Your name",
+        "notes_placeholder": "Any special requirements..."
+      },
+      "total": "Estimated total",
+      "pay_usdc": "Pay with USDC on Polygon",
+      "pay_waiting_signature": "Waiting for signature…",
+      "pay_confirming": "Confirming payment…",
+      "submit_request": "Send request only (payment pending)",
+      "submitting": "Sending...",
+      "success_title": "Request sent!",
+      "success_body": "We'll contact you by email and WhatsApp to confirm availability and coordinate payment.",
+      "success_close": "Got it",
+      "alert_fill_payment": "Please fill in all required fields for payment and registration.",
+      "alert_fill_required": "Please fill in all required fields.",
+      "alert_web3_required": "MetaMask or a Web3 browser is required to pay with USDC.",
+      "alert_wallet_connect_failed": "Could not connect the wallet.",
+      "alert_payment_error": "There was an error processing the USDC payment.",
+      "alert_submit_error": "There was an error sending the request. Please try again or contact us on WhatsApp.",
+      "error_server": "Server error",
+      "error_server_payment": "Server error while registering the payment"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "edit_profile": "Edit Profile",
+    "exit_guest": "Exit Guest",
+    "logout": "Log Out",
+    "guest_account": "Temporary Guest Account",
+    "progress_title": "Your progress",
+    "level_val": "Level {level}",
+    "exp_val": "{exp} / 500 exp",
+    "activity_title": "My Activity",
+    "badges_title": "My Collectibles (Badges)",
+    "badges_unlocked": "{count} Earned",
+    "badge_completed": "Completed! Minted as NFT.",
+    "badge_already_owned": "Completed! You already have this badge in your wallet.",
+    "reservations_title": "My Bookings",
+    "reservations_count_one": "1 Booking",
+    "reservations_count_many": "{count} Bookings",
+    "reservations_empty_title": "You don't have any bookings yet",
+    "reservations_empty_desc": "Explore the Tourism section to book tours.",
+    "reservations_people_one": "1 person",
+    "reservations_people_many": "{count} people",
+    "reservations_status_confirmed": "Confirmed",
+    "reservations_status_pending": "Pending",
+    "favorites_title": "My Favorites",
+    "favorites_count_one": "1 Favorite",
+    "favorites_count_many": "{count} Favorites",
+    "favorites_empty_title": "No saved favorites",
+    "favorites_empty_desc": "Tap the ♥ on the map or feed to save them here.",
+    "about_title": "Biography & Account",
+    "about": {
+      "bio": "Biography",
+      "account_details": "Account Details",
+      "email": "Email",
+      "member_since": "Member since"
+    },
+    "settings_title": "Settings & Account",
+    "wallet": {
+      "linked": "Linked Wallet",
+      "link": "Link Wallet",
+      "disconnected": "Disconnected",
+      "drawer_desc": "Link your wallet so your visits and achievements are automatically saved as on-chain NFT collectibles.",
+      "connect": "Connect Wallet",
+      "view_polygonscan": "View on PolygonScan"
+    },
+    "guest": {
+      "save_progress": "Save progress permanently",
+      "drawer_desc": "Sign up to save your badges, visits, and score permanently in the cloud.",
+      "register_cta": "Register now"
+    },
+    "modal": {
+      "title": "Edit Profile",
+      "name": "Name",
+      "bio": "Biography",
+      "avatar_title": "Choose your Avatar (Emoji)",
+      "save": "Save Changes"
+    },
+    "alerts": {
+      "connect_wallet_badge": "To save your badge to your wallet and mint it as an on-chain NFT, you need to connect your wallet! Would you like to connect it now?",
+      "badge_in_wallet": "This badge is already safely in your wallet on the blockchain!",
+      "badge_locked": "This badge is locked. Listen to the audio guide of the corresponding landmark on the map to unlock it and mint your NFT.",
+      "wallet_cancel": "You cancelled the wallet signing.",
+      "wallet_cancel_simple": "Signing cancelled.",
+      "wallet_link_error": "Error linking wallet: {error}",
+      "connecting": "Connecting…",
+      "request_nonce": "Requesting nonce…",
+      "await_signature": "Awaiting signature…",
+      "verifying": "Verifying…"
+    },
+    "tabs": {
+      "about": "About",
+      "badges": "Badges",
+      "reservations": "Reservations",
+      "favorites": "Favorites"
+    },
+    "stats": {
+      "likes": "Likes",
+      "visits": "Visits",
+      "points": "Points",
+      "badges": "Badges",
+      "level": "Level"
+    },
+    "settings": {
+      "language": "Language"
+    }
+  },
+  "tienda": {
+    "title": "Shop",
+    "search": {
+      "placeholder": "Search crafts...",
+      "clear": "Clear search",
+      "empty": "No products match your search."
+    },
+    "subtitle": "Authentic Mexican crafts, from the artisan to your door.",
+    "sections": {
+      "featured": "Pieces with a story",
+      "direct": "Direct purchase"
+    },
+    "location": {
+      "detecting": "Getting your location to filter local products…",
+      "searching": "Getting your location to find nearby crafts…",
+      "unsupported": "Location filter unavailable. Showing the full catalog.",
+      "available": "Crafts available for {place}",
+      "unavailable_place": "No services or crafts available in {place}",
+      "unavailable_region": "No crafts available for your region ({code})",
+      "unresolved": "Location not resolved. Showing the full catalog.",
+      "error": "Location service unavailable. Showing the full catalog.",
+      "denied": "Location permission denied. Showing the full catalog."
+    },
+    "coming_soon": {
+      "badge": "Coming Soon",
+      "show_all": "View all",
+      "fallback_place": "your region",
+      "textiles_title": "Traditional textiles ({place})",
+      "textiles_desc": "Indigenous weavings and embroidery in local curation.",
+      "ceramics_title": "Ceramics and pottery ({place})",
+      "ceramics_desc": "Handcrafted clay and ceramic pieces made by hand.",
+      "carving_title": "Artisan carving ({place})",
+      "carving_desc": "Sculptures and one-of-a-kind objects by local artisans."
+    },
+    "a11y": {
+      "close": "Close",
+      "decrement": "Decrease",
+      "increment": "Increase",
+      "open_cart": "Open cart",
+      "close_cart": "Close cart",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "catalog": {
+      "empty": "No products to show.",
+      "added": "Added!",
+      "qty": "Quantity",
+      "category_artesania": "Craft",
+      "category_gastronomia": "Food",
+      "category_textil": "Textile",
+      "filter_all": "All",
+      "search_placeholder": "Search pieces, materials, regions…",
+      "search_aria": "Search products",
+      "results": "{count} pieces",
+      "results_one": "1 piece",
+      "empty_filtered": "No pieces match those filters.",
+      "reset": "Clear filters",
+      "details": "View details",
+      "aria_label": "Crafts catalog"
+    },
+    "product": {
+      "from": "From",
+      "usdc_approx": "approx. USDC",
+      "add_to_cart": "Add to cart",
+      "view_cart": "View cart"
+    },
+    "cart": {
+      "title": "Your cart",
+      "empty": "Your cart is empty.",
+      "empty_hint": "Browse the shop and add your favorite pieces.",
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "shipping_free": "Free",
+      "total": "Total",
+      "checkout": "Checkout",
+      "remove": "Remove"
+    },
+    "checkout": {
+      "title": "Checkout",
+      "contact": "Contact details",
+      "name": "Full name",
+      "email": "Email",
+      "phone": "Phone (with country code)",
+      "payment": "Payment method",
+      "pay_usdc": "Pay with USDC (Polygon)",
+      "pay_usdc_hint": "Direct payment from your wallet. No intermediaries.",
+      "pay_cash": "Cash on delivery",
+      "pay_cash_hint": "Pay in MXN when you receive your order.",
+      "submit_usdc": "Confirm and pay",
+      "submit_cash": "Place order",
+      "success_title": "Order confirmed!",
+      "success_subtitle_usdc": "Your payment was confirmed on Polygon.",
+      "success_subtitle_cash": "We'll reach out on WhatsApp to coordinate delivery.",
+      "view_polygonscan": "View on PolygonScan",
+      "whatsapp_cta": "Chat on WhatsApp",
+      "new_order": "New order",
+      "errors": {
+        "name_required": "We need your name.",
+        "email_required": "We need a valid email.",
+        "phone_required": "We need your phone number to coordinate delivery.",
+        "wallet_rejected": "Connection rejected. Try again.",
+        "payment_failed": "We couldn't process the payment. Try again."
+      }
+    }
+  },
+  "reserva": {
+    "title": "Experiences",
+    "subtitle": "Book guided tours by local historians.",
+    "card": {
+      "from": "From",
+      "per_person": "per person",
+      "duration": "Duration",
+      "meeting": "Meeting point",
+      "rating": "{rating} · {count} reviews",
+      "reserve": "Reserve"
+    },
+    "modal": {
+      "title": "Reserve your experience",
+      "summary": "Summary",
+      "fields": {
+        "name": "Full name",
+        "email": "Email",
+        "phone": "Phone (optional)",
+        "date": "Date",
+        "people": "People",
+        "notes": "Notes for your guide (optional)"
+      },
+      "payment": "Payment",
+      "pay_usdc": "Pay with USDC (Polygon)",
+      "pay_usdc_hint": "Pay from your wallet. Confirmation is immediate.",
+      "pay_arrival": "Pay on arrival",
+      "pay_arrival_hint": "Book now and pay at the meeting point.",
+      "total": "Total",
+      "total_usdc_approx": "≈ {usdc} USDC",
+      "submit": "Confirm reservation",
+      "submitting": "Processing…",
+      "people_hint": "Between 1 and 20 people",
+      "date_hint": "Earliest tomorrow",
+      "success_title": "Reservation confirmed!",
+      "success_subtitle_usdc": "Details sent to your email.",
+      "success_subtitle_arrival": "We'll reach out to confirm the meeting point.",
+      "view_reservations": "View my reservations",
+      "close": "Close",
+      "errors": {
+        "name_required": "We need your name.",
+        "email_required": "Invalid email.",
+        "people_invalid": "Choose between 1 and 20 people.",
+        "date_invalid": "Pick a valid date (earliest tomorrow).",
+        "server": "We couldn't send the reservation. Try again."
+      }
+    }
+  },
+  "auth": {
+    "subtitle": "Collect badges and urban history",
+    "tabs": {
+      "login": "Log In",
+      "register": "Sign Up"
+    },
+    "fields": {
+      "email": "Email address",
+      "password": "Password",
+      "name": "Full name"
+    },
+    "buttons": {
+      "login": "Log In",
+      "register": "Sign Up",
+      "wallet_connect": "Connect Wallet",
+      "continue_guest": "Continue as Guest"
+    },
+    "have_account": "Already have an account?",
+    "switch_to_login_btn": "Log in",
+    "separator": "or also",
+    "wallet_help": "Log in by signing a message. No gas, no transactions."
+  }
+}

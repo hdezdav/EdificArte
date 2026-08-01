@@ -1,5 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import LocaleSwitcher from '../components/LocaleSwitcher.astro';
+import { DEFAULT_LOCALE, type Locale } from '../lib/i18n';
 import {
   getUserBySession,
   createSession,
@@ -13,26 +15,43 @@ const env = Astro.locals.runtime.env;
 let user: (User & { isGuest?: boolean }) | null = await getUserBySession(Astro.cookies, env);
 let errorMsg = '';
 let successMsg = '';
-let activeTab = 'login'; // login | register
+
+const authParam = Astro.url.searchParams.get('auth');
+const showAuthForm = !!authParam;
+let activeTab = authParam === 'register' ? 'register' : 'login';
 
 // Verificar si tiene cookie de invitado activa
-const isGuest = Astro.cookies.get('edificarte_guest')?.value === 'true';
+let isGuest = Astro.cookies.get('turimap_guest')?.value === 'true';
+
+// Si no está registrado y no pidió explícitamente ver el login, lo pasamos a invitado automáticamente
+if (!user && !showAuthForm) {
+  if (!isGuest) {
+    Astro.cookies.set('turimap_guest', 'true', {
+      path: '/',
+      httpOnly: false,
+      secure: import.meta.env.PROD,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365 // 1 año
+    });
+    isGuest = true;
+  }
+}
 
 // Si es guest, leer su nombre desde una cookie sibling que setea el modal
 // de bienvenida (src/pages/index.astro). Esto permite pre-rellenar el
 // formulario de registro para que conserve su identidad al crear la cuenta.
 let guestPrefillName = '';
 if (isGuest) {
-  guestPrefillName = Astro.cookies.get('edificarte_guest_name')?.value || '';
+  guestPrefillName = Astro.cookies.get('turimap_guest_name')?.value || '';
 }
 
 if (!user && isGuest) {
   user = {
     id: 'guest',
-    email: 'invitado@edificarte.app',
-    name: 'Edificador Invitado',
+    email: 'invitado@turimap.app',
+    name: guestPrefillName || 'Edificador Invitado',
     avatar_url: '👷',
-    bio: 'Explorando EdificARTE como invitado. ¡Creá una cuenta para guardar tu progreso on-chain de forma permanente!',
+    bio: 'Explorando EdificARTE como edificador invitado. ¡Creá una cuenta para guardar tu progreso de forma permanente!',
     points: 0,
     likes: 0,
     visits: 0,
@@ -67,10 +86,10 @@ if (Astro.request.method === 'POST') {
         } else {
           const userId = crypto.randomUUID();
           const hashedPassword = await hashPassword(password);
-          
+
           // Avatar por defecto de edificador (Emoji)
           const avatarUrl = '👷';
-          const bio = '¡Hola! Soy un nuevo edificador explorando el patrimonio cultural con EdificARTE.';
+          const bio = '¡Hola! Soy un nuevo usuario explorando la ciudad con TuriMap.';
 
           await env.DB.prepare(
             'INSERT INTO users (id, email, password, name, avatar_url, bio, points, likes, visits) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0)'
@@ -79,8 +98,8 @@ if (Astro.request.method === 'POST') {
             .run();
 
           // Eliminar cookie de invitado si existía
-          Astro.cookies.delete('edificarte_guest', { path: '/' });
-          Astro.cookies.delete('edificarte_guest_name', { path: '/' });
+          Astro.cookies.delete('turimap_guest', { path: '/' });
+          Astro.cookies.delete('turimap_guest_name', { path: '/' });
 
           // Crear sesión
           await createSession(Astro.cookies, env, userId);
@@ -107,18 +126,18 @@ if (Astro.request.method === 'POST') {
           errorMsg = 'Correo o contraseña incorrectos.';
         } else {
           // Eliminar cookie de invitado si existía
-          Astro.cookies.delete('edificarte_guest', { path: '/' });
+          Astro.cookies.delete('turimap_guest', { path: '/' });
 
-          await createSession(Astro.cookies, env, dbUser.id);
+          await createSession(Astro.cookies, env, String(dbUser.id));
           return Astro.redirect('/yo');
         }
       }
     } else if (action === 'guest') {
       // Iniciar sesión como invitado temporal
-      // NOTA: NO httpOnly — el cliente (modal de bienvenida, botón "registrarse")
+      // NOTA: NO httpOnly - el cliente (modal de bienvenida, botón "registrarse")
       // necesita poder escribir/leer esta cookie. La cookie real de sesión
-      // (edificarte_session) SÍ es httpOnly, así que la seguridad sigue cubierta.
-      Astro.cookies.set('edificarte_guest', 'true', {
+      // (turimap_session) SÍ es httpOnly, así que la seguridad sigue cubierta.
+      Astro.cookies.set('turimap_guest', 'true', {
         path: '/',
         httpOnly: false,
         secure: import.meta.env.PROD,
@@ -127,7 +146,7 @@ if (Astro.request.method === 'POST') {
       });
       return Astro.redirect('/yo');
     } else if (action === 'edit_profile') {
-      const isGuestCookie = Astro.cookies.get('edificarte_guest')?.value === 'true';
+      const isGuestCookie = Astro.cookies.get('turimap_guest')?.value === 'true';
       if (!user || isGuestCookie) return Astro.redirect('/yo');
 
       const name = formData.get('name')?.toString().trim();
@@ -149,8 +168,9 @@ if (Astro.request.method === 'POST') {
       }
     } else if (action === 'logout') {
       await deleteSession(Astro.cookies, env);
-      Astro.cookies.delete('edificarte_guest', { path: '/' });
-      return Astro.redirect('/yo');
+      Astro.cookies.delete('turimap_guest', { path: '/' });
+      Astro.cookies.delete('turimap_guest_name', { path: '/' });
+      return Astro.redirect('/yo?auth=login');
     }
   } catch (err: unknown) {
     errorMsg = `Ocurrió un error: ${err instanceof Error ? err.message : String(err)}`;
@@ -210,29 +230,29 @@ const isEmoji = (str: string) => {
   if (!str) return false;
   return !str.includes('/') && !str.includes('.') && !str.startsWith('http');
 };
+
+const localeCookie = Astro.cookies.get('turimap_locale')?.value;
+const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ? localeCookie : DEFAULT_LOCALE;
 ---
 
-<Layout title="EdificARTE - Yo">
-  {user ? (
-    /* =========================================================================
-       VISTA DEL PANEL DE USUARIO AUTENTICADO
-       ========================================================================= */
+<Layout title="TuriMap - Yo">
+  {user && (!isGuest || !showAuthForm) ? (
     <div
       id="profile-container"
       data-has-wallet={walletAddress ? "true" : "false"}
       data-is-guest={isGuest ? "true" : "false"}
       data-wallet-address={walletAddress || ""}
-      class="mx-auto grid max-w-screen-md grid-cols-1 gap-8 md:grid-cols-3"
+      class="w-full text-slate-900 dark:text-slate-100 pb-12"
     >
-      <!-- Mensajes flotantes de alerta/éxito -->
+      <!-- Floating Alerts -->
       {successMsg && (
-        <div class="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-xl border border-green-200/50 bg-green-50 px-4 py-3 text-sm text-green-800 shadow-lg dark:border-green-850/50 dark:bg-green-950/40 dark:text-green-200">
+        <div class="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-xl border border-emerald-200/50 bg-emerald-50 dark:bg-emerald-950/60 dark:border-emerald-800/60 dark:text-emerald-300 px-4 py-3 text-sm text-emerald-800 shadow-lg transition-all duration-300">
           <span class="material-symbols-outlined text-[18px]">check_circle</span>
           {successMsg}
         </div>
       )}
       {errorMsg && (
-        <div class="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-xl border border-rose-200/50 bg-rose-50 px-4 py-3 text-sm text-rose-800 shadow-lg dark:border-rose-850/50 dark:bg-rose-950/40 dark:text-rose-200">
+        <div class="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-xl border border-rose-200/50 bg-rose-50 dark:bg-rose-950/60 dark:border-rose-800/60 dark:text-rose-300 px-4 py-3 text-sm text-rose-800 shadow-lg transition-all duration-300">
           <span class="material-symbols-outlined text-[18px]">error</span>
           {errorMsg}
         </div>
@@ -242,220 +262,175 @@ const isEmoji = (str: string) => {
         <div id="is-guest-flag" class="hidden"></div>
       )}
 
-      <!-- Columna Izquierda: Tarjeta de Perfil -->
-      <div class="flex flex-col justify-start md:col-span-1">
-        <div class="relative mx-auto w-full max-w-sm rounded-[2rem] border border-slate-200/60 bg-white shadow-lg dark:border-slate-800/60 dark:bg-slate-900">
-          <!-- Banner Superior -->
-          <div class="relative h-40 overflow-hidden rounded-t-[2rem] bg-gradient-to-br from-brand-500 to-purple-600">
-            <div class="absolute inset-0 bg-black/10"></div>
-          </div>
+      <!-- 1. Top Bar -->
+      <div
+        id="profile-top-bar"
+        class="sticky top-0 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md z-40 h-16 flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 mb-6 transition-all duration-300"
+        style="top: calc(env(safe-area-inset-top, 0px));"
+      >
+        <h1 id="profile-top-title" class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white transition-all duration-300" data-i18n="profile.title">Perfil</h1>
+        <div class="relative">
+          <button
+            id="settings-btn"
+            class="rounded-full p-2 text-[#6B7280] hover:text-[#111111] transition-colors"
+            data-i18n-aria-label="profile.settings_title"
+            aria-label="Configuración"
+          >
+            <span class="material-symbols-outlined text-[24px]">more_vert</span>
+          </button>
 
-          <!-- Botón de Opciones -->
-          <div class="absolute right-4 top-4 z-30">
+          <!-- Dropdown Menu -->
+          <div
+            id="settings-dropdown"
+            class="absolute right-0 z-50 mt-2 hidden w-48 rounded-[18px] border border-[#ECECEC] bg-white p-2 text-slate-800 shadow-lg"
+          >
             <button
-              id="settings-btn"
-              class="rounded-full border border-white/30 bg-white/20 p-2 text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/30"
-              aria-label="Configuración"
+              id="edit-profile-btn"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-[#111111] transition-colors hover:bg-slate-50"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="h-4 w-4"
-              >
-                <circle cx="12" cy="12" r="1"></circle>
-                <circle cx="12" cy="5" r="1"></circle>
-                <circle cx="12" cy="19" r="1"></circle>
-              </svg>
+              <span class="material-symbols-outlined text-[18px]">edit</span>
+              <span data-i18n="profile.edit_profile">Editar Perfil</span>
             </button>
-
-            <!-- Menú Desplegable -->
-            <div
-              id="settings-dropdown"
-              class="absolute right-0 z-50 mt-2 hidden w-48 rounded-2xl border border-slate-200/50 bg-white/95 p-2 text-slate-800 shadow-xl backdrop-blur-md transition-all duration-200 dark:border-slate-800/50 dark:bg-slate-900/95 dark:text-white"
-            >
+            <hr class="my-1 border-[#ECECEC]" />
+            <form method="POST" action="/yo" class="w-full">
+              <input type="hidden" name="action" value="logout" />
               <button
-                id="edit-profile-btn"
-                class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                type="submit"
+                class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
               >
-                <span class="material-symbols-outlined text-[18px] text-brand-500">edit</span>
-                <span>Editar Perfil</span>
+                <span class="material-symbols-outlined text-[18px]">logout</span>
+                <span data-i18n={isGuest ? 'profile.exit_guest' : 'profile.logout'}>{isGuest ? 'Salir de Invitado' : 'Cerrar Sesión'}</span>
               </button>
-              <hr class="my-1 border-slate-200/60 dark:border-slate-800/60" />
-              <form method="POST" action="/yo" class="w-full">
-                <input type="hidden" name="action" value="logout" />
-                <button
-                  type="submit"
-                  class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/20"
-                >
-                  <span class="material-symbols-outlined text-[18px]">logout</span>
-                  <span>{isGuest ? 'Salir de Invitado' : 'Cerrar Sesión'}</span>
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <!-- Contenido del Perfil -->
-          <div class="-mt-12 px-6 pb-6">
-            <!-- Avatar -->
-            <div class="relative mb-4 h-24 w-24" id="avatar-container-outer">
-              {user.avatar_url && isEmoji(user.avatar_url) ? (
-                <div class="flex h-full w-full items-center justify-center rounded-full border-4 border-white bg-brand-50 text-4xl shadow-lg dark:border-slate-900 dark:bg-slate-850" id="profile-avatar-emoji">
-                  {user.avatar_url}
-                </div>
-              ) : (
-                <div class="h-full w-full overflow-hidden rounded-full border-4 border-white bg-white shadow-lg dark:border-slate-900 dark:bg-slate-900">
-                  <img
-                    src={user.avatar_url ?? ''}
-                    alt={user.name}
-                    class="h-full w-full object-cover"
-                    id="profile-avatar-img"
-                  />
-                </div>
-              )}
-            </div>
-
-            <!-- Experiencia (Puntos / Nivel) -->
-            <div class="mb-4">
-              <div class="mb-1 flex items-center justify-between text-xs">
-                <span id="level-label" class="font-bold text-brand-500 uppercase tracking-wider">Nivel {Math.floor(user.points / 500) + 1}</span>
-                <span id="exp-label" class="text-slate-400">{user.points % 500} / 500 exp</span>
-              </div>
-              <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div
-                  id="exp-bar"
-                  data-percent={`${((user.points % 500) / 500) * 100}%`}
-                  class="h-full w-0 bg-gradient-to-r from-brand-500 to-purple-600 transition-all duration-[1300ms] ease-out"
-                >
-                </div>
-              </div>
-            </div>
-
-            <!-- Nombre e Info -->
-            <h2 class="mb-1 text-2xl font-bold text-slate-800 dark:text-white" id="profile-user-name">
-              {user.name}
-            </h2>
-            <p class="mb-4 text-xs font-medium text-slate-400 dark:text-slate-500">
-              {isGuest ? 'Cuenta Temporal de Invitado' : `Edificador desde ${new Date(user.created_at).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`}
-            </p>
-            <p class="mb-6 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-              {user.bio}
-            </p>
-
-            <!-- Estadísticas D1 -->
-            <div class="grid grid-cols-3 gap-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-              <div class="text-center">
-                <div class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
-                  {user.likes}
-                </div>
-                <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Me gusta</div>
-              </div>
-              <div class="border-l border-r border-slate-100 text-center dark:border-slate-800">
-                <div id="stats-visits" class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
-                  {user.visits}
-                </div>
-                <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Visitas</div>
-              </div>
-              <div class="text-center">
-                <div id="stats-points" class="mb-1 text-xl font-bold text-slate-800 dark:text-white">
-                  {user.points}
-                </div>
-                <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Puntos</div>
-              </div>
-            </div>
+            </form>
           </div>
         </div>
-        {isGuest && (
-          <div class="mt-4 rounded-3xl border border-[#3f043a]/10 bg-gradient-to-br from-[#3f043a]/5 to-purple-500/5 p-5 text-center shadow-sm backdrop-blur-md">
-            <span class="material-symbols-outlined text-[30px] text-[#3f043a] mb-2 select-none">cloud_upload</span>
-            <h4 class="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">Guardar Progreso</h4>
-            <p class="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-              Registrate para guardar tu progreso, insignias y visitas de forma permanente en la nube.
-            </p>
-            <button
-              id="btn-guest-register-cta"
-              class="mt-3.5 w-full rounded-xl bg-[#3f043a] py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#3f043a]/90 transition-all active:scale-[0.97]"
-            >
-              Registrarse ahora
-            </button>
-          </div>
-        )}
-
-        {!isGuest && walletAddress && (
-          <div class="mt-4 rounded-3xl border border-emerald-500/10 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 p-5 text-center shadow-sm backdrop-blur-md">
-            <span class="material-symbols-outlined text-[30px] text-emerald-500 mb-2 select-none">account_balance_wallet</span>
-            <h4 class="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">Wallet Vinculada</h4>
-            <p class="mt-1 text-[11px] font-mono text-slate-500 dark:text-slate-400 break-all bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl">
-              {walletAddress}
-            </p>
-            <a
-              href={`https://polygonscan.com/address/${walletAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="mt-3.5 inline-flex w-full items-center justify-center gap-1 rounded-xl border border-slate-200/80 bg-white py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400 transition-all"
-            >
-              <span>Ver en PolygonScan</span>
-              <span class="material-symbols-outlined text-[14px]">open_in_new</span>
-            </a>
-          </div>
-        )}
-
-        {!isGuest && !walletAddress && (
-          <div class="mt-4 rounded-3xl border border-indigo-500/10 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 p-5 text-center shadow-sm backdrop-blur-md">
-            <span class="material-symbols-outlined text-[30px] text-indigo-500 mb-2 select-none">account_balance_wallet</span>
-            <h4 class="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">¿Vincular Billetera?</h4>
-            <p class="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-              Vinculá tu wallet para que tus visitas y logros se guarden automáticamente como coleccionables NFT.
-            </p>
-            <button
-              id="btn-profile-wallet-connect"
-              class="mt-3.5 w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-all active:scale-[0.97]"
-            >
-              Conectar Wallet
-            </button>
-          </div>
-        )}
       </div>
 
-      <!-- Columna Derecha: Insignias -->
-      <div class="space-y-8 md:col-span-2">
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">
-              Mis Coleccionables (Badges)
-            </h2>
-            <span id="badges-count-label" class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600 dark:bg-brand-950/40 dark:text-brand-400">
-              {badges.filter((b) => b.unlocked).length} Ganados
-            </span>
+      <!-- 3. Profile Card -->
+      <div
+        id="edit-profile-card-trigger"
+        class="flex items-center justify-between py-4 cursor-pointer hover:bg-slate-50/50 active:bg-slate-100/50 rounded-xl px-2 -mx-2 transition-all duration-150"
+      >
+        <div class="flex items-center gap-4">
+          <!-- Avatar -->
+          <div class="h-14 w-14 flex-shrink-0" id="avatar-container-outer">
+            {user.avatar_url && isEmoji(user.avatar_url) ? (
+              <div class="flex h-full w-full items-center justify-center rounded-full border border-[#ECECEC] bg-slate-50 text-3xl shadow-sm" id="profile-avatar-emoji">
+                {user.avatar_url}
+              </div>
+            ) : (
+              <div class="h-full w-full overflow-hidden rounded-full border border-[#ECECEC] bg-slate-50 shadow-sm">
+                <img
+                  src={user.avatar_url ?? ''}
+                  alt={user.name}
+                  class="h-full w-full object-cover"
+                  id="profile-avatar-img"
+                />
+              </div>
+            )}
           </div>
+          <div>
+            <h2 class="text-base font-semibold text-[#111111]" id="profile-user-name">
+              {user.name}
+            </h2>
+            {isGuest ? (
+              <p class="text-xs text-[#6B7280]" data-i18n="profile.guest_account">
+                Cuenta Temporal de Invitado
+              </p>
+            ) : (
+              <p class="text-xs text-[#6B7280]">
+                {user.email}
+              </p>
+            )}
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-[#6B7280] text-[20px]">chevron_right</span>
+      </div>
 
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <!-- 4. Highlight / Promotional Card: Tu Progreso -->
+      <div class="mt-6 border border-[#ECECEC] bg-white rounded-[18px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="text-sm font-bold text-[#111111]" data-i18n="profile.progress_title">Tu progreso</h3>
+            <p class="text-xs text-[#6B7280] mt-0.5" id="level-desc">
+              <span id="level-label" data-i18n="profile.level_val" data-i18n-vars={`{"level":${Math.floor(user.points / 500) + 1}}`}>Nivel {Math.floor(user.points / 500) + 1}</span> • <span id="exp-label" data-i18n="profile.exp_val" data-i18n-vars={`{"exp":${user.points % 500}}`}>{user.points % 500} / 500 exp</span>
+            </p>
+          </div>
+          <span class="material-symbols-outlined text-amber-500 text-[24px]">emoji_events</span>
+        </div>
+        <!-- Progress Bar -->
+        <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100 mt-4">
+          <div
+            id="exp-bar"
+            data-percent={`${((user.points % 500) / 500) * 100}%`}
+            class="h-full w-0 bg-[#111111] transition-all duration-[1300ms] ease-out"
+          >
+          </div>
+        </div>
+        <!-- Stats Row -->
+        <div class="grid grid-cols-4 mt-5 pt-4 border-t border-[#ECECEC] text-center">
+          <div>
+            <p class="text-base font-bold text-[#111111]">{user.likes}</p>
+            <p class="text-[9px] uppercase tracking-wider text-[#6B7280] mt-0.5" data-i18n="profile.stats.likes">Me gusta</p>
+          </div>
+          <div>
+            <p id="stats-visits" class="text-base font-bold text-[#111111]">{user.visits}</p>
+            <p class="text-[9px] uppercase tracking-wider text-[#6B7280] mt-0.5" data-i18n="profile.stats.visits">Visitas</p>
+          </div>
+          <div>
+            <p id="stats-points" class="text-base font-bold text-[#111111]">{user.points}</p>
+            <p class="text-[9px] uppercase tracking-wider text-[#6B7280] mt-0.5" data-i18n="profile.stats.points">Puntos</p>
+          </div>
+          <div>
+            <p class="text-base font-bold text-[#111111]">{badges.filter(b => b.unlocked).length}</p>
+            <p class="text-[9px] uppercase tracking-wider text-[#6B7280] mt-0.5" data-i18n="profile.stats.badges">Insignias</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Separador -->
+      <hr class="border-[#ECECEC] my-6" />
+
+      <!-- 6. Section Actividad -->
+      <div class="mt-6">
+        <h3 class="text-base font-bold text-[#111111] mb-2 px-2" data-i18n="profile.activity_title">Mi Actividad</h3>
+
+        <!-- Option Item: Insignias -->
+        <button
+          data-tab-trigger="badges"
+          class="w-full flex items-center justify-between py-4 px-4 border-b border-[#ECECEC] hover:bg-slate-50 transition-colors duration-150"
+        >
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-[#6B7280] text-[22px]" style="font-variation-settings: 'FILL' 0, 'wght' 300">military_tech</span>
+            <span class="text-sm font-medium text-[#111111]" data-i18n="profile.badges_title">Mis Coleccionables (Badges)</span>
+          </div>
+          <div class="flex items-center gap-1 text-[#6B7280]">
+            <span id="badges-count-label" class="text-xs font-semibold" data-i18n="profile.badges_unlocked" data-i18n-vars={`{"count":${badges.filter((b) => b.unlocked).length}}`}>{badges.filter((b) => b.unlocked).length} Ganados</span>
+            <span class="material-symbols-outlined text-[20px] transform transition-transform duration-200">chevron_right</span>
+          </div>
+        </button>
+        <!-- Collapsible Content -->
+        <div id="tab-content-badges" class="hidden py-4 px-2 bg-slate-50/50 rounded-b-2xl border-x border-b border-[#ECECEC] mb-2">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {badges.map((badge) => (
-              <div id={`badge-card-${badge.id}`} class="group flex flex-col items-center justify-center space-y-3 rounded-2xl border border-slate-200/60 bg-white p-6 text-center shadow-sm transition-all duration-300 hover:border-brand-200/50 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-brand-900">
-                <div class="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-slate-50 shadow-inner dark:border-slate-800">
+              <div
+                id={`badge-card-${badge.id}`}
+                class="group flex items-center gap-3 rounded-xl border border-[#ECECEC] bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.01)] transition-all hover:border-[#6B7280]/20"
+              >
+                <div class="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border border-[#ECECEC] bg-slate-50">
                   <img
                     src={badge.image}
                     alt={badge.name}
-                    class={`h-full w-full object-cover transition-all duration-500 group-hover:scale-110 ${badge.unlocked ? '' : 'opacity-35 grayscale'}`}
+                    class={`h-full w-full object-cover ${badge.unlocked ? '' : 'opacity-35 grayscale'}`}
                   />
                   <div class={`lock-icon-container absolute inset-0 flex items-center justify-center bg-black/20 ${badge.unlocked ? 'hidden' : ''}`}>
-                    <span class="material-symbols-outlined text-[20px] text-white drop-shadow">lock</span>
+                    <span class="material-symbols-outlined text-[16px] text-white">lock</span>
                   </div>
                 </div>
-                <div>
-                  <h3 class={`text-sm font-bold ${badge.unlocked ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
-                    {badge.name}
-                  </h3>
-                  <p class="mt-1 text-[11px] leading-snug text-slate-400 dark:text-slate-500">
-                    {badge.unlocked
-                      ? '¡Completado! Ya tienes esta insignia en tu billetera.'
-                      : badge.description}
+                <div class="min-w-0 flex-1 text-left">
+                  <h4 class="text-xs font-bold text-[#111111] truncate">{badge.name}</h4>
+                  <p class="text-[10px] text-[#6B7280] leading-tight mt-0.5 line-clamp-2" data-i18n={badge.unlocked ? "profile.badge_completed" : ""}>
+                    {badge.unlocked ? '¡Completado! Acuñado como NFT.' : badge.description}
                   </p>
                 </div>
               </div>
@@ -463,89 +438,230 @@ const isEmoji = (str: string) => {
           </div>
         </div>
 
-        <!-- Mis Reservas (tours) — leído de localStorage -->
-        <section class="space-y-4" aria-labelledby="reservations-heading">
-          <div class="flex items-center justify-between">
-            <h2 id="reservations-heading" class="text-lg font-bold text-slate-800 dark:text-slate-200">
-              Mis Reservas
-            </h2>
-            <span id="reservations-count-label" class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-              0 Reservas
-            </span>
+        <!-- Option Item: Reservas -->
+        <button
+          data-tab-trigger="reservations"
+          class="w-full flex items-center justify-between py-4 px-4 border-b border-[#ECECEC] hover:bg-slate-50 transition-colors duration-150"
+        >
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-[#6B7280] text-[22px]" style="font-variation-settings: 'FILL' 0, 'wght' 300">calendar_month</span>
+            <span class="text-sm font-medium text-[#111111]" data-i18n="profile.reservations_title">Mis Reservas</span>
           </div>
-
+          <div class="flex items-center gap-1 text-[#6B7280]">
+            <span id="reservations-count-label" class="text-xs font-semibold">0 Reservas</span>
+            <span class="material-symbols-outlined text-[20px] transform transition-transform duration-200">chevron_right</span>
+          </div>
+        </button>
+        <!-- Collapsible Content -->
+        <div id="tab-content-reservations" class="hidden py-4 px-2 bg-slate-50/50 rounded-b-2xl border-x border-b border-[#ECECEC] mb-2">
           <div id="reservations-list" class="grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
-
-          <div id="reservations-empty" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-center dark:border-slate-800 dark:bg-slate-900/40">
-            <span class="material-symbols-outlined text-[28px] text-slate-300 dark:text-slate-600 select-none">event_busy</span>
-            <p class="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Aún no tenés reservas de recorridos guiados.
-            </p>
-            <p class="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
-              Explorá la sección Turismo de la página principal para reservar tu primer tour.
-            </p>
+          <div id="reservations-empty" class="hidden py-6 text-center">
+            <span class="material-symbols-outlined text-[28px] text-[#6B7280]/40">event_busy</span>
+            <p class="text-xs font-bold text-[#111111] mt-2" data-i18n="profile.reservations_empty_title">Aún no tenés reservas</p>
+            <p class="text-[10px] text-[#6B7280] mt-1" data-i18n="profile.reservations_empty_desc">Explorá la sección Turismo para reservar tours.</p>
           </div>
-        </section>
+        </div>
 
-        <!-- Mis Favoritos — leído de localStorage -->
-        <section class="space-y-4" aria-labelledby="favorites-heading">
-          <div class="flex items-center justify-between">
-            <h2 id="favorites-heading" class="text-lg font-bold text-slate-800 dark:text-slate-200">
-              Mis Favoritos
-            </h2>
-            <span id="favorites-count-label" class="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:bg-rose-950/30 dark:text-rose-300">
-              0 Favoritos
-            </span>
+        <!-- Option Item: Favoritos -->
+        <button
+          data-tab-trigger="favorites"
+          class="w-full flex items-center justify-between py-4 px-4 border-b border-[#ECECEC] hover:bg-slate-50 transition-colors duration-150"
+        >
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-[#6B7280] text-[22px]" style="font-variation-settings: 'FILL' 0, 'wght' 300">favorite</span>
+            <span class="text-sm font-medium text-[#111111]" data-i18n="profile.favorites_title">Mis Favoritos</span>
           </div>
-
+          <div class="flex items-center gap-1 text-[#6B7280]">
+            <span id="favorites-count-label" class="text-xs font-semibold">0 Favoritos</span>
+            <span class="material-symbols-outlined text-[20px] transform transition-transform duration-200">chevron_right</span>
+          </div>
+        </button>
+        <!-- Collapsible Content -->
+        <div id="tab-content-favorites" class="hidden py-4 px-2 bg-slate-50/50 rounded-b-2xl border-x border-b border-[#ECECEC] mb-2">
           <div id="favorites-list" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
-
-          <div id="favorites-empty" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-center dark:border-slate-800 dark:bg-slate-900/40">
-            <span class="material-symbols-outlined text-[28px] text-slate-300 dark:text-slate-600 select-none">favorite</span>
-            <p class="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Aún no tenés favoritos guardados.
-            </p>
-            <p class="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
-              Pulsá el ♥ en cualquier experiencia para guardarla aquí.
-            </p>
+          <div id="favorites-empty" class="hidden py-6 text-center">
+            <span class="material-symbols-outlined text-[28px] text-[#6B7280]/40">favorite</span>
+            <p class="text-xs font-bold text-[#111111] mt-2" data-i18n="profile.favorites_empty_title">Sin favoritos guardados</p>
+            <p class="text-[10px] text-[#6B7280] mt-1" data-i18n="profile.favorites_empty_desc">Pulsá el ♥ en el mapa o feed para guardarlos acá.</p>
           </div>
-        </section>
+        </div>
+
+        <!-- Option Item: Sobre mí -->
+        <button
+          data-tab-trigger="about"
+          class="w-full flex items-center justify-between py-4 px-4 border-b border-[#ECECEC] hover:bg-slate-50 transition-colors duration-150"
+        >
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-[#6B7280] text-[22px]" style="font-variation-settings: 'FILL' 0, 'wght' 300">info</span>
+            <span class="text-sm font-medium text-[#111111]" data-i18n="profile.about_title">Biografía y Cuenta</span>
+          </div>
+          <span class="material-symbols-outlined text-[#6B7280] text-[20px] transform transition-transform duration-200">chevron_right</span>
+        </button>
+        <!-- Collapsible Content -->
+        <div id="tab-content-about" class="hidden py-4 px-4 bg-slate-50/50 rounded-b-2xl border-x border-b border-[#ECECEC] mb-2 text-sm text-[#111111] space-y-4 text-left">
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-[#6B7280]" data-i18n="profile.about.bio">Biografía</h4>
+            <p class="mt-1 text-slate-700 leading-relaxed">{user.bio}</p>
+          </div>
+          {!isGuest && (
+            <div class="pt-3 border-t border-[#ECECEC]">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-[#6B7280] mb-2" data-i18n="profile.about.account_details">Detalles de la Cuenta</h4>
+              <div class="flex justify-between py-1 text-xs">
+                <span class="text-[#6B7280]" data-i18n="profile.about.email">Email</span>
+                <span class="font-mono">{user.email}</span>
+              </div>
+              <div class="flex justify-between py-1 text-xs">
+                <span class="text-[#6B7280]" data-i18n="profile.about.member_since">Miembro desde</span>
+                <span>{new Date(user.created_at).toLocaleDateString(currentLocale === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- Section: Ajustes -->
+      <div class="mt-8">
+        <h3 class="text-base font-bold text-[#111111] mb-2 px-2" data-i18n="profile.settings_title">Ajustes y Cuenta</h3>
+
+        <!-- Option Item: Idioma -->
+        <div class="border-b border-[#ECECEC]">
+          <div
+            class="w-full flex items-center justify-between py-4 px-4 hover:bg-slate-50/50 transition-colors duration-150"
+          >
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-[#6B7280] text-[22px]" style="font-variation-settings: 'FILL' 0, 'wght' 300">language</span>
+              <span class="text-sm font-medium text-[#111111]" data-i18n="profile.settings.language">Idioma / Language</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <LocaleSwitcher current={currentLocale} />
+            </div>
+          </div>
+        </div>
+
+        <!-- Option Item: Billetera -->
+        <div class="border-b border-[#ECECEC]">
+          <button
+            id="btn-profile-wallet-connect-wrapper"
+            class="w-full flex items-center justify-between py-4 px-4 hover:bg-slate-50 transition-colors duration-150"
+          >
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-[#6B7280] text-[22px]" style="font-variation-settings: 'FILL' 0, 'wght' 300">account_balance_wallet</span>
+              <span class="text-sm font-medium text-[#111111]" data-i18n={walletAddress ? "profile.wallet.linked" : "profile.wallet.link"}>{walletAddress ? 'Billetera Vinculada' : 'Vincular Billetera'}</span>
+            </div>
+            <div class="flex items-center gap-1 text-[#6B7280]">
+              <span id="wallet-status-label" class="text-xs truncate max-w-[120px] font-mono" data-i18n={walletAddress ? "" : "profile.wallet.disconnected"}>
+                {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Desconectado'}
+              </span>
+              <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+            </div>
+          </button>
+
+          <!-- Wallet Info Drawer -->
+          <div id="wallet-drawer" class="hidden p-4 bg-slate-50/50 rounded-b-2xl border-x border-b border-[#ECECEC] mb-2">
+            {walletAddress ? (
+              <div class="space-y-2 text-center">
+                <p class="text-xs text-[#6B7280] break-all bg-white p-2 rounded-xl border border-[#ECECEC] font-mono">{walletAddress}</p>
+                <a
+                  href={`https://polygonscan.com/address/${walletAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex w-full items-center justify-center gap-1 rounded-xl border border-[#ECECEC] bg-white py-2 text-xs font-bold text-[#6B7280] hover:bg-slate-100 transition-colors"
+                >
+                  <span data-i18n="profile.wallet.view_polygonscan">Ver en PolygonScan</span>
+                  <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+                </a>
+              </div>
+            ) : (
+              <div class="space-y-2 py-2 text-center">
+                <p class="text-xs text-[#6B7280]" data-i18n="profile.wallet.drawer_desc">Vinculá tu wallet para que tus visitas y logros se guarden automáticamente como coleccionables NFT on-chain.</p>
+                <button
+                  id="btn-profile-wallet-connect"
+                  class="w-full rounded-xl bg-[#111111] py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition-all active:scale-[0.98]"
+                  data-i18n="profile.wallet.connect"
+                >
+                  Conectar Wallet
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <!-- Option Item: Guardar Progreso (Guest Only) -->
+        {isGuest && (
+          <div class="border-b border-[#ECECEC]">
+            <button
+              id="btn-guest-register-wrapper"
+              class="w-full flex items-center justify-between py-4 px-4 hover:bg-slate-50 transition-colors duration-150"
+            >
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-accent-600 text-[22px]" style="font-variation-settings: 'FILL' 0, 'wght' 300">cloud_upload</span>
+                <span class="text-sm font-semibold text-accent-600" data-i18n="profile.guest.save_progress">Guardar progreso permanentemente</span>
+              </div>
+              <span class="material-symbols-outlined text-[#6B7280] text-[20px]">chevron_right</span>
+            </button>
+            <div id="guest-register-drawer" class="hidden p-4 bg-slate-50/50 rounded-b-2xl border-x border-b border-[#ECECEC] mb-2 text-center space-y-2">
+              <p class="text-xs text-[#6B7280]" data-i18n="profile.guest.drawer_desc">Registrate para guardar tus insignias, visitas y puntuación de forma permanente en la nube.</p>
+              <button
+                id="btn-guest-register-cta"
+                class="w-full rounded-xl bg-accent-600 py-2.5 text-xs font-bold text-white hover:bg-accent-700 transition-all active:scale-[0.97]"
+                data-i18n="profile.guest.register_cta"
+              >
+                Registrarse ahora
+              </button>
+            </div>
+          </div>
+        )}
+
+        <!-- Option Item: Cerrar Sesión -->
+        <form method="POST" action="/yo" class="w-full">
+          <input type="hidden" name="action" value="logout" />
+          <button
+            type="submit"
+            class="w-full flex items-center justify-between py-4 px-4 text-red-600 hover:bg-red-50/50 transition-colors duration-150"
+          >
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 0, 'wght' 300">logout</span>
+              <span class="text-sm font-medium" data-i18n={isGuest ? 'profile.exit_guest' : 'profile.logout'}>{isGuest ? 'Salir de Invitado' : 'Cerrar Sesión'}</span>
+            </div>
+            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+          </button>
+        </form>
       </div>
 
       <!-- Modal de Edición de Perfil (Oculto) -->
-      <div id="edit-profile-modal" class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-        <div class="w-full max-w-md rounded-3xl border border-slate-200/50 bg-white/95 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-800/50 dark:bg-slate-900/95">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-slate-800 dark:text-white">Editar Perfil</h3>
-            <button id="close-modal-btn" class="rounded-full p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <span class="material-symbols-outlined">close</span>
+      <div id="edit-profile-modal" class="fixed inset-0 z-[100] [&:not(.hidden)]:flex hidden items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+        <div class="w-full max-w-md rounded-t-[24px] rounded-b-none border border-[#ECECEC] bg-white p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden sm:rounded-[24px] sm:pb-6">
+          <div class="flex items-center justify-between mb-4 flex-shrink-0">
+            <h3 class="text-lg font-bold text-[#111111]" data-i18n="profile.modal.title">Editar Perfil</h3>
+            <button id="close-modal-btn" type="button" data-i18n-aria-label="reserva.modal.close" aria-label="Cerrar edición de perfil" class="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 transition-colors">
+              <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
           </div>
-          <form method="POST" action="/yo" class="space-y-4">
+          <form method="POST" action="/yo" class="space-y-4 overflow-y-auto pr-1 no-scrollbar flex-1 pb-2">
             <input type="hidden" name="action" value="edit_profile" />
-            
+
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Nombre</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-[#6B7280] mb-1.5" data-i18n="profile.modal.name">Nombre</label>
               <input
                 type="text"
                 name="name"
                 required
                 value={user.name}
-                class="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800"
+                class="w-full rounded-xl border border-[#ECECEC] bg-transparent px-4 py-2.5 text-[16px] outline-none focus:border-[#111111]"
               />
             </div>
 
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Biografía</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-[#6B7280] mb-1.5" data-i18n="profile.modal.bio">Biografía</label>
               <textarea
                 name="bio"
                 rows="3"
-                class="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 resize-none"
+                class="w-full rounded-xl border border-[#ECECEC] bg-transparent px-4 py-2.5 text-[16px] outline-none focus:border-[#111111] resize-none"
               >{user.bio}</textarea>
             </div>
 
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Elige tu Avatar (Emoji)</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-[#6B7280] mb-3" data-i18n="profile.modal.avatar_title">Elige tu Avatar (Emoji)</label>
               <input
                 type="hidden"
                 id="avatar-emoji-input"
@@ -557,10 +673,10 @@ const isEmoji = (str: string) => {
                   <button
                     type="button"
                     data-emoji={emoji}
-                    class={`flex h-11 w-11 items-center justify-center rounded-2xl text-2xl border transition-all active:scale-90 hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                    class={`flex h-11 w-11 items-center justify-center rounded-xl text-2xl border transition-all active:scale-90 hover:bg-slate-50 ${
                       user.avatar_url === emoji
-                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/40'
-                        : 'border-slate-100 dark:border-slate-800 bg-transparent'
+                        ? 'border-[#111111] bg-slate-50'
+                        : 'border-[#ECECEC] bg-transparent'
                     }`}
                   >
                     {emoji}
@@ -569,45 +685,42 @@ const isEmoji = (str: string) => {
               </div>
             </div>
 
-            <button
-              type="submit"
-              class="w-full rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white shadow-md hover:bg-brand-600 transition-all active:scale-95"
-            >
-              Guardar Cambios
-            </button>
+            <div class="pt-2">
+              <button
+                type="submit"
+                class="w-full rounded-xl bg-[#111111] py-3 text-sm font-semibold text-white shadow-md hover:bg-slate-800 transition-all active:scale-[0.98]"
+                data-i18n="profile.modal.save"
+              >
+                Guardar Cambios
+              </button>
+            </div>
           </form>
         </div>
       </div>
     </div>
   ) : (
     /* =========================================================================
-       VISTA DE INICIO DE SESIÓN / REGISTRO (GUEST)
+       GUEST / LOGIN VIEW
        ========================================================================= */
-    <div class="mx-auto max-w-md py-6">
-      <div class="relative overflow-hidden rounded-[2.5rem] border border-white/20 bg-white/80 p-8 shadow-2xl backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/80">
-        <!-- Glowing Ambient Circle -->
-        <div class="absolute -right-20 -top-20 -z-10 h-48 w-48 rounded-full bg-brand-500/10 blur-3xl"></div>
-        <div class="absolute -bottom-20 -left-20 -z-10 h-48 w-48 rounded-full bg-purple-500/10 blur-3xl"></div>
-
+    <div class="mx-auto max-w-md py-12 px-4 bg-white text-[#111111]">
+      <div class="border border-[#ECECEC] bg-white rounded-[18px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
         <!-- Header -->
         <div class="text-center mb-6">
-          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-500 to-purple-600 text-white shadow-lg mb-4">
-            <span class="material-symbols-outlined text-[30px]">account_balance</span>
-          </div>
-          <h2 class="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">EdificARTE</h2>
-          <p class="mt-1 text-sm text-slate-400 dark:text-slate-500">Colecciona insignias e historia urbana</p>
+          <h2 class="text-2xl font-extrabold tracking-tight text-[#111111]">TuriMap</h2>
+          <p class="mt-1.5 text-xs text-[#6B7280]" data-i18n="auth.subtitle">Coleccioná insignias e historia urbana</p>
         </div>
 
         <!-- Selector de Pestañas (Tabs) -->
-        <div class="flex rounded-xl bg-slate-100/80 p-1 mb-6 dark:bg-slate-800/80">
+        <div class="flex rounded-xl bg-slate-50 p-1 mb-6 border border-[#ECECEC]">
           <button
             type="button"
             id="tab-login"
             class={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
               activeTab === 'login'
-                ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-white'
-                : 'text-slate-400 hover:text-slate-600'
+                ? 'bg-white text-[#111111] shadow-sm border border-[#ECECEC]'
+                : 'text-[#6B7280] hover:text-[#111111]'
             }`}
+            data-i18n="auth.tabs.login"
           >
             Iniciar Sesión
           </button>
@@ -616,9 +729,10 @@ const isEmoji = (str: string) => {
             id="tab-register"
             class={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
               activeTab === 'register'
-                ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-white'
-                : 'text-slate-400 hover:text-slate-600'
+                ? 'bg-white text-[#111111] shadow-sm border border-[#ECECEC]'
+                : 'text-[#6B7280] hover:text-[#111111]'
             }`}
+            data-i18n="auth.tabs.register"
           >
             Registrarse
           </button>
@@ -626,7 +740,7 @@ const isEmoji = (str: string) => {
 
         <!-- Alertas de Error -->
         {errorMsg && (
-          <div class="mb-4 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-100 p-3 text-xs font-semibold text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400">
+          <div class="mb-4 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-100 p-3 text-xs font-semibold text-rose-700">
             <span class="material-symbols-outlined text-[16px]">error</span>
             {errorMsg}
           </div>
@@ -640,32 +754,33 @@ const isEmoji = (str: string) => {
           class={`space-y-4 ${activeTab === 'login' ? '' : 'hidden'}`}
         >
           <input type="hidden" name="action" value="login" />
-          
+
           <div class="relative">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">mail</span>
             <input
               type="email"
               name="email"
               required
+              data-i18n-placeholder="auth.fields.email"
               placeholder="Correo electrónico"
-              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+              class="w-full rounded-xl border border-[#ECECEC] bg-white py-3 px-4 text-sm text-[#111111] placeholder-[#6B7280]/60 outline-none focus:border-[#111111] transition-all"
             />
           </div>
 
           <div class="relative">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">lock</span>
             <input
               type="password"
               name="password"
               required
+              data-i18n-placeholder="auth.fields.password"
               placeholder="Contraseña"
-              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+              class="w-full rounded-xl border border-[#ECECEC] bg-white py-3 px-4 text-sm text-[#111111] placeholder-[#6B7280]/60 outline-none focus:border-[#111111] transition-all"
             />
           </div>
 
           <button
             type="submit"
-            class="w-full rounded-2xl bg-gradient-to-r from-brand-500 to-brand-600 py-3.5 text-sm font-semibold text-white shadow-lg hover:from-brand-600 hover:to-brand-700 transition-all active:scale-[0.98]"
+            class="w-full rounded-xl bg-[#111111] py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition-all active:scale-[0.98]"
+            data-i18n="auth.buttons.login"
           >
             Entrar
           </button>
@@ -681,54 +796,55 @@ const isEmoji = (str: string) => {
           <input type="hidden" name="action" value="register" />
 
           <div class="relative">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">person</span>
             <input
               type="text"
               name="name"
               required
+              data-i18n-placeholder="auth.fields.name"
               placeholder="Nombre completo"
               value={guestPrefillName}
-              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
-            />
-          </div>
-          
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">mail</span>
-            <input
-              type="email"
-              name="email"
-              required
-              placeholder="Correo electrónico"
-              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+              class="w-full rounded-xl border border-[#ECECEC] bg-white py-3 px-4 text-sm text-[#111111] placeholder-[#6B7280]/60 outline-none focus:border-[#111111] transition-all"
             />
           </div>
 
           <div class="relative">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">lock</span>
+            <input
+              type="email"
+              name="email"
+              required
+              data-i18n-placeholder="auth.fields.email"
+              placeholder="Correo electrónico"
+              class="w-full rounded-xl border border-[#ECECEC] bg-white py-3 px-4 text-sm text-[#111111] placeholder-[#6B7280]/60 outline-none focus:border-[#111111] transition-all"
+            />
+          </div>
+
+          <div class="relative">
             <input
               type="password"
               name="password"
               required
+              data-i18n-placeholder="auth.fields.password"
               placeholder="Contraseña"
-              class="w-full rounded-2xl border border-slate-200/60 bg-white/40 py-3 pl-12 pr-4 text-sm outline-none focus:border-brand-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950/40 dark:focus:bg-slate-950 transition-all"
+              class="w-full rounded-xl border border-[#ECECEC] bg-white py-3 px-4 text-sm text-[#111111] placeholder-[#6B7280]/60 outline-none focus:border-[#111111] transition-all"
             />
           </div>
 
           <button
             type="submit"
-            class="w-full rounded-2xl bg-gradient-to-r from-purple-500 to-purple-600 py-3.5 text-sm font-semibold text-white shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all active:scale-[0.98]"
+            class="w-full rounded-xl bg-[#111111] py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition-all active:scale-[0.98]"
+            data-i18n="auth.buttons.register"
           >
             Registrarse
           </button>
 
-          {/* Link "¿Ya tienes cuenta? Inicia sesión" — solo visible en tab register */}
           {activeTab === 'register' && (
-            <p class="text-center text-xs text-slate-500 dark:text-slate-400 pt-1">
-              ¿Ya tenés cuenta?{' '}
+            <p class="text-center text-xs text-[#6B7280] pt-1">
+              <span data-i18n="auth.have_account">¿Ya tenés cuenta?</span>{' '}
               <button
                 type="button"
                 id="link-switch-to-login"
-                class="font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 transition-colors"
+                class="font-bold text-[#111111] hover:underline transition-all"
+                data-i18n="auth.switch_to_login_btn"
               >
                 Iniciá sesión
               </button>
@@ -737,31 +853,32 @@ const isEmoji = (str: string) => {
         </form>
 
         <!-- Separador -->
-        <div class="my-5 flex items-center justify-between gap-3 text-xs text-slate-400 select-none">
-          <div class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
-          <span>o también</span>
-          <div class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
+        <div class="my-5 flex items-center justify-between gap-3 text-xs text-[#6B7280]/60 select-none">
+          <div class="h-px flex-1 bg-[#ECECEC]"></div>
+          <span data-i18n="auth.separator">o también</span>
+          <div class="h-px flex-1 bg-[#ECECEC]"></div>
         </div>
 
-        <!-- Botón de Conectar Wallet (EIP-191 / Sign-In with Ethereum) -->
+        <!-- Botón de Conectar Wallet -->
         <button
           type="button"
           id="btn-wallet-connect"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-brand-300 transition-all active:scale-[0.98] dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:border-brand-700"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-[#ECECEC] bg-white py-3 text-sm font-semibold text-[#111111] hover:bg-slate-50 transition-all active:scale-[0.98]"
         >
           <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
-          <span id="btn-wallet-connect-label">Conectar Wallet</span>
+          <span id="btn-wallet-connect-label" data-i18n="auth.buttons.wallet_connect">Conectar Wallet</span>
         </button>
-        <p id="btn-wallet-connect-help" class="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+        <p id="btn-wallet-connect-help" class="text-center text-[10px] text-[#6B7280] mt-1.5" data-i18n="auth.wallet_help">
           Inicia sesión firmando un mensaje. Sin gas, sin transacciones.
         </p>
 
         <!-- Botón de Invitado -->
-        <form method="POST" action="/yo" class="w-full">
+        <form method="POST" action="/yo" class="w-full mt-3">
           <input type="hidden" name="action" value="guest" />
           <button
             type="submit"
-            class="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98] dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400 dark:hover:bg-slate-900"
+            class="w-full rounded-xl border border-[#ECECEC] bg-white py-3 text-sm font-semibold text-[#6B7280] hover:bg-slate-50 transition-all active:scale-[0.98]"
+            data-i18n="auth.buttons.continue_guest"
           >
             Continuar como Invitado
           </button>
@@ -772,32 +889,40 @@ const isEmoji = (str: string) => {
 </Layout>
 
 <script>
+  import { detectLocale, translate } from '../lib/i18n';
+  import esDict from '../i18n/es.json';
+  import enDict from '../i18n/en.json';
+
+  const DICTS = { es: esDict, en: enDict };
+  const locale = detectLocale();
+  const dict = DICTS[locale] || esDict;
+  const t = (key: string, vars?: Record<string, string | number>) => translate(dict, key, vars);
+
   // Script que corre únicamente del lado del cliente
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('astro:page-load', () => {
     // 1. Selector de Pestañas (Guest View)
     const tabLogin = document.getElementById('tab-login');
     const tabRegister = document.getElementById('tab-register');
     const formLogin = document.getElementById('form-login');
     const formRegister = document.getElementById('form-register');
-
+ 
     if (tabLogin && tabRegister && formLogin && formRegister) {
       tabLogin.addEventListener('click', () => {
-        tabLogin.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-white';
-        tabRegister.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all text-slate-400 hover:text-slate-600';
+        tabLogin.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all bg-white text-[#111111] shadow-sm border border-[#ECECEC]';
+        tabRegister.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all text-[#6B7280] hover:text-[#111111]';
         formLogin.classList.remove('hidden');
         formRegister.classList.add('hidden');
       });
-
+ 
       tabRegister.addEventListener('click', () => {
-        tabRegister.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-white';
-        tabLogin.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all text-slate-400 hover:text-slate-600';
+        tabRegister.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all bg-white text-[#111111] shadow-sm border border-[#ECECEC]';
+        tabLogin.className = 'flex-1 rounded-lg py-2 text-xs font-bold transition-all text-[#6B7280] hover:text-[#111111]';
         formRegister.classList.remove('hidden');
         formLogin.classList.add('hidden');
       });
     }
-
-    // 1b. Link "¿Ya tenés cuenta? Iniciá sesión" — switch a tab login
-    // desde el form de registro. Simula click en el tab login.
+ 
+    // 1b. Link "¿Ya tenés cuenta? Iniciá sesión"
     const linkSwitchToLogin = document.getElementById('link-switch-to-login');
     if (linkSwitchToLogin && tabLogin) {
       linkSwitchToLogin.addEventListener('click', () => {
@@ -805,55 +930,130 @@ const isEmoji = (str: string) => {
         tabLogin.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
-
-    // 1c. Wallet Connect (EIP-191 / Sign-In with Ethereum)
-    // Flujo: connect() -> pedir nonce -> firmar -> POST /api/wallet-login.
-    // Reusa BrowserWalletProvider de src/lib/onchain/client.ts.
+ 
+    // Accordion Toggle Logic
+    const optionToggles = document.querySelectorAll('[data-tab-trigger]');
+    optionToggles.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = btn.getAttribute('data-tab-trigger');
+        const content = document.getElementById(`tab-content-${target}`);
+        const chevron = btn.querySelector('.material-symbols-outlined:last-child');
+ 
+        if (content) {
+          const isHidden = content.classList.contains('hidden');
+ 
+          // Close other content divs first
+          document.querySelectorAll('[id^="tab-content-"]').forEach((c) => {
+            if (c.id !== `tab-content-${target}`) {
+              c.classList.add('hidden');
+            }
+          });
+          document.querySelectorAll('[data-tab-trigger] .material-symbols-outlined:last-child').forEach((ch) => {
+            ch.classList.remove('rotate-90');
+          });
+ 
+          if (isHidden) {
+            content.classList.remove('hidden');
+            chevron?.classList.add('rotate-90');
+          } else {
+            content.classList.add('hidden');
+            chevron?.classList.remove('rotate-90');
+          }
+        }
+      });
+    });
+ 
+    // Profile card click opens Edit Profile Modal
+    const profileTrigger = document.getElementById('edit-profile-card-trigger');
+    const editModal = document.getElementById('edit-profile-modal');
+    if (profileTrigger && editModal) {
+      profileTrigger.addEventListener('click', () => {
+        editModal.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+      });
+    }
+ 
+    // Wallet Drawer toggle
+    const walletWrapper = document.getElementById('btn-profile-wallet-connect-wrapper');
+    const walletDrawer = document.getElementById('wallet-drawer');
+    if (walletWrapper && walletDrawer) {
+      walletWrapper.addEventListener('click', () => {
+        const isHidden = walletDrawer.classList.contains('hidden');
+        const chevron = walletWrapper.querySelector('.material-symbols-outlined:last-child');
+        if (isHidden) {
+          walletDrawer.classList.remove('hidden');
+          chevron?.classList.add('rotate-90');
+        } else {
+          walletDrawer.classList.add('hidden');
+          chevron?.classList.remove('rotate-90');
+        }
+      });
+    }
+ 
+    // Guest Register Drawer toggle
+    const guestRegisterWrapper = document.getElementById('btn-guest-register-wrapper');
+    const guestRegisterDrawer = document.getElementById('guest-register-drawer');
+    if (guestRegisterWrapper && guestRegisterDrawer) {
+      guestRegisterWrapper.addEventListener('click', () => {
+        const isHidden = guestRegisterDrawer.classList.contains('hidden');
+        const chevron = guestRegisterWrapper.querySelector('.material-symbols-outlined:last-child');
+        if (isHidden) {
+          guestRegisterDrawer.classList.remove('hidden');
+          chevron?.classList.add('rotate-90');
+        } else {
+          guestRegisterDrawer.classList.add('hidden');
+          chevron?.classList.remove('rotate-90');
+        }
+      });
+    }
+ 
+    // 1c. Wallet Connect
     const btnWallet = document.getElementById('btn-wallet-connect') as HTMLButtonElement | null;
     const btnWalletHelp = document.getElementById('btn-wallet-connect-help');
-
+ 
     function setWalletStatus(text: string | null) {
       if (!btnWalletHelp) return;
       if (text === null) {
-        btnWalletHelp.textContent = 'Inicia sesión firmando un mensaje. Sin gas, sin transacciones.';
-        btnWalletHelp.classList.remove('text-rose-500', 'dark:text-rose-400');
-        btnWalletHelp.classList.add('text-slate-400', 'dark:text-slate-500');
+        btnWalletHelp.textContent = t('auth.wallet_help');
+        btnWalletHelp.classList.remove('text-rose-500');
+        btnWalletHelp.classList.add('text-[#6B7280]');
       } else {
         btnWalletHelp.textContent = text;
-        btnWalletHelp.classList.add('text-rose-500', 'dark:text-rose-400');
-        btnWalletHelp.classList.remove('text-slate-400', 'dark:text-slate-500');
+        btnWalletHelp.classList.add('text-rose-500');
+        btnWalletHelp.classList.remove('text-[#6B7280]');
       }
     }
-
+ 
     async function connectWallet(isProfileLinking = false, customBtn?: HTMLButtonElement, customBtnLabel?: HTMLElement) {
       const activeBtn = customBtn || (isProfileLinking ? document.getElementById('btn-profile-wallet-connect') : document.getElementById('btn-wallet-connect')) as HTMLButtonElement | null;
       const activeBtnLabel = customBtnLabel || (isProfileLinking ? document.getElementById('btn-profile-wallet-connect') : document.getElementById('btn-wallet-connect-label')) as HTMLElement | null;
-
+ 
       if (!activeBtn) return;
-      const originalLabel = activeBtnLabel ? activeBtnLabel.textContent || 'Conectar Wallet' : 'Conectar Wallet';
-      
+      const originalLabel = activeBtnLabel ? activeBtnLabel.textContent || t('auth.buttons.wallet_connect') : t('auth.buttons.wallet_connect');
+ 
       activeBtn.disabled = true;
-      if (activeBtnLabel) activeBtnLabel.textContent = 'Conectando…';
+      if (activeBtnLabel) activeBtnLabel.textContent = t('profile.alerts.connecting');
       if (!isProfileLinking) {
         setWalletStatus(null);
       }
-
+ 
       try {
         const { BrowserWalletProvider } = await import('../lib/onchain/client');
         const wallet = new BrowserWalletProvider();
-
+ 
         const address = await wallet.connect();
-        if (activeBtnLabel) activeBtnLabel.textContent = 'Pidiendo nonce…';
-
+        if (activeBtnLabel) activeBtnLabel.textContent = t('profile.alerts.request_nonce');
+ 
         const nonceRes = await fetch(`/api/wallet-nonce?address=${encodeURIComponent(address)}`);
         if (!nonceRes.ok) {
           const data = await nonceRes.json().catch(() => ({}));
-          throw new Error(data.error || 'No pudimos generar el nonce.');
+          throw new Error(data.error || 'No nonce.');
         }
         const { message, nonce } = (await nonceRes.json()) as { message: string; nonce: string };
-
-        if (activeBtnLabel) activeBtnLabel.textContent = 'Esperando firma…';
-
+ 
+        if (activeBtnLabel) activeBtnLabel.textContent = t('profile.alerts.await_signature');
+ 
         let signature: string;
         try {
           signature = await wallet.signMessage(message);
@@ -861,9 +1061,9 @@ const isEmoji = (str: string) => {
           const code = (signErr as { code?: number | string })?.code;
           if (code === 4001 || code === 'ACTION_REJECTED') {
             if (!isProfileLinking) {
-              setWalletStatus('Cancelaste la firma.');
+              setWalletStatus(t('profile.alerts.wallet_cancel_simple'));
             } else {
-              alert('Cancelaste la firma de la wallet.');
+              alert(t('profile.alerts.wallet_cancel'));
             }
           } else {
             throw signErr;
@@ -872,22 +1072,22 @@ const isEmoji = (str: string) => {
           activeBtn.disabled = false;
           return;
         }
-
+ 
         // Pedir teléfono
         let phone: string | null = null;
-        const wantsPhone = confirm('¿Querés asociar un número de teléfono a tu cuenta para recibir notificaciones y seguridad adicional?');
+        const wantsPhone = confirm(locale === 'en' ? 'Do you want to associate a phone number with your account for notifications and security?' : '¿Querés asociar un número de teléfono a tu cuenta para recibir notificaciones y seguridad adicional?');
         if (wantsPhone) {
-          phone = prompt('Ingresá tu número de teléfono:');
+          phone = prompt(locale === 'en' ? 'Enter your phone number:' : 'Ingresá tu número de teléfono:');
           if (phone) phone = phone.trim();
         }
-
+ 
         // Recuperar insignias de invitado desde localStorage
         let guestBadges: number[] = [];
         try {
-          guestBadges = JSON.parse(localStorage.getItem('edificarte_guest_badges') || '[]');
+          guestBadges = JSON.parse(localStorage.getItem('turimap_guest_badges') || '[]');
         } catch {}
-
-        if (activeBtnLabel) activeBtnLabel.textContent = 'Verificando…';
+ 
+        if (activeBtnLabel) activeBtnLabel.textContent = t('profile.alerts.verifying');
         const loginRes = await fetch('/api/wallet-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -899,81 +1099,80 @@ const isEmoji = (str: string) => {
             guestBadges: guestBadges.length > 0 ? guestBadges : undefined
           }),
         });
-
+ 
         if (!loginRes.ok) {
           const data = await loginRes.json().catch(() => ({}));
-          throw new Error(data.error || 'No pudimos verificar tu wallet.');
+          throw new Error(data.error || 'Wallet login failed.');
         }
-
+ 
         // Si es guest, borrar cookies y storage de guest
         if (guestBadges.length > 0) {
-          localStorage.removeItem('edificarte_guest_badges');
-          localStorage.removeItem('edificarte_guest_points');
-          localStorage.removeItem('edificarte_guest_visits');
+          localStorage.removeItem('turimap_guest_badges');
+          localStorage.removeItem('turimap_guest_points');
+          localStorage.removeItem('turimap_guest_visits');
         }
-        
+ 
         // Exito -> redirect
         window.location.href = '/yo';
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Error desconocido.';
+        const msg = err instanceof Error ? err.message : 'Error.';
         if (!isProfileLinking) {
           setWalletStatus(msg);
         } else {
-          alert('Error vinculando wallet: ' + msg);
+          alert(t('profile.alerts.wallet_link_error', { error: msg }));
         }
         if (activeBtnLabel) activeBtnLabel.textContent = originalLabel;
         activeBtn.disabled = false;
       }
     }
-
+ 
     btnWallet?.addEventListener('click', () => {
       connectWallet(false);
     });
-
+ 
     const btnProfileWallet = document.getElementById('btn-profile-wallet-connect') as HTMLButtonElement | null;
     btnProfileWallet?.addEventListener('click', () => {
       connectWallet(true);
     });
-
+ 
     // Event listener para las medallas/insignias
     const profileContainer = document.getElementById('profile-container');
     const hasWalletVal = profileContainer?.getAttribute('data-has-wallet') === 'true';
     const isGuestVal = profileContainer?.getAttribute('data-is-guest') === 'true';
-    
+ 
     const badgeCards = document.querySelectorAll('[id^="badge-card-"]');
     badgeCards.forEach((card) => {
       card.classList.add('cursor-pointer');
-      card.addEventListener('click', () => {
+      card.addEventListener('click', (e) => {
+        e.stopPropagation();
         // Verificar si está desbloqueada en el DOM
         const isUnlocked = !card.querySelector('.lock-icon-container') || card.querySelector('.lock-icon-container')?.classList.contains('hidden');
-
+ 
         if (!hasWalletVal) {
-          const confirmConnect = confirm(
-            '¡Para guardar tu insignia en tu billetera y acuñarla como un NFT on-chain, necesitas conectar tu wallet! ¿Querés conectarla ahora?'
-          );
+          const confirmConnect = confirm(t('profile.alerts.connect_wallet_badge'));
           if (confirmConnect) {
             connectWallet(isGuestVal ? false : true);
           }
         } else {
           if (isUnlocked) {
-            alert('¡Esta insignia ya está en tu billetera de forma segura en la blockchain!');
+            alert(t('profile.alerts.badge_in_wallet'));
           } else {
-            alert('Esta insignia está bloqueada. Escuchá la audioguía del monumento correspondiente en el mapa para desbloquearla y acuñar tu NFT.');
+            alert(t('profile.alerts.badge_locked'));
           }
         }
       });
     });
-
-    // 2. Opciones de Configuración (User View)
+ 
+    // 2. Opciones de Configuración
     const settingsBtn = document.getElementById('settings-btn');
     const settingsDropdown = document.getElementById('settings-dropdown');
-
+ 
     if (settingsBtn && settingsDropdown) {
       settingsBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         settingsDropdown.classList.toggle('hidden');
       });
-
+ 
       document.addEventListener('click', (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         if (!settingsDropdown.contains(target) && target !== settingsBtn && !settingsBtn.contains(target)) {
@@ -981,33 +1180,35 @@ const isEmoji = (str: string) => {
         }
       });
     }
-
-    // 3. Modal de Edición de Perfil (User View)
+ 
+    // 3. Modal de Edición de Perfil
     const editProfileBtn = document.getElementById('edit-profile-btn');
-    const editModal = document.getElementById('edit-profile-modal');
     const closeModalBtn = document.getElementById('close-modal-btn');
-
+ 
     if (editProfileBtn && editModal && closeModalBtn) {
+      const closeEditModal = () => {
+        editModal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
+      };
+ 
       editProfileBtn.addEventListener('click', () => {
         editModal.classList.remove('hidden');
         settingsDropdown?.classList.add('hidden');
         document.body.classList.add('modal-open');
       });
-
-      closeModalBtn.addEventListener('click', () => {
-        editModal.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-      });
-
+ 
+      closeModalBtn.addEventListener('click', closeEditModal);
+ 
       // Cerrar al hacer clic fuera del contenido
       editModal.addEventListener('click', (e) => {
-        if (e.target === editModal) {
-          editModal.classList.add('hidden');
-          document.body.classList.remove('modal-open');
-        }
+        if (e.target === editModal) closeEditModal();
+      });
+ 
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !editModal.classList.contains('hidden')) closeEditModal();
       });
     }
-
+ 
     // Emoji Selector Event Listener
     const emojiGrid = document.getElementById('emoji-selector-grid');
     const emojiInput = document.getElementById('avatar-emoji-input');
@@ -1016,20 +1217,20 @@ const isEmoji = (str: string) => {
         btn.addEventListener('click', () => {
           const emoji = btn.getAttribute('data-emoji') || '👷';
           (emojiInput as HTMLInputElement).value = emoji;
-          
+ 
           // Clear active styles from all buttons
           emojiGrid.querySelectorAll('button').forEach((b) => {
-            b.classList.remove('border-brand-500', 'bg-brand-50', 'dark:bg-brand-950/40');
-            b.classList.add('border-slate-100', 'dark:border-slate-800', 'bg-transparent');
+            b.classList.remove('border-[#111111]', 'bg-slate-50');
+            b.classList.add('border-[#ECECEC]', 'bg-transparent');
           });
-          
+ 
           // Add active styles to clicked button
-          btn.classList.remove('border-slate-100', 'dark:border-slate-800', 'bg-transparent');
-          btn.classList.add('border-brand-500', 'bg-brand-50', 'dark:bg-brand-950/40');
+          btn.classList.remove('border-[#ECECEC]', 'bg-transparent');
+          btn.classList.add('border-[#111111]', 'bg-slate-50');
         });
       });
     }
-
+ 
     // 4. Animación de la Barra de Experiencia
     const expBar = document.getElementById('exp-bar');
     if (expBar) {
@@ -1038,32 +1239,32 @@ const isEmoji = (str: string) => {
         expBar.style.width = targetPercent;
       }, 300);
     }
-
+ 
     // 5. Carga de progreso del invitado desde localStorage y sincronización
     const guestFlag = document.getElementById('is-guest-flag');
     if (guestFlag) {
-      const guestVisits = parseInt(localStorage.getItem('edificarte_guest_visits') || '0', 10);
-      const guestPoints = parseInt(localStorage.getItem('edificarte_guest_points') || '0', 10);
+      const guestVisits = parseInt(localStorage.getItem('turimap_guest_visits') || '0', 10);
+      const guestPoints = parseInt(localStorage.getItem('turimap_guest_points') || '0', 10);
       let guestBadges: number[] = [];
       try {
-        guestBadges = JSON.parse(localStorage.getItem('edificarte_guest_badges') || '[]');
+        guestBadges = JSON.parse(localStorage.getItem('turimap_guest_badges') || '[]');
       } catch {}
-
+ 
       // Actualizar visitas y puntos en el DOM
       const visitsEl = document.getElementById('stats-visits');
       const pointsEl = document.getElementById('stats-points');
       if (visitsEl) visitsEl.textContent = guestVisits.toString();
       if (pointsEl) pointsEl.textContent = guestPoints.toString();
-
+ 
       // Calcular nivel y experiencia
       const level = Math.floor(guestPoints / 500) + 1;
       const exp = guestPoints % 500;
-      
+ 
       const levelLabel = document.getElementById('level-label');
       const expLabel = document.getElementById('exp-label');
-      if (levelLabel) levelLabel.textContent = `Nivel ${level}`;
-      if (expLabel) expLabel.textContent = `${exp} / 500 exp`;
-
+      if (levelLabel) levelLabel.textContent = t('profile.level_val', { level });
+      if (expLabel) expLabel.textContent = t('profile.exp_val', { exp });
+ 
       if (expBar) {
         const percent = `${(exp / 500) * 100}%`;
         expBar.setAttribute('data-percent', percent);
@@ -1073,13 +1274,13 @@ const isEmoji = (str: string) => {
           expBar.style.width = percent;
         }, 300);
       }
-
+ 
       // Actualizar contador de insignias
       const countLabel = document.getElementById('badges-count-label');
       if (countLabel) {
-        countLabel.textContent = `${guestBadges.length} Ganados`;
+        countLabel.textContent = t('profile.badges_unlocked', { count: guestBadges.length });
       }
-
+ 
       // Desbloquear visualmente las insignias obtenidas localmente
       guestBadges.forEach((id) => {
         const card = document.getElementById(`badge-card-${id}`);
@@ -1094,35 +1295,27 @@ const isEmoji = (str: string) => {
           }
           const title = card.querySelector('h3');
           if (title) {
-            title.classList.remove('text-slate-400', 'dark:text-slate-600');
-            title.classList.add('text-slate-800', 'dark:text-slate-200');
+            title.classList.remove('text-slate-400');
+            title.classList.add('text-[#111111]');
           }
           const desc = card.querySelector('p');
           if (desc) {
-            desc.textContent = '¡Completado! Ya tienes esta insignia en tu billetera.';
+            desc.textContent = t('profile.badge_already_owned');
           }
         }
       });
-
-      // Registrarse / Crear cuenta: limpiar cookies de guest server-side
-      // antes de recargar para que /yo renderice el form de login/register
-      // (en vez del panel de guest).
+ 
+      // Registrarse / Crear cuenta: redirigir a /yo?auth=register
       const registerBtns = ['btn-guest-register', 'btn-guest-register-cta'];
       registerBtns.forEach(id => {
         const btn = document.getElementById(id);
         if (btn) {
-          btn.addEventListener('click', async () => {
-            btn.setAttribute('disabled', 'true');
-            try {
-              await fetch('/api/exit-guest', { method: 'POST' });
-            } catch (err) {
-              console.warn('No se pudo limpiar guest en el servidor, recargando igual:', err);
-            }
-            window.location.reload();
+          btn.addEventListener('click', () => {
+            window.location.href = '/yo?auth=register';
           });
         }
       });
-
+ 
       // Interceptar envío del formulario de edición para invitados
       if (editModal) {
         const editModalForm = editModal.querySelector('form');
@@ -1133,37 +1326,37 @@ const isEmoji = (str: string) => {
               const formData = new FormData(editModalForm);
               const name = formData.get('name')?.toString().trim() || 'Edificador Invitado';
               const avatarUrl = formData.get('avatar_url')?.toString().trim() || '👷';
-
-              localStorage.setItem('edificarte_guest_name', name);
-              localStorage.setItem('edificarte_guest_avatar', avatarUrl);
-
+ 
+              localStorage.setItem('turimap_guest_name', name);
+              localStorage.setItem('turimap_guest_avatar', avatarUrl);
+ 
               window.location.reload();
             }
           });
         }
       }
-
+ 
       // Pre-cargar valores de invitado en la UI al cargar la página
-      const savedGuestName = localStorage.getItem('edificarte_guest_name');
-      const savedGuestAvatar = localStorage.getItem('edificarte_guest_avatar');
-      
+      const savedGuestName = localStorage.getItem('turimap_guest_name');
+      const savedGuestAvatar = localStorage.getItem('turimap_guest_avatar');
+ 
       if (savedGuestName) {
         const nameEl = document.getElementById('profile-user-name');
         if (nameEl) nameEl.textContent = savedGuestName;
-
+ 
         if (editModal) {
           const modalNameInput = editModal.querySelector('input[name="name"]') as HTMLInputElement;
           if (modalNameInput) modalNameInput.value = savedGuestName;
         }
       }
-      
+ 
       if (savedGuestAvatar) {
         // Reemplazar o renderizar el avatar de emoji correspondiente
         const avatarContainer = document.getElementById('avatar-container-outer');
         if (avatarContainer) {
-          avatarContainer.innerHTML = `<div class="flex h-full w-full items-center justify-center rounded-full border-4 border-white bg-brand-50 text-4xl shadow-lg dark:border-slate-900 dark:bg-slate-850" id="profile-avatar-emoji">${savedGuestAvatar}</div>`;
+          avatarContainer.innerHTML = `<div class="flex h-full w-full items-center justify-center rounded-full border border-[#ECECEC] bg-slate-50 text-3xl shadow-sm" id="profile-avatar-emoji">${savedGuestAvatar}</div>`;
         }
-        
+ 
         const modalEmojiInput = document.getElementById('avatar-emoji-input') as HTMLInputElement;
         if (modalEmojiInput) modalEmojiInput.value = savedGuestAvatar;
       }
@@ -1171,9 +1364,9 @@ const isEmoji = (str: string) => {
       // Usuario real autenticado: Sincronizar progreso local si existía antes de loguearse/registrarse
       let guestBadges: number[] = [];
       try {
-        guestBadges = JSON.parse(localStorage.getItem('edificarte_guest_badges') || '[]');
+        guestBadges = JSON.parse(localStorage.getItem('turimap_guest_badges') || '[]');
       } catch {}
-
+ 
       if (guestBadges.length > 0) {
         // Enviar las insignias locales al backend D1 para guardarlas de forma definitiva
         Promise.all(
@@ -1186,9 +1379,9 @@ const isEmoji = (str: string) => {
           )
         ).then(() => {
           // Limpiar el progreso de invitado para evitar envíos duplicados
-          localStorage.removeItem('edificarte_guest_badges');
-          localStorage.removeItem('edificarte_guest_points');
-          localStorage.removeItem('edificarte_guest_visits');
+          localStorage.removeItem('turimap_guest_badges');
+          localStorage.removeItem('turimap_guest_points');
+          localStorage.removeItem('turimap_guest_visits');
           // Recargar para mostrar los datos finales guardados en la BD
           window.location.reload();
         }).catch(err => {
@@ -1196,7 +1389,7 @@ const isEmoji = (str: string) => {
         });
       }
     }
-
+ 
     // Ocultar notificaciones flotantes de éxito/error después de 3.5 segundos
     const floatingAlerts = document.querySelectorAll('.fixed.top-6.left-1\\/2');
     floatingAlerts.forEach((alert) => {
@@ -1205,24 +1398,43 @@ const isEmoji = (str: string) => {
         setTimeout(() => alert.remove(), 500);
       }, 3500);
     });
-
+ 
+    // 5b. Efecto Scroll en la barra de navegación superior (Sticky top-bar)
+    const topBar = document.getElementById('profile-top-bar');
+    const topTitle = document.getElementById('profile-top-title');
+    if (topBar && topTitle) {
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 20) {
+          topBar.classList.remove('h-24');
+          topBar.classList.add('h-16', 'shadow-sm');
+          topTitle.classList.remove('text-3xl');
+          topTitle.classList.add('text-2xl');
+        } else {
+          topBar.classList.remove('h-16', 'shadow-sm');
+          topBar.classList.add('h-24');
+          topTitle.classList.remove('text-2xl');
+          topTitle.classList.add('text-3xl');
+        }
+      }, { passive: true });
+    }
+ 
     // 6. Renderizar "Mis Reservas" y "Mis Favoritos" desde localStorage
     renderReservations();
     renderFavorites();
   });
-
+ 
   /**
    * Renderiza las reservas de tours guardadas en localStorage bajo
-   * 'edificarte_reservations'. Usa textContent y atributos para datos
+   * 'turimap_reservations'. Usa textContent y atributos para datos
    * user-controlled → evita XSS. Mantiene orden: más recientes primero.
    */
   function renderReservations(): void {
-    const STORAGE_KEY = 'edificarte_reservations';
+    const STORAGE_KEY = 'turimap_reservations';
     const listEl = document.getElementById('reservations-list');
     const emptyEl = document.getElementById('reservations-empty');
     const countEl = document.getElementById('reservations-count-label');
     if (!listEl || !emptyEl || !countEl) return;
-
+ 
     let reservations: Array<Record<string, unknown>> = [];
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -1232,33 +1444,35 @@ const isEmoji = (str: string) => {
       console.warn('No se pudo leer el storage de reservas:', e);
       reservations = [];
     }
-
+ 
     // Orden: más recientes primero
     reservations.sort((a, b) => {
       const at = new Date(a.createdAt as string).getTime() || 0;
       const bt = new Date(b.createdAt as string).getTime() || 0;
       return bt - at;
     });
-
+ 
     // Limpiar contenedor
     listEl.innerHTML = '';
-
+ 
     if (reservations.length === 0) {
       listEl.classList.add('hidden');
       emptyEl.classList.remove('hidden');
-      countEl.textContent = '0 Reservas';
+      countEl.textContent = t('profile.reservations_count_many', { count: 0 });
       return;
     }
-
+ 
     emptyEl.classList.add('hidden');
     listEl.classList.remove('hidden');
-    countEl.textContent = `${reservations.length} ${reservations.length === 1 ? 'Reserva' : 'Reservas'}`;
-
+    countEl.textContent = reservations.length === 1
+      ? t('profile.reservations_count_one')
+      : t('profile.reservations_count_many', { count: reservations.length });
+ 
     reservations.forEach((r) => {
       const card = document.createElement('div');
       card.className =
-        'group flex gap-3 rounded-2xl border border-slate-200/60 bg-white p-3 shadow-sm transition-all duration-300 hover:border-brand-200/50 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-brand-900';
-
+        'group flex h-full gap-2.5 rounded-xl border border-[#ECECEC] bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.01)] transition-all hover:border-[#6B7280]/20';
+ 
       const tourTitle = (r.tourTitle as string) || 'Tour';
       const tourImage = (r.tourImage as string) || '';
       const name = (r.name as string) || '';
@@ -1267,11 +1481,11 @@ const isEmoji = (str: string) => {
       const totalMXN = (r.totalMXN as number) || 0;
       const status = (r.status as string) || 'pending';
       const reservationId = (r.id as string) || '';
-
-      // Thumb (imagen vía atributo para evitar XSS)
+ 
+      // Thumb
       const thumb = document.createElement('div');
       thumb.className =
-        'flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200/60 bg-amber-50 dark:border-slate-800/60 dark:bg-amber-950/30';
+        'flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#ECECEC] bg-slate-50 self-center';
       if (tourImage) {
         const img = document.createElement('img');
         img.src = tourImage;
@@ -1282,156 +1496,166 @@ const isEmoji = (str: string) => {
         thumb.appendChild(img);
       } else {
         const icon = document.createElement('span');
-        icon.className = 'material-symbols-outlined text-[28px] text-amber-500';
+        icon.className = 'material-symbols-outlined text-[24px] text-amber-500';
         icon.textContent = 'tour';
         thumb.appendChild(icon);
       }
       card.appendChild(thumb);
-
+ 
       // Body
       const body = document.createElement('div');
-      body.className = 'flex min-w-0 flex-1 flex-col justify-between';
-
+      body.className = 'flex min-w-0 flex-1 flex-col justify-between text-left';
+ 
+      // Group title, meta and ID together
+      const topGroup = document.createElement('div');
+      topGroup.className = 'flex flex-col min-w-0';
+ 
       const titleEl = document.createElement('h3');
-      titleEl.className = 'truncate text-sm font-bold text-slate-800 dark:text-slate-200';
+      titleEl.className = 'truncate text-[13px] font-bold text-[#111111]';
       titleEl.textContent = tourTitle;
-      body.appendChild(titleEl);
-
+      topGroup.appendChild(titleEl);
+ 
       const meta = document.createElement('div');
-      meta.className = 'mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400';
-
+      meta.className = 'mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-[#6B7280]';
+ 
       const dateEl = document.createElement('span');
       dateEl.className = 'inline-flex items-center gap-0.5 font-semibold';
       const dateIcon = document.createElement('span');
-      dateIcon.className = 'material-symbols-outlined text-[12px]';
+      dateIcon.className = 'material-symbols-outlined text-[10px]';
       dateIcon.textContent = 'event';
       dateEl.appendChild(dateIcon);
-      dateEl.appendChild(document.createTextNode(` ${formatDate(date)}`));
+      dateEl.appendChild(document.createTextNode(` ${formatDate(date, locale)}`));
       meta.appendChild(dateEl);
-
+ 
       const peopleEl = document.createElement('span');
       peopleEl.className = 'inline-flex items-center gap-0.5';
       const peopleIcon = document.createElement('span');
-      peopleIcon.className = 'material-symbols-outlined text-[12px]';
+      peopleIcon.className = 'material-symbols-outlined text-[10px]';
       peopleIcon.textContent = 'group';
       peopleEl.appendChild(peopleIcon);
-      peopleEl.appendChild(document.createTextNode(` ${people} ${people === 1 ? 'persona' : 'personas'}`));
+      const peopleText = people === 1 
+        ? t('profile.reservations.people_one') 
+        : t('profile.reservations.people_many', { count: people });
+      peopleEl.appendChild(document.createTextNode(` ${peopleText}`));
       meta.appendChild(peopleEl);
-
+ 
       if (name) {
         const nameEl = document.createElement('span');
         nameEl.className = 'inline-flex items-center gap-0.5 truncate';
         const personIcon = document.createElement('span');
-        personIcon.className = 'material-symbols-outlined text-[12px]';
+        personIcon.className = 'material-symbols-outlined text-[10px]';
         personIcon.textContent = 'person';
         nameEl.appendChild(personIcon);
         nameEl.appendChild(document.createTextNode(` ${name}`));
         meta.appendChild(nameEl);
       }
-      body.appendChild(meta);
-
-      // Footer: total + status
-      const footer = document.createElement('div');
-      footer.className = 'mt-1.5 flex items-center justify-between gap-2';
-
-      const totalEl = document.createElement('span');
-      totalEl.className = 'text-xs font-bold text-slate-700 dark:text-slate-300';
-      totalEl.textContent = `$${totalMXN.toLocaleString('es-MX')} MXN`;
-      footer.appendChild(totalEl);
-
-      const statusEl = document.createElement('span');
-      const isConfirmed = status === 'confirmed';
-      statusEl.className =
-        'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ' +
-        (isConfirmed
-          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300');
-      const statusIcon = document.createElement('span');
-      statusIcon.className = 'material-symbols-outlined text-[11px]';
-      statusIcon.textContent = isConfirmed ? 'check_circle' : 'schedule';
-      statusEl.appendChild(statusIcon);
-      statusEl.appendChild(document.createTextNode(isConfirmed ? ' Confirmada' : ' Pendiente'));
-      footer.appendChild(statusEl);
-
-      body.appendChild(footer);
-
+      topGroup.appendChild(meta);
+ 
       if (reservationId) {
         const idEl = document.createElement('span');
         idEl.className =
-          'mt-1 block rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] font-medium text-slate-400 dark:bg-slate-800 dark:text-slate-500';
+          'mt-1 inline-block w-fit rounded bg-slate-50 dark:bg-slate-800 px-1 py-0.5 font-mono text-[8px] font-medium text-slate-400 border border-slate-100 dark:border-slate-700/50';
         idEl.textContent = reservationId;
-        body.appendChild(idEl);
+        topGroup.appendChild(idEl);
       }
-
+ 
+      body.appendChild(topGroup);
+ 
+      // Footer: total + status
+      const footer = document.createElement('div');
+      footer.className = 'mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-1.5';
+ 
+      const totalEl = document.createElement('span');
+      totalEl.className = 'text-[11px] font-bold text-[#111111]';
+      totalEl.textContent = `$${totalMXN.toLocaleString('es-MX')} MXN`;
+      footer.appendChild(totalEl);
+ 
+      const statusEl = document.createElement('span');
+      const isConfirmed = status === 'confirmed';
+      statusEl.className =
+        'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ' +
+        (isConfirmed
+          ? 'bg-emerald-50 text-emerald-700'
+          : 'bg-amber-50 text-amber-700');
+      const statusIcon = document.createElement('span');
+      statusIcon.className = 'material-symbols-outlined text-[10px]';
+      statusIcon.textContent = isConfirmed ? 'check_circle' : 'schedule';
+      statusEl.appendChild(statusIcon);
+      const statusText = isConfirmed 
+        ? t('profile.reservations.status_confirmed')
+        : t('profile.reservations.status_pending');
+      statusEl.appendChild(document.createTextNode(` ${statusText}`));
+      footer.appendChild(statusEl);
+ 
+      body.appendChild(footer);
+ 
       card.appendChild(body);
       listEl.appendChild(card);
     });
   }
-
-  /** Formato corto de fecha YYYY-MM-DD → "12 mar 2026" en es-MX. */
-  function formatDate(iso: string): string {
+ 
+  /** Formato corto de fecha YYYY-MM-DD → "12 mar 2026" en es-MX o en-US. */
+  function formatDate(iso: string, loc: string): string {
     if (!iso) return '-';
     const parts = iso.split('-');
     if (parts.length !== 3) return iso;
-    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const monthsEs = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = loc === 'en' ? monthsEn : monthsEs;
     const day = parseInt(parts[2], 10);
     const monthIdx = parseInt(parts[1], 10) - 1;
     const year = parts[0];
     if (isNaN(day) || monthIdx < 0 || monthIdx > 11) return iso;
-    return `${day} ${months[monthIdx]} ${year}`;
+    return loc === 'en' 
+      ? `${months[monthIdx]} ${day}, ${year}`
+      : `${day} ${months[monthIdx]} ${year}`;
   }
-
+ 
   /**
    * Renderiza la sección "Mis Favoritos" desde localStorage.
-   * Lee 'edificarte_favorites' (array de IDs) y cruza con los datos
-   * embebidos de monumentos para construir mini-cards.
    */
   function renderFavorites(): void {
     const listEl = document.getElementById('favorites-list');
     const emptyEl = document.getElementById('favorites-empty');
     const countEl = document.getElementById('favorites-count-label');
     if (!listEl || !emptyEl || !countEl) return;
-
+ 
     let favIds: string[] = [];
     try {
-      favIds = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
+      favIds = JSON.parse(localStorage.getItem('turimap_favorites') || '[]');
       if (!Array.isArray(favIds)) favIds = [];
     } catch { favIds = []; }
-
-    // Monumentos embebidos desde los datos de la sesión
-    // Los favoritos son IDs de experiencias (exp.id) que pueden ser
-    // IDs de monumentos ('bellas-artes', 'el-rule', …) o de experiencias
-    // estáticas ('turismo-regenerativo', …). Guardamos imagen y título
-    // desde data-attributes de las cards si las hubiera, o sólo el ID.
-    // Para una solución robusta leemos una tabla embebida al final del script.
+ 
     const knownExp: Record<string, { title: string; image: string; category: string }> = {};
     try {
-      const raw = (window as unknown as { __EDIFICARTE_EXPERIENCES__?: Record<string, { title: string; image: string; category: string }> }).__EDIFICARTE_EXPERIENCES__;
+      const raw = (window as unknown as { __TURIMAP_EXPERIENCES__?: Record<string, { title: string; image: string; category: string }> }).__TURIMAP_EXPERIENCES__;
       if (raw) Object.assign(knownExp, raw);
     } catch {}
-
+ 
     listEl.innerHTML = '';
-
+ 
     if (favIds.length === 0) {
       listEl.classList.add('hidden');
       emptyEl.classList.remove('hidden');
-      countEl.textContent = '0 Favoritos';
+      countEl.textContent = t('profile.favorites_count_many', { count: 0 });
       return;
     }
-
+ 
     emptyEl.classList.add('hidden');
     listEl.classList.remove('hidden');
-    countEl.textContent = `${favIds.length} ${favIds.length === 1 ? 'Favorito' : 'Favoritos'}`;
-
+    countEl.textContent = favIds.length === 1
+      ? t('profile.favorites_count_one')
+      : t('profile.favorites_count_many', { count: favIds.length });
+ 
     favIds.forEach((id) => {
       const exp = knownExp[id];
       const card = document.createElement('a');
       card.href = '/';
-      card.className = 'group flex flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm transition-all duration-300 hover:border-rose-200/60 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-rose-900/40';
-
+      card.className = 'group flex flex-col h-full overflow-hidden rounded-xl border border-[#ECECEC] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.01)] transition-all hover:border-rose-200/60 hover:shadow-md';
+ 
       const imgWrap = document.createElement('div');
-      imgWrap.className = 'relative h-24 w-full overflow-hidden bg-slate-100 dark:bg-slate-850';
-
+      imgWrap.className = 'relative h-24 w-full overflow-hidden bg-slate-50';
+ 
       if (exp?.image) {
         const img = document.createElement('img');
         img.src = exp.image;
@@ -1445,32 +1669,32 @@ const isEmoji = (str: string) => {
         icon.textContent = 'location_on';
         imgWrap.appendChild(icon);
       }
-
+ 
       // Heart badge
       const heart = document.createElement('span');
       heart.className = 'absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white shadow';
       heart.innerHTML = '<svg class="h-3 w-3 fill-current" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
       imgWrap.appendChild(heart);
-
+ 
       card.appendChild(imgWrap);
-
+ 
       const body = document.createElement('div');
-      body.className = 'p-2';
-
+      body.className = 'p-2 text-left';
+ 
       const titleEl = document.createElement('p');
-      titleEl.className = 'text-[11px] font-bold text-slate-800 dark:text-slate-200 line-clamp-2 leading-tight';
+      titleEl.className = 'text-[11px] font-bold text-[#111111] line-clamp-2 leading-tight';
       titleEl.textContent = exp?.title || id;
       body.appendChild(titleEl);
-
+ 
       if (exp?.category) {
         const catEl = document.createElement('p');
         catEl.className = 'mt-0.5 text-[9px] font-semibold uppercase tracking-wider text-rose-500';
         catEl.textContent = exp.category;
         body.appendChild(catEl);
       }
-
+ 
       card.appendChild(body);
       listEl.appendChild(card);
     });
   }
-</script>
+</script>

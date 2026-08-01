@@ -77,7 +77,7 @@ export class MockReviewEmitter implements ReviewEmitter {
  * sin contratos. En live, replace por `LiveUsdcVerifier` que llama al RPC
  * de Polygon y decodifica el log Transfer del USDC.
  *
- * Devuelve siempre un objeto válido — la intención es que el flujo ande
+ * Devuelve siempre un objeto válido - la intención es que el flujo ande
  * end-to-end sin necesidad de tener un RPC público configurado.
  */
 export class MockUsdcVerifier implements UsdcVerifier {

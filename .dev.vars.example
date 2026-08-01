@@ -70,3 +70,34 @@ ADMIN_PRIVATE_KEY=0x000000000000000000000000000000000000000000000000000000000000
 # ⚠️  ESTO ES UN SECRET — en prod usá `wrangler secret put GEMINI_API_KEY`.
 # Sin esta var: /api/chat tira 500 con mensaje claro.
 GEMINI_API_KEY=
+
+
+# === Mapbox ===
+
+# Token público de Mapbox GL JS. Se inyecta al cliente via `define:vars` en
+# src/pages/mapa.astro. Sin esto, el mapa queda en blanco.
+# Sacalo de https://account.mapbox.com/access-tokens/
+MAPBOX_TOKEN=
+
+
+# === TripAdvisor (Content API) ===
+
+# API key de TripAdvisor para enriquecer lugares con reviews.
+# Si está vacía, el módulo src/lib/tripadvisor.ts cae a modo offline.
+# En prod subir como secret.
+TRIPADVISOR=
+
+# Override opcional del origen enviado como header Referer en las llamadas
+# upstream (para keys con restricción por dominio). Default: https://<host del request>.
+# TRIPADVISOR_REFERER_ORIGIN=
+
+
+# === Supabase (futuro) ===
+
+# Estas dos vars habilitan el cliente Supabase en src/lib/supabase.ts.
+# Mientras estén vacías, getSupabase() devuelve null y la app sigue funcionando
+# con el fallback D1 (scaffold actual).
+# Anon key: SOLO lectura pública (puede commitearse). Service role key NO va
+# acá — se inyecta vía wrangler secret para uso server-side (admin panel).
+PUBLIC_SUPABASE_URL=
+PUBLIC_SUPABASE_ANON_KEY=

@@ -10,6 +10,14 @@ export default [
       'node_modules/',
       'worker-configuration.d.ts',
       'tempmediaStorage/',
+      'tianquiztlismercado/',
+      'tianquiztismercado/',
+      '.wrangler/',
+      '.vercel/',
+      '.atl/',
+      '.claude/',
+      '.agents/',
+      'cache/',
       // Hardhat/contracts config usan `require` por convención de la toolchain.
       // No vale la pena (ni es seguro) aplicar reglas TS-ESLint a configs
       // CJS de tooling externo.

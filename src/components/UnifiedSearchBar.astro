@@ -1,0 +1,86 @@
+---
+interface Props {
+  inputId: string;
+  clearId?: string;
+  suggestionsId?: string;
+  placeholder: string;
+  ariaLabel: string;
+  i18nPlaceholder?: string;
+  outerClass?: string;
+  variant?: 'default' | 'hero';
+  showAi?: boolean;
+}
+
+const {
+  inputId,
+  clearId,
+  suggestionsId,
+  placeholder,
+  ariaLabel,
+  i18nPlaceholder,
+  outerClass = '',
+  variant = 'default',
+  showAi = true,
+} = Astro.props;
+---
+
+<div
+  class:list={['relative mx-auto w-full max-w-lg', outerClass]}
+  role="search"
+  transition:name="unified-search"
+>
+  <div class:list={['ios26-search', variant === 'hero' && 'ios26-search--hero']}>
+    <span class="material-symbols-outlined ios26-search__icon" aria-hidden="true">search</span>
+    <input
+      id={inputId}
+      type="search"
+      inputmode="search"
+      autocomplete="off"
+      class="ios26-search__input"
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      data-i18n-placeholder={i18nPlaceholder}
+    />
+    {
+      clearId && (
+        <button
+          id={clearId}
+          type="button"
+          class="ios26-search__clear hidden"
+          aria-label="Limpiar búsqueda"
+          title="Limpiar búsqueda"
+        >
+          <span class="material-symbols-outlined text-[17px]" aria-hidden="true">close</span>
+        </button>
+      )
+    }
+    {
+      showAi && (
+        <button
+          id="ai-agent-btn-searchbar"
+          type="button"
+          class="ios26-search__action flex"
+          aria-label="Asistente de IA"
+          title="Preguntar a la IA"
+        >
+          <span
+            class="material-symbols-outlined text-[16px]"
+            style="font-variation-settings:'FILL' 1"
+            aria-hidden="true"
+          >
+            auto_awesome
+          </span>
+        </button>
+      )
+    }
+  </div>
+
+  {
+    suggestionsId && (
+      <div
+        id={suggestionsId}
+        class="ios26-search-popover pointer-events-auto absolute left-0 right-0 top-full z-50 mt-2 hidden max-h-72 overflow-y-auto rounded-[1.4rem] transition-all duration-200"
+      />
+    )
+  }
+</div>

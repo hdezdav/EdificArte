@@ -5,6 +5,8 @@
     "sku": "217537123517253",
     "price": 750,
     "currency": "MXN",
+    "category": "artesania",
+    "origin": "Tláhuac, CDMX",
     "images": [
       "https://static.wixstatic.com/media/c92e56_0bc9157c450f4c8d828812b5247aaa80~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_893dd7e7ed25475cbdceecf78f2bd813~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
@@ -17,6 +19,8 @@
     "sku": "36523641234523",
     "price": 45,
     "currency": "MXN",
+    "category": "gastronomia",
+    "origin": "Estado de México",
     "images": [
       "https://static.wixstatic.com/media/c92e56_bc2b422b1d3a477abca72bb26f4c275c~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_ef5660e5fd1a4f04b847cfc33f7ac164~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
@@ -36,6 +40,8 @@
     "sku": "364215375135191",
     "price": 85,
     "currency": "MXN",
+    "category": "gastronomia",
+    "origin": "Chalma, Estado de México",
     "images": [
       "https://static.wixstatic.com/media/c92e56_6d8a3efac99a4cf1938210f386129f63~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_68b558b106a540d695222d5f07465061~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
@@ -50,6 +56,8 @@
     "sku": "",
     "price": 250,
     "currency": "MXN",
+    "category": "textil",
+    "origin": "México",
     "images": [
       "https://static.wixstatic.com/media/c92e56_b7f8961807a349da94eef2ae0e788b22~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_3a6a8243f1e748cab723489b682364e5~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
@@ -62,6 +70,8 @@
     "sku": "",
     "price": 250,
     "currency": "MXN",
+    "category": "textil",
+    "origin": "México",
     "images": [
       "https://static.wixstatic.com/media/c92e56_b7f8961807a349da94eef2ae0e788b22~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_3a6a8243f1e748cab723489b682364e5~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
@@ -74,6 +84,8 @@
     "sku": "364215376135191",
     "price": 650,
     "currency": "MXN",
+    "category": "artesania",
+    "origin": "Xochimilco, CDMX",
     "images": [
       "https://static.wixstatic.com/media/c92e56_282aa633f768407f85b79775f9372324~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_9e2ec52150144cf98feaba3731ac18ea~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
@@ -89,6 +101,8 @@
     "sku": "126351351935",
     "price": 65,
     "currency": "MXN",
+    "category": "artesania",
+    "origin": "Chalma, Estado de México",
     "images": [
       "https://static.wixstatic.com/media/c92e56_5b22a4ccbdaf42768dbd72b54d35f815~mv2.png/v1/fit/w_500,h_500,q_90/file.png",
       "https://static.wixstatic.com/media/c92e56_f3ff8f752d344f89a81af28cf574eff5~mv2.png/v1/fit/w_500,h_500,q_90/file.png",
@@ -103,6 +117,8 @@
     "sku": "366615376135191",
     "price": 65,
     "currency": "MXN",
+    "category": "artesania",
+    "origin": "Centro de México",
     "images": [
       "https://static.wixstatic.com/media/c92e56_864745bc485949f1b96264658b2921ff~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_f85eb29606d8494495dace18736f7307~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
@@ -117,6 +133,8 @@
     "sku": "21554345656",
     "price": 55,
     "currency": "MXN",
+    "category": "artesania",
+    "origin": "Malinalco, Estado de México",
     "images": [
       "https://static.wixstatic.com/media/c92e56_82eb447713444e5489eea7487f1ef7bf~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_72ea07ba05ad4ebb814a8ea394ab0d17~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
@@ -133,6 +151,8 @@
     "sku": "364215376135199",
     "price": 2500,
     "currency": "MXN",
+    "category": "artesania",
+    "origin": "Coahuila",
     "images": [
       "https://static.wixstatic.com/media/c92e56_e629e9d2e505428ea7719f156fb09305~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_9c2cc18077984166845e7084753011fb~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
@@ -146,6 +166,8 @@
     "sku": "364115376135191",
     "price": 250,
     "currency": "MXN",
+    "category": "artesania",
+    "origin": "Atizapán, Estado de México",
     "images": [
       "https://static.wixstatic.com/media/c92e56_e025aeec384242f2861ce93710958078~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
       "https://static.wixstatic.com/media/c92e56_9be6c0319b254e548a49bec3b901b4f7~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"

@@ -1,236 +1,238 @@
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import type {
-  LatLngTuple,
-  Marker as LMarker,
-  Circle as LCircle,
-} from 'leaflet';
-
-console.log('[GPS DEBUG] MODULE TOP - mapa-app.ts started loading');
+import 'mapbox-gl/dist/mapbox-gl.css';
+import mapboxgl from 'mapbox-gl';
+import type { Map, Marker } from 'mapbox-gl';
+import { MONUMENTS } from '../data/monuments';
+import { RECINTOS, RECINTO_TYPES, RECINTO_DEFAULT_RADIUS } from '../data/recintos';
+import { detectLocale, pickLocalized, translate } from '../lib/i18n';
+import {
+  createPaddedViewport,
+  getPoiBudget,
+  getViewportCacheKey,
+  MAX_RENDERED_POIS,
+  shouldLoadPois,
+  viewportContains,
+  type PaddedViewport,
+  type PoiBudget,
+} from './map-viewport-policy';
+import {
+  TravelVisualization,
+  getTravelMode,
+  type TravelMode,
+} from './map-travel-visualization';
+import {
+  canonicalIdForChip,
+  getCanonicalCategoryInfo,
+  normalizeCategory,
+} from '../lib/category-taxonomy';
+import {
+  buildClusterIndex,
+  getClusterFeatures,
+  getExpansionZoom,
+  type PinClusterEntry,
+  type PinClusterGroup,
+  type PinClusterIndex,
+} from './map-pin-clustering';
 
 // ---------------------------------------------------------------------------
-// Tipos
+// Token - injected at build time via Astro's inline script
 // ---------------------------------------------------------------------------
+const MAPBOX_TOKEN = (window as unknown as { __TURIMAP_TOKEN__?: string })
+  .__TURIMAP_TOKEN__;
+if (!MAPBOX_TOKEN) {
+  console.error(
+    '[EdificARTE] No Mapbox token found. Set MAPBOX_TOKEN in .dev.vars'
+  );
+}
 
-type MonumentType = 'museo' | 'templo' | 'arqueologia' | 'rascacielos' | 'sitio-remoto';
-type TileKey = 'osm' | 'light' | 'dark' | 'sat';
+mapboxgl.accessToken = MAPBOX_TOKEN || '';
 
-interface Monument {
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+interface Place {
   id: string;
   name: string;
   category: string;
-  dist: string;
+  address: string;
   lat: number;
   lng: number;
-  emoji: string;
-  desc: string;
-  audioDuration: string;
-  type: MonumentType;
-  image: string;
-  tourId?: string;
+  distance?: number;
+  isLocalMonument?: boolean;
+  emoji?: string;
+  videoUrl?: string;
+  isVRAvailable?: boolean;
 }
 
-interface VisitRecord {
-  visited: boolean;
-  rating: number;
-  review: string;
-  date: string;
+interface MapboxSearchResultFeature {
+  id?: string;
+  geometry: {
+    coordinates: [number, number];
+  };
+  properties?: {
+    poi_category?: string[];
+    category?: string;
+    name?: string;
+    full_address?: string;
+    address?: string;
+  };
+}
+
+interface MapboxGeocodingFeature {
+  id?: string;
+  center: [number, number];
+  text?: string;
+  place_name?: string;
+  properties?: {
+    category?: string;
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Datos (mock — Slice 1)
+// State
 // ---------------------------------------------------------------------------
+const deviceMemory =
+  (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
+const isAndroid = /Android/i.test(navigator.userAgent);
+const isLowPowerDevice =
+  isAndroid || deviceMemory <= 4 || navigator.hardwareConcurrency <= 4;
 
-import { MONUMENTS } from '../data/monuments';
-import { RECINTOS, RECINTO_TYPES, RECINTO_DEFAULT_RADIUS } from '../data/recintos';
-import type { Recinto } from '../data/recintos';
-import { TOURS } from '../data/tours';
-
-// Todos los monumentos son visibles en el mapa (incluyendo Pirámides del Sol
-// en Teotihuacán, que aparece FUERA del zoom inicial — el usuario debe hacer
-// zoom-out para verla). MONUMENTS se itera completo en markers/listas.
-const MAPPABLE_MONUMENTS: typeof MONUMENTS = [...MONUMENTS];
-
-const CDMX: LatLngTuple = [19.4326, -99.1332];
-
-const TILES: Record<TileKey, string> = {
-  osm: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  sat: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-};
-const TILE_ORDER: TileKey[] = ['osm', 'light', 'dark', 'sat'];
-
-// ---------------------------------------------------------------------------
-// Estado
-// ---------------------------------------------------------------------------
-
-let tileIdx = 0;
-let selectedId: string | null = null;
-let selectedRating = 5;
+let map: Map;
+let userMarker: Marker | null = null;
+let selectedPlace: Place | null = null;
 let isCollapsed = true;
-let timer: ReturnType<typeof setInterval> | null = null;
-let sec = 0;
-let dur = 0;
-let playing = false;
-let userMarker: LMarker | null = null;
-let userCircle: LCircle | null = null;
 let watchId: number | null = null;
-let routeAbortController: AbortController | null = null;
+let userLat: number | null = null;
+let userLng: number | null = null;
+// Start every device on Mapbox Standard, but defer its expensive 3D objects.
+// This keeps the first paint fast on Android without permanently downgrading
+// the map to the simpler Streets geometry.
+let currentStyleIdx = 0;
+let nearbyPlaces: Place[] = [];
+// Cache key of the last viewport actually rendered (fetch + merge + DOM).
+// 'below-zoom' sentinel: the zoom gate rendered the hint, not places.
+let lastRenderedCacheKey: string | null = null;
+interface PlaceMarkerRecord {
+  marker: Marker;
+  place: Place;
+}
+const placeMarkers = new globalThis.Map<string, PlaceMarkerRecord>();
+const clusterMarkers: Marker[] = [];
+// Supercluster index over getFilteredPlaces(nearbyPlaces), excluding route
+// pins and the selected place (both always render as individual pins).
+let clusterIndex: PinClusterIndex | null = null;
+// Bumped on every index rebuild so the render signature can never go stale.
+let clusterDataVersion = 0;
+let clusterRenderSignature = '';
 
-// ---------------------------------------------------------------------------
-// Storage helpers — Safari/Firefox ITP protection (in-memory fallback)
-// ---------------------------------------------------------------------------
+// Pin filter chips state (mapa.astro #map-filter-chips)
+// Chip data-filter values map 1:1 to canonical category ids; the mapping
+// lives in src/lib/category-taxonomy.ts (canonicalIdForChip).
+let activePinFilter = 'all';
+let filterChipsListenerBound = false;
+let travelVisualization: TravelVisualization | null = null;
+let detailed3DEnabled = false;
+let detailed3DDelay: ReturnType<typeof setTimeout> | null = null;
+let detailed3DIdleHandle: number | null = null;
 
-const memoryStore: Map<string, string> = new Map();
+const STYLES = [
+  { id: 'mapbox://styles/mapbox/standard', label: 'Standard' },
+  { id: 'mapbox://styles/mapbox/streets-v12', label: 'Streets' },
+  { id: 'mapbox://styles/mapbox/dark-v11', label: 'Dark' },
+  { id: 'mapbox://styles/mapbox/satellite-streets-v12', label: 'Satellite' },
+];
 
-function safeGet(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return memoryStore.has(key) ? (memoryStore.get(key) as string) : null;
+// Categories of POIs to query from Mapbox
+const POI_CATEGORIES = [
+  'museum',
+  'art_gallery',
+  'monument',
+  'historic',
+  'place_of_worship',
+  'castle',
+  'park',
+  'theatre',
+  'viewpoint',
+  'attraction',
+  'archaeological_site',
+];
+
+const NEARBY_CACHE_TTL_MS = 10 * 60 * 1000;
+const NEARBY_CACHE_MAX_ENTRIES = 24;
+const MOVEEND_REFRESH_DEBOUNCE_MS = 650;
+const nearbyPlacesCache = new globalThis.Map<
+  string,
+  { createdAt: number; places: Place[] }
+>();
+
+function pruneNearbyCache(now = Date.now()): void {
+  for (const [key, entry] of nearbyPlacesCache) {
+    if (now - entry.createdAt > NEARBY_CACHE_TTL_MS) {
+      nearbyPlacesCache.delete(key);
+    }
+  }
+  while (nearbyPlacesCache.size > NEARBY_CACHE_MAX_ENTRIES) {
+    const oldestKey = nearbyPlacesCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    nearbyPlacesCache.delete(oldestKey);
   }
 }
 
-function safeSet(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    memoryStore.set(key, value);
-  }
+function readNearbyCache(key: string): Place[] | null {
+  pruneNearbyCache();
+  const cached = nearbyPlacesCache.get(key);
+  if (!cached) return null;
+  nearbyPlacesCache.delete(key);
+  nearbyPlacesCache.set(key, cached);
+  return cached.places;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers de UI
-// ---------------------------------------------------------------------------
+function writeNearbyCache(key: string, places: Place[]): Place[] {
+  nearbyPlacesCache.delete(key);
+  nearbyPlacesCache.set(key, {
+    createdAt: Date.now(),
+    places,
+  });
+  pruneNearbyCache();
+  return places;
+}
 
+// Category icons/labels live in src/lib/category-taxonomy.ts (single source
+// of truth) — see getCategoryInfo below.
+
+// ---------------------------------------------------------------------------
+// DOM helpers
+// ---------------------------------------------------------------------------
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T | null =>
   document.getElementById(id) as T | null;
 
-// SVG silhouette icons por monumento de CDMX (custom, 24x24 viewBox).
-// Solo se usan en el pin del mapa; el resto del UI sigue mostrando el emoji.
-const MONUMENT_ICONS: Record<string, string> = {
-  'bellas-artes': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L3 13 L8 13 L8 22"/><path d="M16 22 L16 13 L21 13 L21 22"/><path d="M3 13 L21 13"/><path d="M7 13 L7 9 M10 13 L10 9 M14 13 L14 9 M17 13 L17 9"/><path d="M4 9 L20 9"/><path d="M4 9 A 8 4 0 0 1 20 9"/><path d="M10 5 L10 2 M14 5 L14 2"/><path d="M11 2 L13 2"/><path d="M12 2 L12 1"/></svg>`,
-  'catedral': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L3 6 L7 6 L7 22"/><path d="M17 22 L17 6 L21 6 L21 22"/><path d="M3 6 L7 6 L5 2 L7 2"/><path d="M17 6 L21 6 L19 2 L17 2"/><path d="M7 8 L17 8"/><path d="M8 22 L8 12"/><path d="M16 22 L16 12"/><path d="M8 12 Q12 12 16 12"/><path d="M9 12 A 3 4 0 0 1 15 12 Z"/><path d="M12 8 L12 6"/><path d="M10.5 4 L13.5 4 M11 2 L13 2 M12 1 L12 2"/></svg>`,
-  'templo-mayor': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L21 22 L19 18 L5 18 Z"/><path d="M5 18 L19 18 L17 14 L7 14 Z"/><path d="M7 14 L17 14 L15 10 L9 10 Z"/><path d="M9 10 L15 10 L13 6 L11 6 Z"/><path d="M11 6 L13 6 L12 4 Z"/><path d="M12 22 L12 4"/></svg>`,
-  'palacio-nacional': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L3 10 L21 10 L21 22"/><path d="M5 22 L5 14 L9 14 L9 22"/><path d="M11 22 L11 14 L13 14 L13 22"/><path d="M15 22 L15 14 L19 14 L19 22"/><path d="M3 10 L12 4 L21 10"/><path d="M11 4 L13 4 L13 8 L11 8 Z"/></svg>`,
-  'torre-latino': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M5 22 L5 14 L19 14 L19 22"/><path d="M7 14 L7 8 L17 8 L17 14"/><path d="M9 8 L9 4 L15 4 L15 8"/><path d="M6 18 L8 18 M10 18 L14 18 M16 18 L18 18"/><path d="M11 4 L13 4 L13 2 L11 2 Z"/><path d="M12 2 L12 1"/></svg>`,
-  'revolucion': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M4 22 L4 8"/><path d="M20 22 L20 8"/><path d="M8 22 L8 10"/><path d="M16 22 L16 10"/><path d="M4 8 Q12 4 20 8"/><path d="M8 10 L16 10"/><path d="M10 10 L10 6 Q12 4 14 6 L14 10"/><path d="M12 4 L12 2"/></svg>`,
-  'angel': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M6 22 L6 18 L18 18 L18 22"/><path d="M9 18 L9 14 L15 14 L15 18"/><path d="M10 14 L10 8 L14 8 L14 14"/><path d="M10 8 L14 8 L14 5 Q12 3 10 5 Z"/><path d="M12 5 L12 3"/><path d="M9 3 L9 2 M15 3 L15 2"/><path d="M8 3 Q10 1 12 1 Q14 1 16 3"/><path d="M11 1 L13 1"/><path d="M9 1 Q7 0 5 1 M15 1 Q17 0 19 1"/></svg>`,
-  'chapultepec': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M3 22 L3 9 L21 9 L21 22"/><path d="M3 9 L3 7 L5 7 L5 9"/><path d="M7 9 L7 5 L9 5 L9 9"/><path d="M11 9 L11 4 L13 4 L13 9"/><path d="M15 9 L15 5 L17 5 L17 9"/><path d="M19 9 L19 7 L21 7 L21 9"/><path d="M5 9 L5 22"/><path d="M9 9 L9 22"/><path d="M11 9 L11 22"/><path d="M13 9 L13 22"/><path d="M15 9 L15 22"/><path d="M17 9 L17 22"/><path d="M19 9 L19 22"/><path d="M11 18 L13 18 L13 22 L11 22 Z"/></svg>`,
-  'tres-culturas': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M2 22 L2 18 L6 18 L6 22"/><path d="M2 18 L6 18 L5 14 L3 14 Z"/><path d="M3 14 L5 14 L4.5 11 L3.5 11 Z"/><path d="M4 11 L4 10"/><path d="M8 22 L8 14 L13 14 L13 22"/><path d="M10 14 L10 6 L11 6 L11 14"/><path d="M9 6 L12 6"/><path d="M10.5 4 L10.5 2 L11.5 2 L11.5 4"/><path d="M9 14 L9 11 A 2 1.5 0 0 1 13 11 L13 14"/><path d="M15 22 L15 8 L21 8 L21 22"/><path d="M16 10 L17 10 M16 12 L17 12 M16 14 L17 14 M16 16 L17 16 M19 10 L20 10 M19 12 L20 12 M19 14 L20 14 M19 16 L20 16"/><path d="M17 8 L19 8 L19 5 L17 5 Z"/></svg>`,
-  'piramides-sol': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 22 L23 22"/><path d="M2 22 L22 22 L20 18 L4 18 Z"/><path d="M4 18 L20 18 L18.5 14 L5.5 14 Z"/><path d="M5.5 14 L18.5 14 L17 10 L7 10 Z"/><path d="M7 10 L17 10 L15 6 L9 6 Z"/><path d="M9 6 L15 6 L13 3 L11 3 Z"/><path d="M10.5 3 L13.5 3 L13 1 L11 1 Z"/><path d="M12 22 L12 1"/></svg>`,
-  'hotel-virreyes': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M4 22 L4 8 L20 8 L20 22"/><path d="M3 8 L12 3 L21 8"/><path d="M6 22 L6 12 L10 12 L10 22"/><path d="M14 22 L14 12 L18 12 L18 22"/><path d="M7 16 L9 16 M7 18 L9 18 M15 16 L17 16 M15 18 L17 18"/><path d="M11 6 L11 4 M13 6 L13 4 M11 5 L13 5"/></svg>`,
-  'memorial-68': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M4 22 L4 10 L20 10 L20 22"/><path d="M4 10 L12 5 L20 10"/><path d="M10 22 L10 16 L14 16 L14 22"/><path d="M6 14 L8 14 M6 17 L8 17 M16 14 L18 14 M16 17 L18 17"/><path d="M12 5 L12 3"/><path d="M10 3 L14 3"/><path d="M12 3 Q11 1 10 2 M12 3 Q13 1 14 2"/></svg>`,
-  'el-rule': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22 L22 22"/><path d="M4 22 L4 8 L20 8 L20 22"/><path d="M4 8 L4 6 L20 6 L20 8"/><path d="M10 22 L10 16 A2 2 0 0 1 14 16 L14 22"/><path d="M6 11 L8 11 L8 14 L6 14 Z"/><path d="M16 11 L18 11 L18 14 L16 14 Z"/><path d="M7 17 L7 19 M17 17 L17 19"/><path d="M11 6 L11 3 Q12 1 13 3 L13 6"/><path d="M9 4 L15 4"/></svg>`,
-};
-
-const pinIcon = (monumentId: string, emoji: string, selected = false): L.DivIcon => {
-  const svg =
-    MONUMENT_ICONS[monumentId] ||
-    `<span style="font-size:20px;line-height:1">${emoji}</span>`;
-
-  let favorites: string[] = [];
+// ---------------------------------------------------------------------------
+export function safeGet(key: string): string | null {
   try {
-    favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
-  } catch {}
-  const isFav = favorites.includes(monumentId);
-
-  const heartBadge = isFav 
-    ? `<div class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white border border-white" style="width:16px;height:16px;font-size:9px;box-shadow:0 1px 3px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">❤️</div>` 
-    : '';
-
-  return L.divIcon({
-    html: `<div class="monument-pin relative ${selected ? 'selected' : ''}">${svg}${heartBadge}</div>`,
-    className: '',
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-    popupAnchor: [0, -22],
-  });
-};
-
-// Pin distinto para recintos históricos (más pequeño, color ámbar)
-const recintoPinIcon = (recinto: Recinto): L.DivIcon => {
-  const typeColor = RECINTO_TYPES[recinto.type]?.color || '#a16207';
-  return L.divIcon({
-    html: `<div class="recinto-pin" style="--pin-color:${typeColor}" title="${recinto.name}">
-      <span class="material-symbols-outlined">museum</span>
-    </div>`,
-    className: '',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -16],
-  });
-};
-
-const parseDur = (s: string): number => {
-  const p = s.split(':');
-  return Number(p[0]) * 60 + Number(p[1]);
-};
-
-const fmt = (s: number): string =>
-  `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-
-// ---------------------------------------------------------------------------
-// Mapa
-// ---------------------------------------------------------------------------
-
-const map = L.map('map', {
-  center: CDMX,
-  zoom: 17,
-  zoomControl: false,
-  attributionControl: false,
-});
-let tileLayer = L.tileLayer(TILES[TILE_ORDER[tileIdx]], {
-  subdomains: 'abcd',
-  maxZoom: 19,
-}).addTo(map);
-
-const markers: { id: string; emoji: string; inst: LMarker }[] = [];
-const recintoMarkers: LMarker[] = [];
-const recintoPolygons: (L.Circle | L.Polygon)[] = [];
-let activeRouteLine: L.Polyline | null = null;
-
-function addMarkers(list: Monument[]) {
-  markers.forEach((m) => map.removeLayer(m.inst));
-  markers.length = 0;
-  list.forEach((m) => {
-    const inst = L.marker([m.lat, m.lng], { icon: pinIcon(m.id, m.emoji) })
-      .addTo(map)
-      .on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
-        selectMonument(m.id);
-      });
-    markers.push({ id: m.id, emoji: m.emoji, inst });
-  });
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
 }
 
-addMarkers(MAPPABLE_MONUMENTS);
-addRecintoMarkers();
+export function safeSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
 
-map.on('click', () => deselect());
-
-// ---------------------------------------------------------------------------
-// DOM refs
-// ---------------------------------------------------------------------------
-
-const viewList = $('view-list');
-const viewDetail = $('view-detail');
-const listContainer = $('monuments-list-container');
-const searchInput = $<HTMLInputElement>('search-input');
-
-// ---------------------------------------------------------------------------
-// Bottom Sheet
-// ---------------------------------------------------------------------------
-
-const bottomSheet = $('bottom-sheet');
-const sheetHeader = $('sheet-header');
-const sheetChevron = $('sheet-chevron');
-const sheetBody = $('sheet-body');
-const floatingControls = $('map-floating-controls');
+// Global sheet element variables (to prevent stale element references during page transition morphs)
+let bottomSheet: HTMLElement | null = null;
+let sheetHeader: HTMLElement | null = null;
+let sheetChevron: HTMLElement | null = null;
+let sheetBody: HTMLElement | null = null;
+let floatingControls: HTMLElement | null = null;
 
 function updateSheetUI() {
   if (!bottomSheet || !sheetChevron || !sheetBody) return;
+
+  const isMobile = window.innerWidth < 768;
 
   if (isCollapsed) {
     sheetBody.style.maxHeight = '0px';
@@ -238,994 +240,871 @@ function updateSheetUI() {
     sheetBody.style.pointerEvents = 'none';
     sheetChevron.style.transform = 'rotate(0deg)';
     if (floatingControls) {
-      floatingControls.style.bottom = 'calc(5.5rem + env(safe-area-inset-bottom, 0px))';
+      floatingControls.style.bottom =
+        'calc(8.25rem + env(safe-area-inset-bottom, 0px))';
     }
   } else {
-    sheetBody.style.maxHeight = '360px';
+    const h = isMobile ? '280px' : '450px';
+    sheetBody.style.maxHeight = h;
     sheetBody.style.opacity = '1';
     sheetBody.style.pointerEvents = 'auto';
     sheetChevron.style.transform = 'rotate(180deg)';
     if (floatingControls) {
-      floatingControls.style.bottom = 'calc(28.5rem + env(safe-area-inset-bottom, 0px))';
+      const bottomOffset = isMobile
+        ? 'calc(26rem + env(safe-area-inset-bottom, 0px))'
+        : 'calc(36.5rem + env(safe-area-inset-bottom, 0px))';
+      floatingControls.style.bottom = bottomOffset;
     }
   }
 }
 
-updateSheetUI();
-
-sheetHeader?.addEventListener('click', () => {
-  isCollapsed = !isCollapsed;
-  updateSheetUI();
-});
-
-bottomSheet?.addEventListener('click', (e) => e.stopPropagation());
-
 // ---------------------------------------------------------------------------
-// Recintos históricos (capa secundaria, no interactúan con el bottom sheet)
+// Nearby Places - fetch from Mapbox Tilequery / Geocoding
 // ---------------------------------------------------------------------------
+async function fetchNearbyPlaces(
+  lng: number,
+  lat: number,
+  viewport: PaddedViewport,
+  budget: PoiBudget,
+  cacheKey: string,
+  signal?: AbortSignal
+): Promise<Place[]> {
+  const cached = readNearbyCache(cacheKey);
+  if (cached) {
+    // Normalize category on read so stale caches (raw Mapbox/Spanish
+    // vocabularies from before the taxonomy refactor) self-heal.
+    return cached
+      .map((place) => ({
+        ...place,
+        category: normalizeCategory(place.category),
+        distance: haversine(lat, lng, place.lat, place.lng),
+      }))
+      .sort((a, b) => (a.distance || 0) - (b.distance || 0));
+  }
 
-function addRecintoMarkers() {
-  recintoMarkers.forEach((m) => map.removeLayer(m));
-  recintoMarkers.length = 0;
-  recintoPolygons.forEach((p) => map.removeLayer(p));
-  recintoPolygons.length = 0;
-  RECINTOS.forEach((r) => {
-    const typeColor = RECINTO_TYPES[r.type]?.color || '#a16207';
-
-    // 1) Polígono delimitando el área (círculo o polígono custom)
-    let shapeLayer: L.Circle | L.Polygon;
-    if (r.polygon && r.polygon.length >= 3) {
-      shapeLayer = L.polygon(r.polygon, {
-        color: typeColor,
-        weight: 2,
-        opacity: 0.7,
-        fillColor: typeColor,
-        fillOpacity: 0.15,
-        interactive: false,
-        className: 'recinto-shape',
-      }).addTo(map);
-    } else {
-      const radius = r.radiusMeters ?? RECINTO_DEFAULT_RADIUS[r.type] ?? 250;
-      shapeLayer = L.circle([r.lat, r.lng], {
-        radius,
-        color: typeColor,
-        weight: 2,
-        opacity: 0.7,
-        fillColor: typeColor,
-        fillOpacity: 0.15,
-        interactive: false,
-        className: 'recinto-shape',
-      }).addTo(map);
-    }
-    recintoPolygons.push(shapeLayer);
-
-    // 2) Pin del recinto (siempre encima)
-    const inst = L.marker([r.lat, r.lng], { icon: recintoPinIcon(r) })
-      .addTo(map)
-      .on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
-        showRecintoPopup(r);
-      });
-    recintoMarkers.push(inst);
+  const categories = POI_CATEGORIES.join(',');
+  const params = new URLSearchParams({
+    proximity: `${lng},${lat}`,
+    limit: String(budget.apiLimit),
+    language: 'en',
+    access_token: MAPBOX_TOKEN || '',
   });
+  if (viewport.bbox) params.set('bbox', viewport.bbox);
+  const url = `https://api.mapbox.com/search/searchbox/v1/category/${categories}?${params}`;
+
+  try {
+    const res = await fetch(url, { signal });
+    if (!res.ok) {
+      // Fallback: use Geocoding API for POIs
+      const fallback = await fetchNearbyViaGeocoding(
+        lng,
+        lat,
+        viewport,
+        signal
+      );
+      return writeNearbyCache(cacheKey, fallback);
+    }
+    const data = await res.json();
+    if (!data.features?.length) {
+      const fallback = await fetchNearbyViaGeocoding(
+        lng,
+        lat,
+        viewport,
+        signal
+      );
+      return writeNearbyCache(cacheKey, fallback);
+    }
+
+    const places = data.features
+      .map((f: MapboxSearchResultFeature) => {
+        const coords = f.geometry.coordinates;
+        const props = f.properties || {};
+        // Pass the FULL poi_category array: first non-default match wins.
+        const cat = normalizeCategory(
+          props.poi_category?.length ? props.poi_category : props.category
+        );
+        const distKm = haversine(lat, lng, coords[1], coords[0]);
+        return {
+          id: f.id || `place-${coords[0].toFixed(5)}-${coords[1].toFixed(5)}`,
+          name: props.name || props.full_address || 'Unknown Place',
+          category: cat,
+          address: props.full_address || props.address || '',
+          lat: coords[1],
+          lng: coords[0],
+          distance: distKm,
+        };
+      })
+      .filter((place: Place) =>
+        viewportContains(viewport, place.lng, place.lat)
+      )
+      .sort((a: Place, b: Place) => (a.distance || 0) - (b.distance || 0));
+    return writeNearbyCache(cacheKey, places);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    console.warn('[TuriMap] Category search failed, trying geocoding:', err);
+    const fallback = await fetchNearbyViaGeocoding(lng, lat, viewport, signal);
+    return writeNearbyCache(cacheKey, fallback);
+  }
 }
 
-function showRecintoPopup(r: Recinto) {
-  const typeLabel = RECINTO_TYPES[r.type]?.label || 'Sitio histórico';
-  const html = `
-    <div class="recinto-popup">
-      <div class="recinto-popup-header" style="background-color:${RECINTO_TYPES[r.type]?.color || '#a16207'}">
-        <span class="recinto-popup-emoji">${r.emoji}</span>
-        <span class="recinto-popup-era">${typeLabel} · ${r.era}</span>
-      </div>
-      <div class="recinto-popup-body">
-        <h3 class="recinto-popup-title">${r.name}</h3>
-        <p class="recinto-popup-year">Fundado en ${r.foundedYear < 0 ? `${Math.abs(r.foundedYear)} a.C.` : r.foundedYear}</p>
-        <p class="recinto-popup-desc">${r.shortDesc}</p>
-        <div class="recinto-popup-fact">
-          <strong>¿Sabías que…?</strong> ${r.fact}
-        </div>
-        <button class="recinto-popup-btn" data-recinto-id="${r.id}">Ver más detalles</button>
-      </div>
-    </div>
-  `;
-  const popup = L.popup({
-    className: 'recinto-leaflet-popup',
-    maxWidth: 280,
-    minWidth: 240,
-    autoPan: true,
-    closeButton: true,
-  })
-    .setLatLng([r.lat, r.lng])
-    .setContent(html);
-
-  // Wire up "Ver más detalles" usando popupopen (se dispara cuando el DOM está listo)
-  map.once('popupopen', (e) => {
-    if (e.popup !== popup) return;
-    const btn = (e.popup.getElement() as HTMLElement | undefined)?.querySelector<HTMLButtonElement>(
-      `.recinto-popup-btn[data-recinto-id="${r.id}"]`
-    );
-    if (btn) btn.addEventListener('click', () => openRecintoModal(r.id));
+async function fetchNearbyViaGeocoding(
+  lng: number,
+  lat: number,
+  viewport: PaddedViewport,
+  signal?: AbortSignal
+): Promise<Place[]> {
+  const types = 'poi';
+  const params = new URLSearchParams({
+    proximity: `${lng},${lat}`,
+    types,
+    limit: '10',
+    language: 'en',
+    access_token: MAPBOX_TOKEN || '',
   });
+  if (viewport.bbox) params.set('bbox', viewport.bbox);
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/tourism.json?${params}`;
 
-  popup.openOn(map);
-}
-
-// Modal fullscreen para detalle completo del recinto
-function openRecintoModal(id: string) {
-  const r = RECINTOS.find((x) => x.id === id);
-  if (!r) return;
-  activeRecintoId = id;
-  const modal = $('recinto-modal');
-  const title = $('recinto-modal-title');
-  const emoji = $('recinto-modal-emoji');
-  const era = $('recinto-modal-era');
-  const year = $('recinto-modal-year');
-  const desc = $('recinto-modal-fact-text');
-  const fullDesc = $('recinto-modal-full-desc');
-  const wiki = $('recinto-modal-wiki');
-  const factContainer = $('recinto-modal-fact-container');
-  const typeLabel = RECINTO_TYPES[r.type]?.label || 'Sitio histórico';
-
-  if (title) title.textContent = r.name;
-  if (emoji) emoji.textContent = r.emoji;
-  if (era) era.textContent = `${typeLabel} · ${r.era}`;
-  if (year)
-    year.textContent = `Fundado en ${r.foundedYear < 0 ? `${Math.abs(r.foundedYear)} a.C.` : r.foundedYear}`;
-  if (desc) desc.textContent = r.fact;
-  if (fullDesc) fullDesc.textContent = r.shortDesc;
-  if (wiki) wiki.setAttribute('href', r.wikipediaUrl);
-  if (factContainer)
-    factContainer.style.borderLeftColor = RECINTO_TYPES[r.type]?.color || '#a16207';
-
-  if (modal) {
-    map.closePopup();
-    modal.classList.remove('hidden');
-    void modal.offsetHeight;
-    modal.classList.remove('opacity-0');
-    document.body.classList.add('modal-open');
+  try {
+    const res = await fetch(url, { signal });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.features || [])
+      .map((f: MapboxGeocodingFeature, i: number) => {
+        const [fLng, fLat] = f.center;
+        const distKm = haversine(lat, lng, fLat, fLng);
+        return {
+          id: f.id || `geo-${i}`,
+          name: f.text || f.place_name || 'Unknown',
+          category: normalizeCategory(f.properties?.category),
+          address: f.place_name || '',
+          lat: fLat,
+          lng: fLng,
+          distance: distKm,
+        };
+      })
+      .filter((place: Place) =>
+        viewportContains(viewport, place.lng, place.lat)
+      )
+      .sort((a: Place, b: Place) => (a.distance || 0) - (b.distance || 0));
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    return [];
   }
 }
 
-function closeRecintoModal() {
-  const modal = $('recinto-modal');
-  if (modal) {
-    modal.classList.add('opacity-0');
-    document.body.classList.remove('modal-open');
-    setTimeout(() => modal.classList.add('hidden'), 250);
-  }
+function getLocalPlaces(
+  centerLng: number,
+  centerLat: number,
+  viewport: PaddedViewport
+): Place[] {
+  const locale = detectLocale();
+  return MONUMENTS.filter((monument) =>
+    viewportContains(viewport, monument.lng, monument.lat)
+  )
+    .map((m) => {
+      const distKm = haversine(centerLat, centerLng, m.lat, m.lng);
+      return {
+        id: m.id,
+        name: pickLocalized(m, 'name', locale),
+        category: normalizeCategory(m.type || 'monument'),
+        address: pickLocalized(m, 'desc', locale),
+        lat: m.lat,
+        lng: m.lng,
+        distance: distKm,
+      };
+    })
+    .sort((a, b) => (a.distance || 0) - (b.distance || 0));
 }
 
-// Cerrar modal de recinto
-$('recinto-modal-close')?.addEventListener('click', closeRecintoModal);
-$('recinto-modal')?.addEventListener('click', (e) => {
-  if (e.target === $('recinto-modal')) closeRecintoModal();
-});
+function getMergedNearbyPlaces(
+  mapboxPlaces: Place[],
+  centerLng: number,
+  centerLat: number,
+  viewport: PaddedViewport,
+  renderLimit: number
+): Place[] {
+  const localPlaces = getLocalPlaces(centerLng, centerLat, viewport);
+  if (!localPlaces.length) return mapboxPlaces.slice(0, renderLimit);
 
-// Botón "Centrar en el mapa" — guarda el id activo y centra al reabrir
-let activeRecintoId: string | null = null;
-$('recinto-modal-locate')?.addEventListener('click', () => {
-  if (activeRecintoId) {
-    const r = RECINTOS.find((x) => x.id === activeRecintoId);
-    if (r) {
-      map.setView([r.lat, r.lng], 17, { animate: true });
-      closeRecintoModal();
-      // Pequeño delay para que el modal cierre antes de abrir el popup
-      setTimeout(() => showRecintoPopup(r), 350);
+  const combined = [...localPlaces, ...mapboxPlaces];
+  const seen = new Set<string>();
+  const unique: Place[] = [];
+  for (const p of combined) {
+    const key = p.id + '_' + p.name.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(p);
     }
   }
-});
+
+  return unique
+    .sort((a, b) => (a.distance || 0) - (b.distance || 0))
+    .slice(0, renderLimit);
+}
+
+function haversine(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  return `${km.toFixed(1)} km`;
+}
+
+function getCategoryInfo(cat: string): { emoji: string; label: string } {
+  // Defensive: accept any raw vocabulary (Mapbox English, Spanish monument
+  // types, human-readable labels) — normalize inside.
+  return getCanonicalCategoryInfo(normalizeCategory(cat));
+}
+
+function isPlaceVisibleForFilter(place: Place): boolean {
+  if (activePinFilter === 'all') return true;
+  if (place.category === 'route') return true;
+  const canonicalId = canonicalIdForChip(activePinFilter);
+  if (!canonicalId) return true;
+  // Categories are canonicalized at ingestion — exact match, no substring.
+  return place.category === canonicalId;
+}
+
+function getFilteredPlaces(places: Place[]): Place[] {
+  if (activePinFilter === 'all') return places;
+  return places.filter(isPlaceVisibleForFilter);
+}
 
 // ---------------------------------------------------------------------------
-// List render
+// Place Markers (supercluster-backed)
 // ---------------------------------------------------------------------------
+function removeAllPinMarkers(): void {
+  placeMarkers.forEach(({ marker }) => marker.remove());
+  placeMarkers.clear();
+  for (const marker of clusterMarkers) marker.remove();
+  clusterMarkers.length = 0;
+}
 
-function renderList(list: Monument[]) {
-  if (!listContainer) return;
-  listContainer.innerHTML = '';
-  if (!list.length) {
+function clearPlaceMarkers() {
+  removeAllPinMarkers();
+  clusterRenderSignature = '';
+}
+
+function updateMarkerElement(element: HTMLElement, place: Place): void {
+  const info = getCategoryInfo(place.category);
+  element.innerHTML = `<span>${info.emoji}</span>`;
+  element.title = place.name;
+  element.setAttribute('aria-label', place.name);
+  element.classList.toggle('selected', selectedPlace?.id === place.id);
+}
+
+function createPlacePinMarker(place: Place): void {
+  const el = document.createElement('div');
+  el.className = 'turimap-pin';
+  el.role = 'button';
+  el.tabIndex = 0;
+  updateMarkerElement(el, place);
+
+  const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+    .setLngLat([place.lng, place.lat])
+    .addTo(map);
+
+  const activate = (e: Event) => {
+    e.stopPropagation();
+    const currentPlace = placeMarkers.get(place.id)?.place;
+    if (currentPlace) selectPlace(currentPlace);
+  };
+  el.addEventListener('click', activate);
+  el.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      activate(event);
+    }
+  });
+  placeMarkers.set(place.id, { marker, place });
+}
+
+function createClusterPinMarker(entry: PinClusterGroup): void {
+  const el = document.createElement('div');
+  el.className = 'turimap-pin turimap-pin-cluster';
+  el.role = 'button';
+  el.tabIndex = 0;
+  el.innerHTML = `<span class="turimap-pin-cluster-count">${entry.pointCount}</span>`;
+  const hint = trMapa(
+    'mapa.cluster.expand_hint',
+    'Lugares agrupados — toca para acercar'
+  );
+  el.title = `${entry.pointCount} · ${hint}`;
+  el.setAttribute('aria-label', `${entry.pointCount} · ${hint}`);
+
+  const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+    .setLngLat([entry.lng, entry.lat])
+    .addTo(map);
+
+  const activate = (e: Event) => {
+    e.stopPropagation();
+    if (!clusterIndex || isMapRemoved()) return;
+    map.easeTo({
+      center: [entry.lng, entry.lat],
+      zoom: getExpansionZoom(clusterIndex, entry.clusterId),
+    });
+  };
+  el.addEventListener('click', activate);
+  el.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      activate(event);
+    }
+  });
+  clusterMarkers.push(marker);
+}
+
+function getClusterRenderSignature(
+  entries: PinClusterEntry[],
+  zoom: number
+): string {
+  const parts = entries.map((entry) =>
+    entry.kind === 'cluster'
+      ? `c${entry.clusterId}:${entry.pointCount}@${entry.lng.toFixed(5)},${entry.lat.toFixed(5)}`
+      : `p${entry.placeId}@${entry.lng.toFixed(5)},${entry.lat.toFixed(5)}`
+  );
+  return [
+    zoom,
+    clusterDataVersion,
+    selectedPlace?.id ?? '',
+    activePinFilter,
+    ...parts,
+  ].join('|');
+}
+
+// Render pins for the current viewport: cluster groups become count pins,
+// leaves keep the regular glass pin. Full clear + rebuild per render — cheap
+// at the ≤48 place cap; the signature short-circuit avoids redundant DOM work.
+function renderClusteredPins(): void {
+  if (!map || !clusterIndex || isMapRemoved()) return;
+  // Below MIN_POI_ZOOM the zoom gate owns pin state: no pins, no clusters.
+  if (!shouldLoadPois(map.getZoom())) return;
+  const bounds = map.getBounds();
+  if (!bounds) return;
+
+  const zoom = Math.floor(map.getZoom());
+  const entries = getClusterFeatures(
+    clusterIndex,
+    {
+      west: bounds.getWest(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      north: bounds.getNorth(),
+    },
+    zoom
+  );
+
+  const signature = getClusterRenderSignature(entries, zoom);
+  if (signature === clusterRenderSignature) return;
+
+  removeAllPinMarkers();
+  clusterRenderSignature = signature;
+
+  const filtered = getFilteredPlaces(nearbyPlaces);
+  const placesById = new globalThis.Map(filtered.map((p) => [p.id, p]));
+  for (const entry of entries) {
+    if (entry.kind === 'cluster') {
+      createClusterPinMarker(entry);
+      continue;
+    }
+    const place = placesById.get(entry.placeId);
+    if (place) createPlacePinMarker(place);
+  }
+  // Route pins never join the cluster index — render them individually.
+  for (const place of filtered) {
+    if (place.category === 'route' && place.id !== selectedPlace?.id) {
+      createPlacePinMarker(place);
+    }
+  }
+  // The selected place is excluded from the index and always renders on top.
+  const selected = selectedPlace;
+  if (selected && nearbyPlaces.some((p) => p.id === selected.id)) {
+    createPlacePinMarker(selected);
+  }
+}
+
+// Rebuild the cluster index (data, filter or selection changed) and render.
+function refreshClusteredPins(): void {
+  clusterIndex = buildClusterIndex(
+    getFilteredPlaces(nearbyPlaces).filter(
+      (place) => place.category !== 'route' && place.id !== selectedPlace?.id
+    )
+  );
+  clusterDataVersion++;
+  renderClusteredPins();
+}
+
+// Minimal i18n reader for module-scope strings: Layout injects the dicts as
+// window.__TURIMAP_I18N__; falls back to the es dict, then to `fallback`.
+function trMapa(key: string, fallback: string): string {
+  const dicts = (
+    window as unknown as {
+      __TURIMAP_I18N__?: {
+        es?: Record<string, unknown>;
+        en?: Record<string, unknown>;
+      };
+    }
+  ).__TURIMAP_I18N__;
+  const localeDict = dicts?.[detectLocale()];
+  const resolved = localeDict ? translate(localeDict, key) : key;
+  if (resolved !== key) return resolved;
+  const esResolved = dicts?.es ? translate(dicts.es, key) : key;
+  return esResolved !== key ? esResolved : fallback;
+}
+
+function renderZoomGateHint() {
+  const container = $('places-list-container');
+  if (!container) return;
+  container.innerHTML = '';
+  const hint = document.createElement('p');
+  hint.className =
+    'py-6 text-center text-[12px] text-slate-450 dark:text-slate-500';
+  hint.textContent = trMapa(
+    'mapa.sheet.zoom_hint',
+    'Acércate para descubrir lugares cercanos'
+  );
+  container.appendChild(hint);
+}
+
+function renderList(places: Place[]) {
+  const container = $('places-list-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!places.length) {
     const empty = document.createElement('p');
-    empty.className = 'py-6 text-center text-[12px] text-[#a0a0a0]';
-    empty.textContent = 'No se encontraron monumentos.';
-    listContainer.appendChild(empty);
+    empty.className =
+      'py-6 text-center text-[12px] text-slate-450 dark:text-slate-500';
+    empty.textContent = 'No places found nearby. Try moving the map.';
+    container.appendChild(empty);
     return;
   }
-  list.forEach((m) => {
+
+  places.forEach((place) => {
+    const info = getCategoryInfo(place.category);
     const el = document.createElement('div');
     el.className =
-      'flex items-center gap-3 rounded-2xl border border-black/[0.04] bg-white/60 p-2.5 backdrop-blur-md transition-all hover:bg-white/90 cursor-pointer active:scale-[0.98]';
+      'flex items-center gap-2.5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-white/60 dark:bg-slate-900/60 py-2 px-3 backdrop-blur-md transition-all hover:bg-white/80 dark:hover:bg-slate-900/80 cursor-pointer active:scale-[0.98] shadow-sm';
 
-    const emojiWrap = document.createElement('span');
-    emojiWrap.className =
-      'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#f5f3ff] text-xl';
-    emojiWrap.textContent = m.emoji;
-    el.appendChild(emojiWrap);
-
-    const textWrap = document.createElement('div');
-    textWrap.className = 'min-w-0 flex-1';
-
-    const nameEl = document.createElement('p');
-    nameEl.className = 'truncate text-[13px] font-bold text-[#1b1c1c]';
-    nameEl.textContent = m.name;
-    textWrap.appendChild(nameEl);
-
-    const catEl = document.createElement('p');
-    catEl.className = 'text-[11px] font-medium text-[#5c5c5c]';
-    catEl.textContent = `${m.category} · `;
-
-    const distEl = document.createElement('span');
-    distEl.className = 'font-semibold';
-    distEl.textContent = m.dist;
-    catEl.appendChild(distEl);
-    textWrap.appendChild(catEl);
-
-    el.appendChild(textWrap);
-
-    // Botón de favorito (corazón)
-    const favWrap = document.createElement('button');
-    favWrap.type = 'button';
-    favWrap.className = 'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-slate-400 hover:text-rose-500 transition-colors mr-1';
-    
-    let favorites: string[] = [];
-    try {
-      favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
-    } catch {}
-    const isFav = favorites.includes(m.id);
-
-    favWrap.innerHTML = `
-      <svg class="h-4 w-4 ${isFav ? 'fill-rose-500 text-rose-500' : 'fill-none stroke-current stroke-[2px]'}" viewBox="0 0 24 24">
-        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-      </svg>
+    el.innerHTML = `
+      <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-lg">${info.emoji}</span>
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-[12px] font-bold text-slate-800 dark:text-white">${place.name}</p>
+        <p class="text-[10px] font-medium text-slate-500 dark:text-slate-400">${info.label} · <span class="font-semibold text-slate-700 dark:text-slate-300">${place.distance ? formatDistance(place.distance) : ''}</span></p>
+      </div>
+      <span class="material-symbols-outlined text-slate-400 dark:text-slate-500 text-[16px]">chevron_right</span>
     `;
 
-    favWrap.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      let currentFavs: string[] = [];
-      try {
-        currentFavs = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
-      } catch {}
-      const index = currentFavs.indexOf(m.id);
-      if (index > -1) {
-        currentFavs.splice(index, 1);
-        favWrap.querySelector('svg')?.classList.replace('fill-rose-500', 'fill-none');
-        favWrap.querySelector('svg')?.classList.remove('text-rose-500');
-      } else {
-        currentFavs.push(m.id);
-        favWrap.querySelector('svg')?.classList.replace('fill-none', 'fill-rose-500');
-        favWrap.querySelector('svg')?.classList.add('text-rose-500');
-      }
-      localStorage.setItem('edificarte_favorites', JSON.stringify(currentFavs));
-
-      // Sincronizar el botón de detalle si está abierto
-      updateDetailFavoriteState();
-
-      // Sincronizar los pines
-      markers.forEach((x) => {
-        x.inst.setIcon(pinIcon(x.id, x.emoji, x.id === selectedId));
-      });
-    });
-
-    el.appendChild(favWrap);
-
-    const playWrap = document.createElement('span');
-    playWrap.className =
-      'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#f5f3ff] text-[#3f043a]';
-
-    const playIcon = document.createElement('span');
-    playIcon.className = 'material-symbols-outlined text-[16px]';
-    playIcon.style.fontVariationSettings = "'FILL' 1";
-    playIcon.textContent = 'play_arrow';
-    playWrap.appendChild(playIcon);
-
-    el.appendChild(playWrap);
-
-    el.addEventListener('click', () => selectMonument(m.id));
-    listContainer.appendChild(el);
+    el.addEventListener('click', () => selectPlace(place));
+    container.appendChild(el);
   });
 }
 
-renderList(MAPPABLE_MONUMENTS);
-
 // ---------------------------------------------------------------------------
-// Selection & Visit Section
+// Pin filter chips
 // ---------------------------------------------------------------------------
+function setActivePinFilter(filter: string): void {
+  activePinFilter = filter;
+  // The cluster index is built over the filtered places, so a filter change
+  // must rebuild it (and the pins) instead of toggling marker visibility.
+  refreshClusteredPins();
+  // While the zoom gate is active the list shows the hint, not places —
+  // filter changes must not swap it for the generic empty message.
+  if (lastRenderedCacheKey === 'below-zoom') {
+    renderZoomGateHint();
+    return;
+  }
+  renderList(getFilteredPlaces(nearbyPlaces));
+}
 
-function resetStarsUI() {
-  document.querySelectorAll<HTMLElement>('#rating-stars span').forEach((s) => {
-    s.style.fontVariationSettings = "'FILL' 1";
+function bindFilterChips(): void {
+  if (filterChipsListenerBound) return;
+  filterChipsListenerBound = true;
+  // Delegated listener: survives Astro body swaps; the guard above prevents
+  // duplicate bindings since this module is a singleton.
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement | null;
+    const chip = target?.closest?.('#map-filter-chips .filter-chip');
+    if (!(chip instanceof HTMLButtonElement)) return;
+    const filter = chip.dataset.filter;
+    if (!filter || filter === activePinFilter) return;
+    $('map-filter-chips')
+      ?.querySelectorAll('.filter-chip')
+      .forEach((el) => el.classList.toggle('active', el === chip));
+    setActivePinFilter(filter);
   });
 }
 
-function loadVisits(): Record<string, VisitRecord> {
+// ---------------------------------------------------------------------------
+// Wikipedia enrichment
+// ---------------------------------------------------------------------------
+const wikiCache = new globalThis.Map<string, { imageUrl: string; articleUrl: string } | null>();
+
+async function fetchWikipediaEnrichment(name: string): Promise<{ imageUrl: string; articleUrl: string } | null> {
+  const key = name.toLowerCase().trim();
+  if (wikiCache.has(key)) return wikiCache.get(key)!;
+
+  const url = `https://es.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(name)}&prop=pageimages|info&piprop=thumbnail&pithumbsize=400&inprop=url&redirects=1&format=json&origin=*`;
   try {
-    return JSON.parse(safeGet('edificarte_visited') || '{}');
+    const res = await fetch(url, { signal: AbortSignal.timeout(3000), headers: { accept: 'application/json' } });
+    if (!res.ok) { wikiCache.set(key, null); return null; }
+    const data = await res.json() as {
+      query?: { pages?: Record<string, { missing?: string; thumbnail?: { source?: string }; fullurl?: string }> };
+    };
+    const page = Object.values(data.query?.pages ?? {})[0];
+    if (!page || 'missing' in page || !page.thumbnail?.source) {
+      wikiCache.set(key, null);
+      return null;
+    }
+    const result = { imageUrl: page.thumbnail.source, articleUrl: page.fullurl ?? '' };
+    wikiCache.set(key, result);
+    return result;
   } catch {
-    return {};
+    wikiCache.set(key, null);
+    return null;
   }
 }
 
-function updateVisitSection(m: Monument) {
-  const visitFarWarning = $('visit-far-warning');
-  const visitNearForm = $('visit-near-form');
-  const visitSavedDisplay = $('visit-saved-display');
-  const visitStatusTag = $('visit-status-tag');
-  const visitDistanceText = $('visit-distance-text');
-  const markVisitedBtn = $('btn-mark-visited');
-  const reviewFields = $('review-fields');
+// ---------------------------------------------------------------------------
+// Selection
+// ---------------------------------------------------------------------------
+function selectPlace(place: Place) {
+  selectedPlace = place;
+  const info = getCategoryInfo(place.category);
 
-  if (
-    !visitFarWarning ||
-    !visitNearForm ||
-    !visitSavedDisplay ||
-    !visitStatusTag
-  )
-    return;
+  map.flyTo({
+    center: [place.lng, place.lat],
+    zoom: 17,
+    pitch: 55,
+    duration: 1200,
+  });
 
-  const reviewInput = $<HTMLTextAreaElement>('review-input');
-  if (reviewInput) reviewInput.value = '';
-  selectedRating = 5;
-  resetStarsUI();
+  // Update detail view
+  const detailEmoji = $('detail-emoji');
+  const detailName = $('detail-name');
+  const detailCategory = $('detail-category');
+  const detailAddress = $('detail-address');
 
-  reviewFields?.classList.add('hidden');
-  markVisitedBtn?.classList.remove('hidden');
-
-  const saved = loadVisits()[m.id];
-
-  if (saved) {
-    visitStatusTag.textContent = 'Visitado';
-    visitStatusTag.className =
-      'text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full';
-    visitFarWarning.classList.add('hidden');
-    visitNearForm.classList.add('hidden');
-    visitSavedDisplay.classList.remove('hidden');
-
-    const starsDisplay = $('saved-stars-display');
-    if (starsDisplay) {
-      starsDisplay.innerHTML = '';
-      for (let i = 1; i <= 5; i++) {
-        const star = document.createElement('span');
-        star.className = 'material-symbols-outlined text-[16px]';
-        star.textContent = i <= saved.rating ? 'star' : 'star_outline';
-        starsDisplay.appendChild(star);
-      }
-    }
-    const savedReviewText = $('saved-review-text');
-    if (savedReviewText) {
-      savedReviewText.textContent = saved.review
-        ? `"${saved.review}"`
-        : 'Sin reseña escrita.';
-    }
-    return;
+  if (detailEmoji)
+    detailEmoji.textContent = place.category === 'route' ? '🧭' : info.emoji;
+  if (detailName) detailName.textContent = place.name;
+  if (detailCategory) {
+    detailCategory.innerHTML =
+      place.category === 'route'
+        ? 'Ruta de Monumentos'
+        : `${info.label} · <span class="font-semibold text-slate-700 dark:text-slate-300">${place.distance ? formatDistance(place.distance) : ''}</span>`;
   }
+  if (detailAddress) detailAddress.textContent = place.address;
 
-  visitSavedDisplay.classList.add('hidden');
+  // Wikipedia enrichment — fetch async, show photo + link if a match is found
+  const wikiBlock = document.getElementById('detail-wiki');
+  if (wikiBlock) wikiBlock.classList.add('hidden');
+  void fetchWikipediaEnrichment(place.name).then((wiki) => {
+    if (!wiki || selectedPlace?.id !== place.id) return; // user moved on
+    const img = document.getElementById('detail-wiki-img') as HTMLImageElement | null;
+    const link = document.getElementById('detail-wiki-link') as HTMLAnchorElement | null;
+    if (img) img.src = wiki.imageUrl;
+    if (link && wiki.articleUrl) link.href = wiki.articleUrl;
+    wikiBlock?.classList.remove('hidden');
+  });
 
-  let distanceMeters: number | null = null;
-  if (userMarker) {
-    distanceMeters = userMarker.getLatLng().distanceTo(L.latLng(m.lat, m.lng));
-  }
+  // VR Video Experience — Embed VR video player when monument or place has videoUrl
+  const vrContainer = document.getElementById('detail-vr-container');
+  const vrIframe = document.getElementById('detail-vr-iframe') as HTMLIFrameElement | null;
+  const monumentMatch = MONUMENTS.find(
+    (m) => m.id === place.id || m.name.toLowerCase() === place.name.toLowerCase()
+  );
+  const videoUrl = place.videoUrl || monumentMatch?.videoUrl;
 
-  if (distanceMeters !== null && distanceMeters <= 200) {
-    visitStatusTag.textContent = 'Cerca';
-    visitStatusTag.className =
-      'text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full';
-    visitFarWarning.classList.add('hidden');
-    visitNearForm.classList.remove('hidden');
-  } else {
-    visitStatusTag.textContent = 'Lejos';
-    visitStatusTag.className =
-      'text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full';
-    visitNearForm.classList.add('hidden');
-    visitFarWarning.classList.remove('hidden');
-    if (visitDistanceText) {
-      visitDistanceText.textContent =
-        distanceMeters !== null
-          ? `(Estás a ${(distanceMeters / 1000).toFixed(2)} km).`
-          : '(Ubicación GPS no disponible).';
-    }
-  }
-}
-
-function updateDetailFavoriteState() {
-  const btn = $('detail-favorite-btn');
-  if (!btn || !selectedId) return;
-  const svg = btn.querySelector('svg');
-  if (!svg) return;
-
-  let favorites: string[] = [];
-  try {
-    favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
-  } catch {}
-  const isFav = favorites.includes(selectedId);
-
-  if (isFav) {
-    svg.classList.remove('fill-none', 'text-neutral-400');
-    svg.classList.add('fill-rose-500', 'text-rose-500');
-  } else {
-    svg.classList.remove('fill-rose-500', 'text-rose-500');
-    svg.classList.add('fill-none', 'text-neutral-400');
-  }
-}
-
-function selectMonument(id: string) {
-  selectedId = id;
-  const m = MONUMENTS.find((x) => x.id === id);
-  if (!m) return;
-
-  map.setView([m.lat, m.lng], 18, { animate: true });
-
-  const detailImage = $<HTMLImageElement>('detail-image');
-  if (detailImage) {
-    detailImage.src = m.image || '';
-    detailImage.alt = m.name;
-  }
-
-  $('detail-emoji')!.textContent = m.emoji;
-  $('detail-name')!.textContent = m.name;
-  $('detail-category')!.innerHTML =
-    `${m.category} · <span id="detail-dist" class="font-semibold text-[#1b1c1c]">${m.dist}</span>`;
-  $('detail-desc')!.textContent = m.desc;
-  $('detail-duration')!.textContent = m.audioDuration;
-  $('player-time')!.textContent = `0:00 / ${m.audioDuration}`;
-
-  stopAudio();
-  markers.forEach((x) => x.inst.setIcon(pinIcon(x.id, x.emoji, x.id === id)));
-  updateVisitSection(m);
-  updateDetailFavoriteState();
-
-  // Mostrar / ocultar promo de recorrido guiado
-  const tourPromoCard = $('tour-promo-card');
-  if (tourPromoCard) {
-    if (m.tourId) {
-      const tour = TOURS.find((t) => t.id === m.tourId);
-      if (tour) {
-        const titleEl = $('tour-promo-title');
-        const descEl = $('tour-promo-desc');
-        const priceEl = $('tour-promo-price');
-        if (titleEl) titleEl.textContent = tour.title;
-        if (descEl) descEl.textContent = tour.description;
-        if (priceEl) priceEl.textContent = `$${tour.pricePerPerson} MXN`;
-        
-        tourPromoCard.classList.remove('hidden');
-        tourPromoCard.classList.add('flex');
-      } else {
-        tourPromoCard.classList.add('hidden');
-        tourPromoCard.classList.remove('flex');
-      }
+  if (vrContainer && vrIframe) {
+    if (videoUrl) {
+      vrIframe.src = videoUrl;
+      vrContainer.classList.remove('hidden');
     } else {
-      tourPromoCard.classList.add('hidden');
-      tourPromoCard.classList.remove('flex');
+      vrIframe.src = '';
+      vrContainer.classList.add('hidden');
     }
   }
 
-  viewList?.classList.add('hidden');
-  viewDetail?.classList.remove('hidden');
+  // Selection excludes the place from the cluster index — re-render so the
+  // selected pin always shows individually with its .selected state.
+  refreshClusteredPins();
 
+  // Navigation - draw route on map
+  const navBtn = $('btn-navigate');
+  if (navBtn) {
+    if (place.id === 'ai-route') {
+      navBtn.classList.add('hidden');
+    } else {
+      navBtn.classList.remove('hidden');
+      navBtn.onclick = () => {
+        if (userLng !== null && userLat !== null) {
+          routeRequestController?.abort();
+          const controller = new AbortController();
+          routeRequestController = controller;
+          void drawRoute(userLng, userLat, place.lng, place.lat, controller);
+        } else {
+          alert('Enable GPS to get directions.');
+        }
+      };
+    }
+  }
+
+  $('view-list')?.classList.add('hidden');
+  $('view-detail')?.classList.remove('hidden');
   isCollapsed = false;
   updateSheetUI();
 }
 
+// ---------------------------------------------------------------------------
+// In-Map Routing (Mapbox Directions API)
+// ---------------------------------------------------------------------------
+interface DirectionsRoute {
+  duration: number;
+  distance: number;
+  geometry: GeoJSON.LineString;
+}
+
+function updateRouteInfo(mode: TravelMode, text: string) {
+  const routeInfo = $('route-info');
+  const routeText = $('route-info-text');
+  const routeIcon = $('route-mode-icon');
+  if (!routeInfo || !routeText) return;
+  routeText.textContent = text;
+  if (routeIcon) {
+    routeIcon.textContent =
+      mode === 'walking'
+        ? 'directions_walk'
+        : mode === 'driving'
+          ? 'directions_car'
+          : 'flight';
+  }
+  routeInfo.classList.remove('hidden');
+}
+
+function isMapRemoved() {
+  return !map || (map as Map & { _removed?: boolean })._removed === true;
+}
+
+function fitTravelBounds(coordinates: [number, number][], maxZoom: number) {
+  const bounds = new mapboxgl.LngLatBounds();
+  coordinates.forEach((coordinate) => bounds.extend(coordinate));
+  map.fitBounds(bounds, {
+    padding: { top: 120, bottom: 200, left: 60, right: 60 },
+    maxZoom,
+  });
+}
+
+async function fetchDirectionsRoute(
+  profile: 'walking' | 'driving-traffic' | 'driving',
+  fromLng: number,
+  fromLat: number,
+  toLng: number,
+  toLat: number,
+  signal: AbortSignal
+): Promise<DirectionsRoute | null> {
+  const formattedUrl =
+    `https://api.mapbox.com/directions/v5/mapbox/${profile}/${fromLng},${fromLat};${toLng},${toLat}?` +
+    `geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
+  const response = await fetch(formattedUrl, { signal });
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data.routes?.[0] ?? null;
+}
+
+async function drawRoute(
+  fromLng: number,
+  fromLat: number,
+  toLng: number,
+  toLat: number,
+  controller: AbortController
+) {
+  const lifecycle = activeMapLifecycle;
+  const straightLineKm = haversine(fromLat, fromLng, toLat, toLng);
+  const mode = getTravelMode(straightLineKm);
+
+  travelVisualization?.clear();
+  if (mode === 'flight') {
+    if (
+      controller.signal.aborted ||
+      activeMapLifecycle !== lifecycle ||
+      routeRequestController !== controller
+    )
+      return;
+    travelVisualization?.showFlight([fromLng, fromLat], [toLng, toLat]);
+    const illustrativeHours = Math.max(1, straightLineKm / 800 + 0.75);
+    updateRouteInfo(
+      'flight',
+      `Illustrative flight · ~${illustrativeHours.toFixed(1)} hr · ${formatDistance(straightLineKm)}`
+    );
+    const unwrappedToLng = toLng + Math.round((fromLng - toLng) / 360) * 360;
+    fitTravelBounds(
+      [
+        [fromLng, fromLat],
+        [unwrappedToLng, toLat],
+      ],
+      5
+    );
+    if (routeRequestController === controller) routeRequestController = null;
+    return;
+  }
+
+  try {
+    const profile = mode === 'walking' ? 'walking' : 'driving-traffic';
+    let route = await fetchDirectionsRoute(
+      profile,
+      fromLng,
+      fromLat,
+      toLng,
+      toLat,
+      controller.signal
+    );
+    if (
+      activeMapLifecycle !== lifecycle ||
+      controller.signal.aborted ||
+      routeRequestController !== controller
+    )
+      return;
+    if (!route && mode === 'driving') {
+      route = await fetchDirectionsRoute(
+        'driving',
+        fromLng,
+        fromLat,
+        toLng,
+        toLat,
+        controller.signal
+      );
+      if (
+        activeMapLifecycle !== lifecycle ||
+        controller.signal.aborted ||
+        routeRequestController !== controller
+      )
+        return;
+    }
+    if (!route) {
+      alert(`No ${mode} route found.`);
+      return;
+    }
+
+    const durationMin = Math.round(route.duration / 60);
+    const distanceKm = (route.distance / 1000).toFixed(1);
+    const coordinates = route.geometry.coordinates as [number, number][];
+    travelVisualization?.showRoute(mode, coordinates);
+    updateRouteInfo(
+      mode,
+      `${durationMin} min ${mode === 'walking' ? 'walk' : 'drive'} · ${distanceKm} km`
+    );
+    fitTravelBounds(coordinates, mode === 'walking' ? 17 : 14);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return;
+    console.warn('[TuriMap] Route error:', err);
+    alert('Could not calculate route. Try again.');
+  } finally {
+    if (routeRequestController === controller) routeRequestController = null;
+  }
+}
+
+async function drawMultiStopRoute(
+  coordinates: [number, number][],
+  signal?: AbortSignal
+) {
+  if (coordinates.length < 2) return;
+  const lifecycle = activeMapLifecycle;
+  const waypointString = coordinates.map((c) => `${c[0]},${c[1]}`).join(';');
+  const formattedUrl =
+    `https://api.mapbox.com/directions/v5/mapbox/walking/${waypointString}?` +
+    `geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
+
+  try {
+    const res = await fetch(formattedUrl, { signal });
+    if (!res.ok) throw new Error('Directions API error');
+    const data = await res.json();
+    if (signal?.aborted || activeMapLifecycle !== lifecycle) return;
+    const route = data.routes?.[0];
+    if (!route) {
+      alert('No walking route found.');
+      return;
+    }
+
+    const geojson = route.geometry;
+    const durationMin = Math.round(route.duration / 60);
+    const distanceKm = (route.distance / 1000).toFixed(1);
+
+    travelVisualization?.clear();
+    travelVisualization?.showRoute(
+      'walking',
+      geojson.coordinates as [number, number][]
+    );
+
+    // Show route info bar
+    updateRouteInfo('walking', `${durationMin} min walk · ${distanceKm} km`);
+
+    // Fit map to show entire route
+    const coords = geojson.coordinates as [number, number][];
+    const bounds = new mapboxgl.LngLatBounds();
+    coords.forEach((c: [number, number]) => bounds.extend(c));
+    map.fitBounds(bounds, {
+      padding: { top: 120, bottom: 200, left: 60, right: 60 },
+      maxZoom: 17,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return;
+    console.warn('[TuriMap] Route error:', err);
+    alert('Could not calculate route. Try again.');
+  }
+}
+
+function clearRoute() {
+  routeRequestController?.abort();
+  routeRequestController = null;
+  travelVisualization?.clear();
+
+  const routeInfo = $('route-info');
+  if (routeInfo) routeInfo.classList.add('hidden');
+}
+
 function deselect() {
-  selectedId = null;
-  stopAudio();
-  markers.forEach((x) => x.inst.setIcon(pinIcon(x.id, x.emoji, false)));
-  viewDetail?.classList.add('hidden');
-  viewList?.classList.remove('hidden');
+  selectedPlace = null;
+  const vrContainer = document.getElementById('detail-vr-container');
+  const vrIframe = document.getElementById('detail-vr-iframe') as HTMLIFrameElement | null;
+  if (vrIframe) vrIframe.src = '';
+  if (vrContainer) vrContainer.classList.add('hidden');
+
+  // Rebuild the index so the previously selected place rejoins its cluster.
+  refreshClusteredPins();
+  clearRoute();
+  $('view-detail')?.classList.add('hidden');
+  $('view-list')?.classList.remove('hidden');
   isCollapsed = true;
   updateSheetUI();
 }
 
-
-$('btn-close-detail')?.addEventListener('click', deselect);
-
-$('detail-favorite-btn')?.addEventListener('click', () => {
-  if (!selectedId) return;
-  let favorites: string[] = [];
-  try {
-    favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || '[]');
-  } catch {}
-  const index = favorites.indexOf(selectedId);
-  if (index > -1) {
-    favorites.splice(index, 1);
-  } else {
-    favorites.push(selectedId);
-  }
-  localStorage.setItem('edificarte_favorites', JSON.stringify(favorites));
-
-  updateDetailFavoriteState();
-
-  // Actualizar los pines del mapa para mostrar/ocultar el badge de corazón
-  markers.forEach((x) => {
-    x.inst.setIcon(pinIcon(x.id, x.emoji, x.id === selectedId));
-  });
-
-  // Volver a renderizar la lista para actualizar los corazones en ella
-  const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
-  const filtered = MONUMENTS.filter(
-    (m) =>
-      m.name.toLowerCase().includes(term) ||
-      m.category.toLowerCase().includes(term) ||
-      m.desc.toLowerCase().includes(term)
-  );
-  renderList(filtered);
-});
-
-// ---------------------------------------------------------------------------
-// Visit & Review handlers
-// ---------------------------------------------------------------------------
-
-$('btn-mark-visited')?.addEventListener('click', () => {
-  $('btn-mark-visited')?.classList.add('hidden');
-  $('review-fields')?.classList.remove('hidden');
-});
-
-document.querySelectorAll<HTMLElement>('#rating-stars span').forEach((star) => {
-  star.addEventListener('click', () => {
-    selectedRating = parseInt(star.getAttribute('data-val') || '5', 10);
-    document
-      .querySelectorAll<HTMLElement>('#rating-stars span')
-      .forEach((s, idx) => {
-        s.style.fontVariationSettings =
-          idx < selectedRating ? "'FILL' 1" : "'FILL' 0";
-      });
-  });
-});
-
-$('btn-save-review')?.addEventListener('click', () => {
-  const reviewInput = $<HTMLTextAreaElement>('review-input');
-  const reviewText = reviewInput ? reviewInput.value.trim() : '';
-
-  if (!selectedId) return;
-  const saved = loadVisits();
-  saved[selectedId] = {
-    visited: true,
-    rating: selectedRating,
-    review: reviewText,
-    date: new Date().toISOString(),
-  };
-  safeSet('edificarte_visited', JSON.stringify(saved));
-
-  const m = MONUMENTS.find((x) => x.id === selectedId);
-  if (m) updateVisitSection(m);
-});
-
-// ---------------------------------------------------------------------------
-// Search
-// ---------------------------------------------------------------------------
-
-function filterByQuery(list: Monument[], q: string): Monument[] {
-  return list.filter(
-    (m) =>
-      m.name.toLowerCase().includes(q) ||
-      m.category.toLowerCase().includes(q) ||
-      m.desc.toLowerCase().includes(q)
-  );
-}
-
-let searchDebounce: ReturnType<typeof setTimeout> | null = null;
-searchInput?.addEventListener('input', (e) => {
-  if (searchDebounce) clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => {
-    const q = (e.target as HTMLInputElement).value.toLowerCase().trim();
-    const f = filterByQuery(MAPPABLE_MONUMENTS, q);
-    addMarkers(f);
-    renderList(f);
-    if (selectedId && !f.some((m) => m.id === selectedId)) deselect();
-  }, 200);
-});
-
-// ---------------------------------------------------------------------------
-// Filter dropdown
-// ---------------------------------------------------------------------------
-
-const btnSearchFilters = $('btn-search-filters');
-const searchFiltersDropdown = $('search-filters-dropdown');
-const btnResetFilters = $('btn-reset-filters');
-const btnApplyFilters = $('btn-apply-filters');
-
-if (btnSearchFilters && searchFiltersDropdown) {
-  btnSearchFilters.addEventListener('click', (e) => {
-    e.stopPropagation();
-    searchFiltersDropdown.classList.toggle('hidden');
-  });
-
-  searchFiltersDropdown.addEventListener('click', (e) => e.stopPropagation());
-
-  document.addEventListener('click', () =>
-    searchFiltersDropdown.classList.add('hidden')
-  );
-
-  btnResetFilters?.addEventListener('click', () => {
-    searchFiltersDropdown
-      .querySelectorAll<HTMLInputElement>('input[type="radio"]')
-      .forEach((rad) => {
-        rad.checked = rad.value === 'distance' || rad.value === 'all';
-      });
-    searchFiltersDropdown
-      .querySelectorAll<HTMLInputElement>('input[type="checkbox"]')
-      .forEach((c) => (c.checked = false));
-
-    const q = searchInput?.value.toLowerCase().trim() ?? '';
-    const f = filterByQuery(MAPPABLE_MONUMENTS, q);
-    addMarkers(f);
-    renderList(f);
-    searchFiltersDropdown.classList.add('hidden');
-  });
-
-  btnApplyFilters?.addEventListener('click', () => {
-    const sortBy = searchFiltersDropdown.querySelector<HTMLInputElement>(
-      'input[name="sort-by"]:checked'
-    )?.value;
-    const visitedFilter = searchFiltersDropdown.querySelector<HTMLInputElement>(
-      'input[name="filter-visited"]:checked'
-    )?.value;
-    const onlyAudio = $<HTMLInputElement>('filter-audioguide')?.checked;
-    const onlyFeatured = $<HTMLInputElement>('filter-featured')?.checked;
-
-    const q = searchInput?.value.toLowerCase().trim() ?? '';
-    let f = filterByQuery(MAPPABLE_MONUMENTS, q);
-
-    const saved = loadVisits();
-    if (visitedFilter === 'visited') {
-      f = f.filter((m) => saved[m.id]?.visited);
-    } else if (visitedFilter === 'unvisited') {
-      f = f.filter((m) => !saved[m.id]?.visited);
-    }
-    if (onlyAudio) f = f.filter((m) => !!m.audioDuration);
-    if (onlyFeatured)
-      f = f.filter((m) =>
-        ['bellas-artes', 'angel', 'chapultepec'].includes(m.id)
-      );
-
-    if (sortBy === 'name') {
-      f.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === 'distance') {
-      f.sort((a, b) => parseFloat(a.dist) - parseFloat(b.dist));
-    }
-
-    addMarkers(f);
-    renderList(f);
-    searchFiltersDropdown.classList.add('hidden');
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Chips
-// ---------------------------------------------------------------------------
-
-document.querySelectorAll<HTMLElement>('.filter-chip').forEach((chip) => {
-  chip.addEventListener('click', () => {
-    document
-      .querySelectorAll('.filter-chip')
-      .forEach((c) => c.classList.remove('active'));
-    chip.classList.add('active');
-    const filter = chip.getAttribute('data-filter');
-    const f =
-      !filter || filter === 'all'
-        ? MAPPABLE_MONUMENTS
-        : MAPPABLE_MONUMENTS.filter((m) => m.type === filter);
-    addMarkers(f);
-    renderList(f);
-    if (selectedId && !f.some((m) => m.id === selectedId)) deselect();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Tile toggle
-// ---------------------------------------------------------------------------
-
-$('btn-style-toggle')?.addEventListener('click', () => {
-  map.removeLayer(tileLayer);
-  tileIdx = (tileIdx + 1) % TILE_ORDER.length;
-  tileLayer = L.tileLayer(TILES[TILE_ORDER[tileIdx]], {
-    subdomains: 'abcd',
-    maxZoom: 19,
-  }).addTo(map);
-});
-
-// ---------------------------------------------------------------------------
-// Audio (simulado — Slice 1)
-// ---------------------------------------------------------------------------
-
-const btnPlay = $('btn-play-audio');
-const playerUI = $('audio-player');
-const progressFill = $('progress-bar-fill');
-const progressContainer = $('progress-bar-container');
-const timeLabel = $('player-time');
-const toggleBtn = $('btn-player-toggle');
-const toggleIcon = $('player-toggle-icon');
-
-// Singleton <audio> element. Reusado entre monumentos (cuando cambiás de
-// pin mid-playback, hacemos .pause() y cambiamos src).
-// Si el monumento no tiene audioUrl, este element queda sin src y la
-// reproducción usa el timer fake como fallback.
-const audioEl = new Audio();
-audioEl.preload = 'none'; // No descargar hasta que el user haga play explícito.
-
-function updateAudioUI() {
-  const m = MONUMENTS.find((x) => x.id === selectedId);
-  if (!m || !progressFill || !timeLabel) return;
-  progressFill.style.width = `${(sec / dur) * 100}%`;
-  timeLabel.textContent = `${fmt(sec)} / ${m.audioDuration}`;
-}
-
-const MONUMENT_BADGE_MAP: Record<string, number> = {
-  'bellas-artes': 1,
-  'catedral': 2,
-  'hotel-virreyes': 3,
-  'templo-mayor': 4
-};
-
-const BADGE_NAMES: Record<number, string> = {
-  1: 'Explorador Romano (Palacio de Bellas Artes)',
-  2: 'Alma Gótica (Catedral Metropolitana)',
-  3: 'Legado Virreinal (Hotel Virreyes)',
-  4: 'Cazador de Templos (Templo Mayor)'
-};
-
-const BADGE_IMAGES: Record<number, string> = {
-  1: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=150&h=150&q=80',
-  2: 'https://images.unsplash.com/photo-1543872084-c7bd3822856f?auto=format&fit=crop&w=150&h=150&q=80',
-  3: 'https://coming-aqua-flyingfish.myfilebase.com/ipfs/QmSb45pdEwGTuJFivhHuaRwZZFX83nrx4Gki1o5cCXqDo1',
-  4: 'https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&w=150&h=150&q=80'
-};
-
-function showBadgeNotification(badgeId: number) {
-  const name = BADGE_NAMES[badgeId] || 'Nueva Insignia';
-  const img = BADGE_IMAGES[badgeId];
-
-  // Crear elemento de notificación flotante premium
-  const toast = document.createElement('div');
-  toast.className = 'fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 rounded-2xl border border-white/20 bg-white/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-md transition-all duration-500 scale-90 opacity-0 dark:border-slate-800/50 dark:bg-slate-900/95 text-slate-800 dark:text-white';
-  toast.innerHTML = `
-    <div class="h-10 w-10 overflow-hidden rounded-full border border-slate-200/80 dark:border-slate-800">
-      <img src="${img}" alt="${name}" class="h-full w-full object-cover" />
-    </div>
-    <div class="text-left">
-      <p class="text-[9px] font-bold uppercase tracking-wider text-brand-500 dark:text-brand-400">¡Logro Desbloqueado!</p>
-      <p class="text-[12px] font-semibold">${name}</p>
-    </div>
-  `;
-
-  document.body.appendChild(toast);
-
-  // Animar entrada
-  requestAnimationFrame(() => {
-    toast.classList.remove('scale-90', 'opacity-0');
-    toast.classList.add('scale-100', 'opacity-100');
-  });
-
-  // Animar salida y remover
-  setTimeout(() => {
-    toast.classList.remove('scale-100', 'opacity-100');
-    toast.classList.add('scale-90', 'opacity-0');
-    setTimeout(() => {
-      toast.remove();
-    }, 500);
-  }, 4000);
-}
-
-function startAudio() {
-  const m = MONUMENTS.find((x) => x.id === selectedId);
-  if (!m) return;
-  dur = parseDur(m.audioDuration);
-  btnPlay?.classList.add('hidden');
-  playerUI?.classList.remove('hidden');
-  playing = true;
-  if (toggleIcon) toggleIcon.textContent = 'pause';
-
-  // Si el monumento tiene audioUrl, reproducir el archivo real y dejar
-  // que el timeupdate event sincronice el progress bar. Si no, fallback
-  // al timer fake de 1 segundo que ya existía.
-  if (m.audioUrl) {
-    audioEl.src = m.audioUrl;
-    audioEl.currentTime = 0;
-    const playPromise = audioEl.play();
-    if (playPromise && typeof playPromise.catch === 'function') {
-      playPromise.catch((err) => {
-        console.warn('[startAudio] audio.play() failed, falling back to timer:', err);
-      });
-    }
-  } else {
-    if (timer) clearInterval(timer);
-    timer = setInterval(() => {
-      if (sec < dur) {
-        sec++;
-        updateAudioUI();
-      } else {
-        stopAudio();
-      }
-    }, 1000);
-  }
-
-  // Desbloquear logro al reproducir audioguía si está logueado
-  const badgeId = MONUMENT_BADGE_MAP[m.id];
-  if (badgeId) {
-    const badgeName = BADGE_NAMES[badgeId] || m.name;
-    const badgeImage = BADGE_IMAGES[badgeId] || m.image;
-    fetch('/api/unlock-badge', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        badgeId,
-        monumentName: badgeName,
-        monumentImage: badgeImage
-      })
-    })
-      .then(res => {
-        if (res.ok) return res.json();
-        throw new Error('Not logged in or error');
-      })
-      .then((data: UnlockBadgeResponse) => {
-        if (data.success) {
-          showBadgeNotification(badgeId);
-          if (data.isGuest) {
-            try {
-              const guestBadges = JSON.parse(safeGet('edificarte_guest_badges') || '[]');
-              if (!guestBadges.includes(badgeId)) {
-                guestBadges.push(badgeId);
-                safeSet('edificarte_guest_badges', JSON.stringify(guestBadges));
-
-                // Sumar 100 puntos y +1 visita al invitado de forma local
-                const guestPoints = Number(safeGet('edificarte_guest_points') || '0') + 100;
-                const guestVisits = Number(safeGet('edificarte_guest_visits') || '0') + 1;
-                safeSet('edificarte_guest_points', String(guestPoints));
-                safeSet('edificarte_guest_visits', String(guestVisits));
-              }
-            } catch (e) {
-              console.error('Error saving guest progress:', e);
-            }
-          }
-        }
-      })
-      .catch(() => {
-        // Ignoramos silenciosamente si no está autenticado ni como invitado
-      });
-  }
-}
-
-// Sync del progress bar con el audio real. Se dispara cuando el <audio>
-// element actualiza su tiempo de reproducción.
-audioEl.addEventListener('timeupdate', () => {
-  if (!playing) return;
-  const m = MONUMENTS.find((x) => x.id === selectedId);
-  if (!m || !m.audioUrl) return;
-  const realDur = audioEl.duration;
-  if (isFinite(realDur) && realDur > 0) {
-    dur = realDur;
-  }
-  const fmtDur = (s: number) => {
-    const total = Math.floor(s);
-    const mm = Math.floor(total / 60);
-    const ss = total % 60;
-    return `${mm}:${ss.toString().padStart(2, '0')}`;
-  };
-  if (progressFill && isFinite(dur) && dur > 0) {
-    progressFill.style.width = `${(audioEl.currentTime / dur) * 100}%`;
-  }
-  if (timeLabel) {
-    timeLabel.textContent = `${fmtDur(audioEl.currentTime)} / ${m.audioDuration}`;
-  }
-});
-
-// Audio termina naturalmente → reset UI.
-audioEl.addEventListener('ended', () => {
-  stopAudio();
-});
-
-function toggleAudio() {
-  if (playing) {
-    if (timer) clearInterval(timer);
-    timer = null;
-    playing = false;
-    if (toggleIcon) toggleIcon.textContent = 'play_arrow';
-    audioEl.pause();
-  } else {
-    playing = true;
-    if (toggleIcon) toggleIcon.textContent = 'pause';
-    const m = MONUMENTS.find((x) => x.id === selectedId);
-    if (!m) return;
-    dur = parseDur(m.audioDuration);
-
-    // Si hay audio real cargado, lo reproducimos. Si no, fallback al timer.
-    if (m.audioUrl && audioEl.src) {
-      const playPromise = audioEl.play();
-      if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch((err) => {
-          console.warn('[toggleAudio] audio.play() failed:', err);
-        });
-      }
-    } else {
-      timer = setInterval(() => {
-        if (sec < dur) {
-          sec++;
-          updateAudioUI();
-        } else {
-          stopAudio();
-        }
-      }, 1000);
-    }
-  }
-}
-
-function stopAudio() {
-  if (timer) clearInterval(timer);
-  timer = null;
-  sec = 0;
-  playing = false;
-  if (progressFill) progressFill.style.width = '0%';
-  btnPlay?.classList.remove('hidden');
-  playerUI?.classList.add('hidden');
-  audioEl.pause();
-}
-
-btnPlay?.addEventListener('click', startAudio);
-toggleBtn?.addEventListener('click', toggleAudio);
-
-/**
- * Helpers para los controles del player (rw / ff / seek). Los controles
- * afectan el audio REAL cuando hay audioUrl; cuando no, caen al counter
- * fake (sec). Esto evita el bug donde la UI mostraba un seek que el
- * audio real no seguía.
- */
-function currentPosition(): number {
-  // Posición actual en segundos: real si hay audio, fake si no.
-  const m = MONUMENTS.find((x) => x.id === selectedId);
-  if (m?.audioUrl && isFinite(audioEl.currentTime)) {
-    return audioEl.currentTime;
-  }
-  return sec;
-}
-
-function setCurrentPosition(newSec: number): void {
-  const m = MONUMENTS.find((x) => x.id === selectedId);
-  if (m?.audioUrl && audioEl.src) {
-    audioEl.currentTime = Math.max(0, Math.min(dur, newSec));
-  } else {
-    sec = Math.max(0, Math.min(dur, newSec));
-  }
-  updateAudioUI();
-}
-
-$('btn-player-rw')?.addEventListener('click', () => {
-  setCurrentPosition(currentPosition() - 10);
-});
-$('btn-player-ff')?.addEventListener('click', () => {
-  setCurrentPosition(currentPosition() + 10);
-});
-progressContainer?.addEventListener('click', (e) => {
-  const r = progressContainer.getBoundingClientRect();
-  setCurrentPosition(Math.round(((e.clientX - r.left) / r.width) * dur));
-});
-
 // ---------------------------------------------------------------------------
 // Geolocation
 // ---------------------------------------------------------------------------
-
-const dot = $('geo-dot');
-const geoText = $('geo-text');
-const geoStatusEl = $('geo-status');
-
 type GeoState = 'ok' | 'error' | 'loading';
 
-interface UnlockBadgeResponse {
-  success: boolean;
-  isGuest?: boolean;
-  badgeId?: number;
-  pointsEarned?: number;
-  totalPoints?: number;
-  txHash?: string;
-  mode?: 'mock' | 'live';
-  message?: string;
-  errorMessage?: string;
-}
-
 const setGeo = (state: GeoState, msg: string) => {
+  const dot = $('geo-dot');
+  const geoText = $('geo-text');
   if (!dot || !geoText) return;
   dot.className = `h-2 w-2 rounded-full ${
     state === 'ok'
-      ? 'bg-green-500'
+      ? 'bg-emerald-400'
       : state === 'error'
         ? 'bg-red-400'
         : 'bg-amber-400 animate-pulse'
@@ -1234,133 +1113,71 @@ const setGeo = (state: GeoState, msg: string) => {
 };
 
 let firstLocationFetched = false;
-let permissionDenied = false; // true si el usuario rechazó permisos permanentemente
+let permissionDenied = false;
 
-const onPos = (pos: GeolocationPosition) => {
-  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+function updateUserMarker(lng: number, lat: number) {
+  if (userMarker) {
+    userMarker.setLngLat([lng, lat]);
+  } else {
+    const el = document.createElement('div');
+    el.className = 'user-dot';
+    userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+      .setLngLat([lng, lat])
+      .addTo(map);
+  }
+}
 
-  // Si obtuvimos posición, el usuario claramente autorizó — resetear flag
+const onPos = async (pos: GeolocationPosition) => {
+  const { latitude: lat, longitude: lng } = pos.coords;
+  userLat = lat;
+  userLng = lng;
   permissionDenied = false;
 
-  // Guardar ubicación en localStorage para que la use el chat de IA
-  safeSet('edificarte_user_lat', lat.toString());
-  safeSet('edificarte_user_lng', lng.toString());
+  safeSet('turimap_user_lat', lat.toString());
+  safeSet('turimap_user_lng', lng.toString());
 
-  if (userMarker) {
-    userMarker.setLatLng([lat, lng]);
-    userCircle?.setLatLng([lat, lng]).setRadius(accuracy);
-  } else {
-    userCircle = L.circle([lat, lng], {
-      radius: accuracy,
-      color: '#3f043a',
-      fillColor: '#3f043a',
-      fillOpacity: 0.06,
-      weight: 1,
-    }).addTo(map);
-    userMarker = L.marker([lat, lng], {
-      icon: L.divIcon({
-        className: 'user-dot',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
-      }),
-    }).addTo(map);
-  }
-  setGeo('ok', 'Ubicación activa');
+  const currentLifecycle = activeMapLifecycle;
+  updateUserMarker(lng, lat);
+  setGeo('ok', 'Location active');
 
-  // Centrar el mapa en la ubicación del usuario al recibirla por primera vez
   if (!firstLocationFetched) {
-    map.setView([lat, lng], 17, { animate: true });
     firstLocationFetched = true;
-  }
-
-  if (selectedId) {
-    const m = MONUMENTS.find((x) => x.id === selectedId);
-    if (m) updateVisitSection(m);
+    if (activeMapLifecycle !== currentLifecycle) return;
   }
 };
 
 const onErr = (err: GeolocationPositionError) => {
   if (err.code === 1) {
-    // Permiso denegado — no volver a pedir automáticamente
     permissionDenied = true;
-    setGeo('error', 'Permiso denegado — tocá para ver cómo activarlo');
+    setGeo('error', 'Permission denied');
   } else {
-    setGeo('error', 'Sin señal');
+    setGeo('error', 'No signal');
   }
 };
 
 function startWatching() {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   if (!('geolocation' in navigator)) {
-    setGeo('error', 'GPS no soportado');
+    setGeo('error', 'GPS not supported');
     return;
   }
-  setGeo('loading', 'Localizando...');
-
-  // Primer intento: alta precisión con timeout corto.
-  // Si falla por timeout (no por permiso denegado), reintentamos con
-  // enableHighAccuracy:false y timeout más largo — funciona mejor en interiores.
-  const tryWatch = (highAccuracy: boolean) => {
-    watchId = navigator.geolocation.watchPosition(onPos, (err) => {
-      if (err.code === 3 /* TIMEOUT */ && highAccuracy && watchId !== null) {
-        // Fallback: reintentar con menor precisión
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-        tryWatch(false);
-        return;
-      }
-      onErr(err);
-    }, {
-      enableHighAccuracy: highAccuracy,
-      maximumAge: 5000,
-      timeout: highAccuracy ? 10000 : 20000,
-    });
-  };
-  tryWatch(true);
-}
-
-function showPermissionInstructions() {
-  alert(
-    'El acceso a la ubicación está desactivado.\n\n' +
-      'Para activarlo:\n' +
-      '1. Toca el ícono del candado o la configuración al lado de la dirección URL de esta página.\n' +
-      '2. Cambia el permiso de "Ubicación" (Location) a "Permitir" (Allow).\n' +
-      '3. Recarga la página.'
-  );
+  setGeo('loading', 'Locating...');
+  watchId = navigator.geolocation.watchPosition(onPos, onErr, {
+    enableHighAccuracy: false,
+    maximumAge: 60000,
+    timeout: 10000,
+  });
 }
 
 function requestLocationPermission() {
-  if (!('geolocation' in navigator)) {
-    alert('Tu dispositivo o navegador no soporta geolocalización.');
-    return;
-  }
-
-  // Si ya rechazaron permiso, no volver a abrir el prompt — mostrar instrucciones
+  if (!('geolocation' in navigator)) return;
   if (permissionDenied) {
-    showPermissionInstructions();
+    alert(
+      'Location access is disabled.\n\n1. Tap the lock icon next to the URL.\n2. Change Location to "Allow".\n3. Reload the page.'
+    );
     return;
   }
-
-  if (navigator.permissions?.query) {
-    navigator.permissions
-      .query({ name: 'geolocation' })
-      .then((status) => {
-        if (status.state === 'denied') showPermissionInstructions();
-        else triggerLocationPrompt();
-      })
-      .catch(() => triggerLocationPrompt());
-  } else {
-    triggerLocationPrompt();
-  }
-}
-
-function triggerLocationPrompt() {
-  setGeo('loading', 'Localizando...');
-  // Limpiar flag ANTES de pedir permiso para que el fallback polling
-  // no vuelva a disparar el prompt si el evento se procesa tarde.
-  safeSet('edificarte_request_gps_pending', 'false');
-  window.__edificarteGpsPending = false;
-
+  setGeo('loading', 'Locating...');
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       onPos(pos);
@@ -1368,514 +1185,1065 @@ function triggerLocationPrompt() {
     },
     (err) => {
       onErr(err);
-      if (err.code === 1) showPermissionInstructions();
     },
-    { enableHighAccuracy: true, timeout: 8000 }
+    { enableHighAccuracy: true, timeout: 10000 }
   );
 }
 
-// Modal logic is handled by an inline script in mapa.astro (independent of Leaflet).
-// mapa-app.ts only listens for custom events to start geolocation.
-
-// NO auto-start: navigator.geolocation en iOS Safari requiere gesto de usuario
-// para abrir el prompt de permiso. Arrancar watchPosition on-load hace que
-// el prompt se rechace silenciosamente (code 1) y permissionDenied queda
-// sticky para toda la sesión. El GPS se inicia únicamente cuando el usuario
-// hace click en un botón o el welcome modal lo pide.
-
-// Listen for the inline modal script to signal modals are done
-window.addEventListener('edificarte-request-gps', () => {
-  // Respetar decisión previa del usuario — no reabrir prompt si ya rechazó
-  if (permissionDenied) return;
-  triggerLocationPrompt();
-});
-// El listener de 'edificarte-modals-done' se registra más abajo (después
-// de definir notifyRemoteSites). NO auto-arrancamos el watch aquí:
-// navigator.geolocation requiere user gesture en iOS Safari, y este evento
-// se dispara desde el flujo de modales sin gesto cuando el welcome modal
-// ya fue visto en visitas previas. El GPS se inicia únicamente cuando el
-// usuario clickea explícitamente #geo-status o #btn-locate.
-
-// Fallback anti-race-condition: el inline script de mapa.astro puede dispatchar
-// el evento ANTES de que este módulo ESM registre el listener. Chequeamos
-// el flag UNA sola vez al cargar para no generar prompts duplicados.
-function checkPendingGpsRequest() {
-  const pending =
-    safeGet('edificarte_request_gps_pending') === 'true' ||
-    window.__edificarteGpsPending === true;
-  if (pending && !permissionDenied) {
-    triggerLocationPrompt();
-  }
-}
-// Esperar a que el evento sea procesado por el listener; si llegó antes,
-// el flag se limpió en triggerLocationPrompt() y este check es no-op.
-setTimeout(checkPendingGpsRequest, 1500);
-
-geoStatusEl?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  console.log('[GPS DEBUG] geo-status clicked, userMarker:', !!userMarker, 'permissionDenied:', permissionDenied);
-  // Si ya tenemos marcador de usuario (gps activo), centrar el mapa
-  if (userMarker) {
-    map.setView(userMarker.getLatLng(), 17, { animate: true });
-    return;
-  }
-  // Si la última vez el usuario rechazó, igual le damos la oportunidad
-  // de reintentar: reseteamos el flag y dejamos que requestLocationPermission
-  // consulte el estado real del navegador. Si la denegación persiste, el
-  // navegador NO abrirá el prompt otra vez y caemos en el flujo de instrucciones.
-  if (permissionDenied) {
-    permissionDenied = false;
-  }
-  requestLocationPermission();
-});
-
-$('btn-locate')?.addEventListener('click', () => {
-  console.log('[GPS DEBUG] btn-locate clicked, userMarker:', !!userMarker, 'permissionDenied:', permissionDenied);
-  if (userMarker) map.setView(userMarker.getLatLng(), 18, { animate: true });
-  else if (permissionDenied) showPermissionInstructions();
-  else requestLocationPermission();
-});
-
 // ---------------------------------------------------------------------------
-// Auto-start GPS cuando el usuario ya pasó por los modales de bienvenida
+// Lifecycle: Setup & Tear Down Map (Astro View Transitions support)
 // ---------------------------------------------------------------------------
-// En la mayoría de visitas el welcome modal no se muestra (queda persistido
-// en localStorage), entonces el único disparador del GPS — el botón "Activar
-// GPS y Comenzar" — nunca se ejecuta y el indicador queda "Inactivo" para
-// siempre aunque el navegador ya tenga el permiso otorgado.
-//
-// Si el usuario ya eligió idioma y ya vio el welcome, significa que en una
-// visita previa completó el flujo de opt-in al GPS. Llamamos startWatching()
-// directamente: si el permiso sigue granted, el navegador devuelve la posición
-// sin abrir ningún prompt. Si fue revocado entre visitas, el browser maneja
-// el error de forma estándar (el usuario verá "Permiso denegado" en el
-// indicador y podrá tocarlo para ver instrucciones de rehabilitación).
-//
-// Esto preserva el workaround de iOS Safari: el flag `permissionDenied`
-// protege contra el bug documentado en líneas 1130-1134 (prompt rechazado
-// silenciosamente sin gesto). Si en esta sesión ya rechazaste explícitamente,
-// no auto-iniciamos.
-function tryAutoStartGps() {
-  console.log('[GPS DEBUG] tryAutoStartGps running');
-  console.log('[GPS DEBUG] permissionDenied:', permissionDenied);
-  console.log('[GPS DEBUG] geolocation in navigator:', 'geolocation' in navigator);
-  console.log('[GPS DEBUG] hasLang:', safeGet('edificarte_lang'));
-  console.log('[GPS DEBUG] hasWelcome:', safeGet('edificarte_welcome_shown'));
-  if (permissionDenied) {
-    console.log('[GPS DEBUG] skipped: permissionDenied is true');
-    return;
-  }
-  if (!('geolocation' in navigator)) {
-    console.log('[GPS DEBUG] skipped: no geolocation API');
-    return;
-  }
-  const hasLang = safeGet('edificarte_lang');
-  const hasWelcome = safeGet('edificarte_welcome_shown');
-  if (hasLang && hasWelcome) {
-    console.log('[GPS DEBUG] calling startWatching()');
-    startWatching();
-  } else {
-    console.log('[GPS DEBUG] skipped: lang/welcome not set');
-  }
-}
-tryAutoStartGps();
+const DEFAULT_CENTER: [number, number] = [-99.1332, 19.4326]; // CDMX fallback
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
+let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
+let searchAbortController: AbortController | null = null;
+let nearbyRequestController: AbortController | null = null;
+let routeRequestController: AbortController | null = null;
+let aiRouteHandler: ((event: Event) => void) | null = null;
+let searchRequestSequence = 0;
+let mapLifecycleSequence = 0;
+let activeMapLifecycle = 0;
+let resizeHandler: (() => void) | null = null;
+let documentClickHandler: ((event: MouseEvent) => void) | null = null;
 
-// Toast reusable para mensajes informativos al usuario
-function showToast(message: string, variant: 'info' | 'success' | 'warn' = 'info') {
-  const colorMap = {
-    info: 'border-blue-200/50 bg-blue-50/95 text-blue-900',
-    success: 'border-emerald-200/50 bg-emerald-50/95 text-emerald-900',
-    warn: 'border-amber-200/50 bg-amber-50/95 text-amber-900',
-  };
-  const iconMap = {
-    info: 'info',
-    success: 'check_circle',
-    warn: 'warning',
-  };
-  const toast = document.createElement('div');
-  toast.className = `fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex max-w-[calc(100vw-32px)] items-start gap-2.5 rounded-2xl border px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-md transition-all duration-500 scale-90 opacity-0 ${colorMap[variant]}`;
-  toast.setAttribute('role', 'status');
-  toast.innerHTML = `
-    <span class="material-symbols-outlined mt-0.5 text-[18px] flex-shrink-0">${iconMap[variant]}</span>
-    <span class="text-[12px] font-medium leading-snug">${message}</span>
-  `;
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => {
-    toast.classList.remove('scale-90', 'opacity-0');
-    toast.classList.add('scale-100', 'opacity-100');
-  });
-  setTimeout(() => {
-    toast.classList.remove('scale-100', 'opacity-100');
-    toast.classList.add('scale-90', 'opacity-0');
-    setTimeout(() => toast.remove(), 500);
-  }, 6000);
-}
-
-// Notificar al usuario que hay sitios fuera del zoom inicial (ej. Pirámides del Sol en Teotihuacán)
-function notifyRemoteSites() {
-  const remoteMonuments = MONUMENTS.filter((m) => m.type === 'sitio-remoto');
-  if (remoteMonuments.length === 0) return;
-  const names = remoteMonuments.map((m) => m.name).join(', ');
-  showToast(
-    `Hay ${remoteMonuments.length} sitio${remoteMonuments.length > 1 ? 's' : ''} turístico${
-      remoteMonuments.length > 1 ? 's' : ''
-    } fuera del centro (${names}). Hacé zoom-out o arrastrá el mapa para verlo${
-      remoteMonuments.length > 1 ? 's' : ''
-    }.`,
-    'info'
+function getCurrentViewport(): {
+  center: { lng: number; lat: number };
+  viewport: PaddedViewport;
+  budget: PoiBudget;
+  cacheKey: string;
+} | null {
+  const bounds = map.getBounds();
+  if (!bounds) return null;
+  const center = map.getCenter();
+  const container = map.getContainer();
+  const budget = getPoiBudget(
+    map.getZoom(),
+    container.clientWidth * container.clientHeight
   );
-}
-
-setTimeout(() => map.invalidateSize(), 200);
-
-// Mostrar el aviso después de que el mapa termine de cargar
-window.addEventListener('edificarte-modals-done', () => {
-  setTimeout(notifyRemoteSites, 800);
-});
-// Si ya estaba en el mapa sin modales, mostrar inmediatamente
-if (safeGet('edificarte_lang') && safeGet('edificarte_welcome_shown')) {
-  setTimeout(notifyRemoteSites, 1200);
-}
-
-// ---------------------------------------------------------------------------
-// Rutas de la IA (L.polyline)
-// ---------------------------------------------------------------------------
-
-async function drawRoute(ids: string[]) {
-  if (activeRouteLine) {
-    map.removeLayer(activeRouteLine);
-    activeRouteLine = null;
-  }
-
-  if (!ids || ids.length === 0) return;
-
-  const coords: [number, number][] = [];
-  const found: Monument[] = [];
-
-  // Agregar la ubicación actual del usuario como origen si está activa y es caminable (< 3km)
-  let userLatLng: L.LatLng | null = null;
-  if (userMarker) {
-    const latLng = userMarker.getLatLng();
-    const firstMon = MONUMENTS.find((x) => x.id === ids[0]);
-    if (firstMon) {
-      const monLatLng = L.latLng(firstMon.lat, firstMon.lng);
-      const distMeters = latLng.distanceTo(monLatLng);
-      if (distMeters < 3000) { // Si está a menos de 3 km
-        userLatLng = latLng;
-        coords.push([userLatLng.lat, userLatLng.lng]);
-      }
-    }
-  }
-
-  ids.forEach((id) => {
-    const m = MONUMENTS.find((x) => x.id === id);
-    if (m) {
-      coords.push([m.lat, m.lng]);
-      found.push(m);
-    }
+  const viewport = createPaddedViewport({
+    west: bounds.getWest(),
+    south: bounds.getSouth(),
+    east: bounds.getEast(),
+    north: bounds.getNorth(),
   });
+  return {
+    center,
+    viewport,
+    budget,
+    cacheKey: `${getViewportCacheKey(viewport, budget.zoomBucket)}:${budget.apiLimit}`,
+  };
+}
 
-  if (coords.length < 2) {
-    if (found[0]) {
-      selectMonument(found[0].id);
-    }
+async function refreshNearbyPlacesForViewport(
+  lifecycle: number,
+  showLoading = false
+): Promise<void> {
+  const searchInput = $<HTMLInputElement>('search-input');
+  if (
+    activeMapLifecycle !== lifecycle ||
+    isMapRemoved() ||
+    searchInput?.value.trim()
+  )
+    return;
+  const context = getCurrentViewport();
+  if (!context) return;
+
+  // Hard zoom gate: below MIN_POI_ZOOM no fetch, no pins — only the hint.
+  // Abort any in-flight request so it cannot re-render stale pins.
+  if (!shouldLoadPois(map.getZoom())) {
+    nearbyRequestController?.abort();
+    nearbyRequestController = null;
+    clearPlaceMarkers();
+    nearbyPlaces = [];
+    // Keep the cluster index consistent with the emptied data set.
+    refreshClusteredPins();
+    renderZoomGateHint();
+    lastRenderedCacheKey = 'below-zoom';
     return;
   }
 
-  // Intentar obtener la ruta peatonal real de OSRM (OpenStreetMap routing)
+  // No-op guard: same quantized viewport → skip fetch, merge and DOM rebuild.
+  if (context.cacheKey === lastRenderedCacheKey) return;
+
+  const loadingEl = $('places-loading');
+  if (showLoading) loadingEl?.classList.remove('hidden');
+  nearbyRequestController?.abort();
+  const controller = new AbortController();
+  nearbyRequestController = controller;
+
   try {
-    let osrmCoords = '';
-    if (userLatLng) {
-      osrmCoords = `${userLatLng.lng},${userLatLng.lat};` + found.map(m => `${m.lng},${m.lat}`).join(';');
-    } else {
-      osrmCoords = found.map(m => `${m.lng},${m.lat}`).join(';');
-    }
-
-    // Cancelar fetch previo (si el usuario dispara varias rutas seguidas) y armar timeout 8s
-    if (routeAbortController) routeAbortController.abort();
-    const localAbort = new AbortController();
-    routeAbortController = localAbort;
-    const timeoutId = setTimeout(() => localAbort.abort(), 8000);
-
-    let response: Response;
-    try {
-      response = await fetch(`https://router.project-osrm.org/route/v1/foot/${osrmCoords}?overview=full&geometries=geojson`, {
-        signal: localAbort.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-      // Solo limpiar el controller global si sigue siendo el nuestro
-      if (routeAbortController === localAbort) routeAbortController = null;
-    }
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.routes && data.routes[0]) {
-        const routeCoords = data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]] as [number, number]);
-
-        activeRouteLine = L.polyline(routeCoords, {
-          color: '#8b5cf6', // Púrpura premium
-          weight: 5,
-          opacity: 0.85,
-          dashArray: '6, 8', // Estilo discontinuo
-          lineCap: 'round',
-          lineJoin: 'round',
-        }).addTo(map);
-
-        map.fitBounds(activeRouteLine.getBounds(), {
-          padding: [60, 60],
-          animate: true,
-          duration: 1.2,
-        });
-
-        // Mostrar botón de limpiar ruta
-        $('btn-clear-route')?.classList.remove('hidden');
-        return;
-      }
-    }
+    const places = await fetchNearbyPlaces(
+      context.center.lng,
+      context.center.lat,
+      context.viewport,
+      context.budget,
+      context.cacheKey,
+      controller.signal
+    );
+    if (
+      activeMapLifecycle !== lifecycle ||
+      controller.signal.aborted ||
+      nearbyRequestController !== controller
+    )
+      return;
+    nearbyPlaces = getMergedNearbyPlaces(
+      places,
+      context.center.lng,
+      context.center.lat,
+      context.viewport,
+      Math.min(context.budget.renderLimit, MAX_RENDERED_POIS)
+    );
+    renderList(getFilteredPlaces(nearbyPlaces));
+    refreshClusteredPins();
+    lastRenderedCacheKey = context.cacheKey;
   } catch (err) {
-    // Si fue abortado (timeout o nueva búsqueda), NO actualizar el mapa: dejamos que el caller más reciente mande.
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      return;
+    if (err instanceof DOMException && err.name === 'AbortError') return;
+    console.warn('[TuriMap] Viewport POI refresh failed:', err);
+  } finally {
+    if (nearbyRequestController === controller) nearbyRequestController = null;
+    if (activeMapLifecycle === lifecycle && showLoading) {
+      loadingEl?.classList.add('hidden');
     }
-    if (err instanceof Error && err.name === 'AbortError') {
-      return;
-    }
-    console.error('Error al obtener ruta peatonal real de OSRM, usando fallback rectilíneo:', err);
-  }
-
-  // Fallback: Trazar línea de ruta recta si OSRM falla
-  activeRouteLine = L.polyline(coords, {
-    color: '#8b5cf6', // Púrpura premium
-    weight: 4,
-    opacity: 0.8,
-    dashArray: '6, 8', // Estilo discontinuo
-    lineCap: 'round',
-    lineJoin: 'round',
-  }).addTo(map);
-
-  // Encuadrar la vista del mapa en la ruta entera
-  map.fitBounds(activeRouteLine.getBounds(), {
-    padding: [60, 60],
-    animate: true,
-    duration: 1.2,
-  });
-
-  // Mostrar botón de limpiar ruta
-  $('btn-clear-route')?.classList.remove('hidden');
-}
-
-// Handler para limpiar la ruta del mapa
-$('btn-clear-route')?.addEventListener('click', () => {
-  if (activeRouteLine) {
-    map.removeLayer(activeRouteLine);
-    activeRouteLine = null;
-  }
-  $('btn-clear-route')?.classList.add('hidden');
-});
-
-// Escuchar evento personalizado para trazar ruta
-window.addEventListener('ai-route-generated', (e: Event) => {
-  const route = (e as CustomEvent<{ route?: unknown }>).detail?.route;
-  if (Array.isArray(route)) {
-    drawRoute(route);
-  }
-});
-
-// Escuchar evento personalizado para reproducir audioguía
-window.addEventListener('ai-play-audio', (e: Event) => {
-  const monumentId = (e as CustomEvent<{ monumentId?: string }>).detail?.monumentId;
-  if (monumentId) {
-    selectMonument(monumentId);
-    setTimeout(() => {
-      startAudio();
-    }, 400);
-  }
-});
-
-const urlParams = new URLSearchParams(window.location.search);
-const urlRoute = urlParams.get('route');
-const urlPin = urlParams.get('pin');
-const urlPlay = urlParams.get('play') === 'true';
-
-if (urlRoute) {
-  const ids = urlRoute.split(',');
-  setTimeout(() => {
-    drawRoute(ids);
-    if (urlPlay && ids.length === 1) {
-      setTimeout(() => {
-        startAudio();
-      }, 500);
-    }
-  }, 600);
-} else if (urlPin) {
-  setTimeout(() => {
-    selectMonument(urlPin);
-    if (urlPlay) {
-      setTimeout(() => {
-        startAudio();
-      }, 500);
-    }
-  }, 400);
-}
-
-// ---------------------------------------------------------------------------
-// Gestión de Reserva de Recorridos Guiados
-// ---------------------------------------------------------------------------
-
-const tourModal = $('tour-modal');
-const tourModalClose = $('tour-modal-close');
-const tourModalTitle = $('tour-modal-title');
-const tourModalSubtitle = $('tour-modal-subtitle');
-const tourIdInput = $<HTMLInputElement>('tour-id-input');
-const tourForm = $<HTMLFormElement>('tour-reservation-form');
-const tourTotalEl = $('tour-total');
-const tourSuccess = $('tour-success-state');
-const tourSuccessClose = $('tour-success-close');
-const tourPeopleInput = $<HTMLInputElement>('tour-people');
-const tourSubmitBtn = $<HTMLButtonElement>('tour-submit-btn');
-
-const TOUR_PRICE = 480;
-
-function openTourModal(tourId: string, title: string, subtitle: string) {
-  if (!tourModal) return;
-  if (tourIdInput) tourIdInput.value = tourId;
-  if (tourModalTitle) tourModalTitle.textContent = title;
-  if (tourModalSubtitle) tourModalSubtitle.textContent = subtitle;
-  updateTourTotal();
-  if (tourSuccess) tourSuccess.classList.add('hidden');
-  if (tourForm) tourForm.classList.remove('hidden');
-  
-  tourModal.classList.remove('hidden');
-  void tourModal.offsetHeight;
-  tourModal.classList.remove('opacity-0');
-  document.body.classList.add('modal-open');
-  if (tourPeopleInput) tourPeopleInput.value = '2';
-  
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const dateInput = $<HTMLInputElement>('tour-date');
-  if (dateInput) dateInput.min = tomorrow.toISOString().split('T')[0];
-}
-
-function closeTourModal() {
-  if (!tourModal) return;
-  tourModal.classList.add('opacity-0');
-  setTimeout(() => {
-    tourModal.classList.add('hidden');
-    document.body.classList.remove('modal-open');
-  }, 250);
-}
-
-function updateTourTotal() {
-  const n = parseInt(tourPeopleInput?.value || '1', 10) || 1;
-  if (tourTotalEl) {
-    tourTotalEl.textContent = `$${(n * TOUR_PRICE).toLocaleString('es-MX')} MXN`;
   }
 }
 
-tourPeopleInput?.addEventListener('input', updateTourTotal);
-tourModalClose?.addEventListener('click', closeTourModal);
-tourSuccessClose?.addEventListener('click', closeTourModal);
-tourModal?.addEventListener('click', (e) => {
-  if (e.target === tourModal) closeTourModal();
-});
-
-tourForm?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (!tourSubmitBtn || !tourForm) return;
-
-  const tourId = tourIdInput?.value || '';
-  const tour = TOURS.find((t) => t.id === tourId);
-  const tourTitle = tour?.title || 'Tour';
-  const tourImage = tour?.image || '';
-
-  const formData = new FormData(tourForm);
-  const data = {
-    tourId,
-    name: formData.get('name'),
-    email: formData.get('email'),
-    phone: formData.get('phone'),
-    date: formData.get('date'),
-    people: parseInt(formData.get('people') as string, 10) || 1,
-    notes: formData.get('notes') || '',
+type IdleCapableWindow = Window &
+  typeof globalThis & {
+    requestIdleCallback?: (
+      callback: () => void,
+      options?: { timeout: number }
+    ) => number;
+    cancelIdleCallback?: (handle: number) => void;
   };
 
-  if (!data.name || !data.email || !data.phone || !data.date || !data.people) {
-    alert('Por favor completá todos los campos obligatorios.');
-    return;
+function cancelDetailed3DUpgrade(): void {
+  if (detailed3DDelay !== null) {
+    clearTimeout(detailed3DDelay);
+    detailed3DDelay = null;
   }
+  if (detailed3DIdleHandle !== null) {
+    (window as IdleCapableWindow).cancelIdleCallback?.(detailed3DIdleHandle);
+    detailed3DIdleHandle = null;
+  }
+}
 
-  tourSubmitBtn.disabled = true;
-  const originalText = tourSubmitBtn.innerHTML;
-  tourSubmitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Enviando...';
+function scheduleDetailed3DUpgrade(lifecycle: number): void {
+  cancelDetailed3DUpgrade();
 
-  try {
-    const response = await fetch('/api/reservar-tour', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+  // Wait until the lightweight base map, visible tiles and initial markers are
+  // stable. Mapbox then streams the detailed 3D data into the same canvas.
+  map.once('idle', () => {
+    if (
+      activeMapLifecycle !== lifecycle ||
+      currentStyleIdx !== 0 ||
+      detailed3DEnabled
+    )
+      return;
+
+    const enableDetailed3D = () => {
+      detailed3DDelay = null;
+      detailed3DIdleHandle = null;
+      if (
+        activeMapLifecycle !== lifecycle ||
+        currentStyleIdx !== 0 ||
+        detailed3DEnabled
+      )
+        return;
+
+      try {
+        window.dispatchEvent(new CustomEvent('map:3d-detail-loading'));
+        map.setConfigProperty('basemap', 'show3dObjects', true);
+        detailed3DEnabled = true;
+        map.once('idle', () => {
+          if (activeMapLifecycle === lifecycle && detailed3DEnabled) {
+            window.dispatchEvent(new CustomEvent('map:3d-detail-ready'));
+          }
+        });
+      } catch (error) {
+        console.warn(
+          '[TuriMap] Detailed 3D upgrade could not be enabled:',
+          error
+        );
+      }
+    };
+
+    // Give initial gestures, pins and location updates priority. Safari has no
+    // requestIdleCallback, so it receives the equivalent delayed fallback.
+    detailed3DDelay = setTimeout(
+      () => {
+        detailed3DDelay = null;
+        const idleWindow = window as IdleCapableWindow;
+        if (idleWindow.requestIdleCallback) {
+          detailed3DIdleHandle = idleWindow.requestIdleCallback(
+            enableDetailed3D,
+            {
+              timeout: isLowPowerDevice ? 6000 : 2500,
+            }
+          );
+        } else {
+          enableDetailed3D();
+        }
+      },
+      isLowPowerDevice ? 1200 : 180
+    );
+  });
+}
+
+function createCirclePolygon(
+  centerLng: number,
+  centerLat: number,
+  radiusMeters: number,
+  points = 36
+): [number, number][] {
+  const coords: [number, number][] = [];
+  const km = radiusMeters / 1000;
+  const distanceX = km / (111.32 * Math.cos((centerLat * Math.PI) / 180));
+  const distanceY = km / 110.574;
+
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    const x = distanceX * Math.cos(theta);
+    const y = distanceY * Math.sin(theta);
+    coords.push([centerLng + x, centerLat + y]);
+  }
+  coords.push(coords[0]);
+  return coords;
+}
+
+function buildRecintosGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.Geometry> {
+  const features: GeoJSON.Feature<GeoJSON.Geometry>[] = RECINTOS.map((r) => {
+    let polygonCoords: [number, number][];
+    if (r.polygon && r.polygon.length >= 3) {
+      polygonCoords = r.polygon.map(([lat, lng]) => [lng, lat]);
+      const first = polygonCoords[0];
+      const last = polygonCoords[polygonCoords.length - 1];
+      if (first[0] !== last[0] || first[1] !== last[1]) {
+        polygonCoords.push([first[0], first[1]]);
+      }
+    } else {
+      const radius = r.radiusMeters ?? RECINTO_DEFAULT_RADIUS[r.type] ?? 250;
+      polygonCoords = createCirclePolygon(r.lng, r.lat, radius);
+    }
+
+    const typeColor = RECINTO_TYPES[r.type]?.color || '#a16207';
+
+    return {
+      type: 'Feature',
+      properties: {
+        id: r.id,
+        name: r.name,
+        type: r.type,
+        era: r.era,
+        fact: r.fact,
+        shortDesc: r.shortDesc,
+        emoji: r.emoji,
+        color: typeColor,
+        lat: r.lat,
+        lng: r.lng,
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [polygonCoords],
+      },
+    };
+  });
+
+  return {
+    type: 'FeatureCollection',
+    features,
+  };
+}
+
+function setupRecintosLayer(mapInstance: mapboxgl.Map): void {
+  if (!mapInstance) return;
+
+  const geojson = buildRecintosGeoJSON();
+
+  if (mapInstance.getSource('recintos-zones')) {
+    (mapInstance.getSource('recintos-zones') as mapboxgl.GeoJSONSource).setData(
+      geojson
+    );
+  } else {
+    mapInstance.addSource('recintos-zones', {
+      type: 'geojson',
+      data: geojson,
     });
 
-    if (!response.ok) throw new Error('Error en el servidor');
-
-    const result = await response.json();
-
-    // Guardar la reserva en localStorage edificarte_reservations
-    try {
-      const STORAGE_KEY = 'edificarte_reservations';
-      const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<Record<string, unknown>>;
-      const reservation = {
-        id: result.reservationId || `RES-${Date.now()}`,
-        tourId: data.tourId,
-        tourTitle,
-        tourImage,
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        date: data.date,
-        people: data.people,
-        totalMXN: result.totalMXN || 0,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-      existing.push(reservation);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
-    } catch (storageErr) {
-      console.warn('No se pudo guardar la reserva en localStorage:', storageErr);
+    // Find the first building/model/extrusion/label layer to place zone highlights UNDER 3D buildings & labels
+    let beforeLayerId: string | undefined;
+    const layers = mapInstance.getStyle()?.layers;
+    if (layers) {
+      for (const layer of layers) {
+        if (
+          layer.type === 'fill-extrusion' ||
+          (layer as { type?: string }).type === 'model' ||
+          layer.id === '3d-buildings' ||
+          layer.id.includes('building') ||
+          layer.id.includes('3d') ||
+          (layer.type === 'symbol' &&
+            (layer.layout as Record<string, unknown>)?.[`text-field`])
+        ) {
+          beforeLayerId = layer.id;
+          break;
+        }
+      }
     }
 
-    if (tourSuccess) tourSuccess.classList.remove('hidden');
-    if (tourForm) tourForm.classList.add('hidden');
-    tourForm.reset();
-    if (tourPeopleInput) tourPeopleInput.value = '2';
-  } catch (err) {
-    console.error('Error al reservar:', err);
-    alert('Hubo un error al enviar la solicitud. Por favor intentá de nuevo o contactanos por WhatsApp.');
-  } finally {
-    tourSubmitBtn.disabled = false;
-    tourSubmitBtn.innerHTML = originalText;
+    mapInstance.addLayer(
+      {
+        id: 'recintos-zones-fill',
+        type: 'fill',
+        source: 'recintos-zones',
+        slot: 'bottom',
+        paint: {
+          'fill-color': ['get', 'color'],
+          'fill-opacity': 0.12,
+        },
+      } as mapboxgl.AnyLayer,
+      beforeLayerId
+    );
+
+    mapInstance.addLayer(
+      {
+        id: 'recintos-zones-outline',
+        type: 'line',
+        source: 'recintos-zones',
+        slot: 'bottom',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 1.5,
+          'line-opacity': 0.5,
+          'line-dasharray': [3, 3],
+        },
+      } as mapboxgl.AnyLayer,
+      beforeLayerId
+    );
+
+    mapInstance.on('click', 'recintos-zones-fill', (e) => {
+      const feature = e.features?.[0];
+      if (!feature || !feature.properties) return;
+      const props = feature.properties;
+      selectPlace({
+        id: props.id,
+        name: props.name,
+        category: props.type || 'historic',
+        address: props.shortDesc || props.fact || '',
+        lat: Number(props.lat),
+        lng: Number(props.lng),
+        emoji: props.emoji || '🏛️',
+        isLocalMonument: true,
+      });
+    });
+
+    mapInstance.on('mouseenter', 'recintos-zones-fill', () => {
+      mapInstance.getCanvas().style.cursor = 'pointer';
+    });
+
+    mapInstance.on('mouseleave', 'recintos-zones-fill', () => {
+      mapInstance.getCanvas().style.cursor = '';
+    });
+  }
+}
+
+function initMap() {
+  const mapEl = $('map');
+  if (!mapEl) return;
+
+  // Clean up any stale map session leftovers
+  cleanUpMap();
+  const lifecycle = ++mapLifecycleSequence;
+  activeMapLifecycle = lifecycle;
+  window.dispatchEvent(new CustomEvent('map:mounted'));
+
+  // Resolve current sheet components
+  bottomSheet = $('bottom-sheet');
+  sheetHeader = $('sheet-header');
+  sheetChevron = $('sheet-chevron');
+  sheetBody = $('sheet-body');
+  floatingControls = $('map-floating-controls');
+
+  // Always load CDMX historic center first
+  const initialCenter: [number, number] = DEFAULT_CENTER;
+
+  // Create Mapbox instance
+  map = new mapboxgl.Map({
+    container: 'map',
+    style: STYLES[currentStyleIdx].id,
+    center: initialCenter,
+    zoom: 15,
+    pitch: 45,
+    bearing: -17.6,
+    antialias: !isLowPowerDevice,
+    attributionControl: false,
+    fadeDuration: isLowPowerDevice ? 0 : 300,
+    maxTileCacheSize: isLowPowerDevice ? 24 : undefined,
+    performanceMetricsCollection: false,
+    config: {
+      basemap: {
+        show3dObjects: false,
+      },
+    },
+  });
+  travelVisualization = new TravelVisualization(
+    map,
+    () => activeMapLifecycle === lifecycle && !isMapRemoved()
+  );
+
+  scheduleDetailed3DUpgrade(lifecycle);
+
+  // Local data can be drawn as soon as the base map is ready; remote POIs
+  // are merged in later without making the user wait on a network request.
+  map.once('load', () => {
+    setupRecintosLayer(map);
+    if (activeMapLifecycle !== lifecycle || nearbyPlaces.length > 0) return;
+    if (!shouldLoadPois(map.getZoom())) return;
+    const context = getCurrentViewport();
+    if (!context) return;
+    const localPlaces = getLocalPlaces(
+      context.center.lng,
+      context.center.lat,
+      context.viewport
+    ).slice(0, context.budget.renderLimit);
+    if (!localPlaces.length) return;
+    nearbyPlaces = localPlaces;
+    renderList(getFilteredPlaces(localPlaces));
+    refreshClusteredPins();
+  });
+
+  map.once('idle', () => {
+    if (activeMapLifecycle === lifecycle) {
+      void refreshNearbyPlacesForViewport(lifecycle, true);
+    }
+  });
+
+  // Setup style.load hook
+  map.on('style.load', () => {
+    setupRecintosLayer(map);
+    let labelLayerId: string | undefined;
+    const layers = map.getStyle().layers;
+    if (layers) {
+      for (const layer of layers) {
+        if (
+          layer.type === 'symbol' &&
+          (layer.layout as Record<string, unknown>)?.[`text-field`]
+        ) {
+          labelLayerId = layer.id;
+          break;
+        }
+      }
+    }
+
+    // Standard owns its detailed 3D buildings and enables them progressively.
+    // Other selectable styles keep the lightweight extrusion fallback.
+    if (
+      currentStyleIdx !== 0 &&
+      !map.getLayer('3d-buildings') &&
+      map.getSource('composite')
+    ) {
+      try {
+        map.addLayer(
+          {
+            id: '3d-buildings',
+            source: 'composite',
+            'source-layer': 'building',
+            filter: ['==', 'extrude', 'true'],
+            type: 'fill-extrusion',
+            minzoom: 14,
+            paint: {
+              'fill-extrusion-color': '#aaa',
+              'fill-extrusion-height': ['get', 'height'],
+              'fill-extrusion-base': ['get', 'min_height'],
+              'fill-extrusion-opacity': 0.5,
+            },
+          },
+          labelLayerId
+        );
+      } catch {}
+    }
+
+    // DOM markers survive style changes; only style-bound travel resources need restoration.
+    travelVisualization?.restoreAfterStyleLoad();
+  });
+
+  // Setup interactive map actions
+  map.on('movestart', () => {
+    window.dispatchEvent(new CustomEvent('map:interaction-start'));
+  });
+
+  // Cluster re-render is decoupled from the fetch pipeline: zooming regroups
+  // pins even when the viewport no-op guard skips refetching. Signature-guarded.
+  map.on('zoomend', () => {
+    if (activeMapLifecycle !== lifecycle) return;
+    renderClusteredPins();
+  });
+
+  map.on('moveend', () => {
+    if (activeMapLifecycle !== lifecycle) return;
+    window.dispatchEvent(new CustomEvent('map:interaction-end'));
+    renderClusteredPins();
+    if (refreshDebounce) clearTimeout(refreshDebounce);
+    refreshDebounce = setTimeout(async () => {
+      refreshDebounce = null;
+      await refreshNearbyPlacesForViewport(lifecycle);
+    }, MOVEEND_REFRESH_DEBOUNCE_MS);
+  });
+
+  map.on('click', () => {
+    if (selectedPlace) deselect();
+  });
+
+  // Render sheet heights
+  updateSheetUI();
+  resizeHandler = () => {
+    if (activeMapLifecycle === lifecycle) updateSheetUI();
+  };
+  window.addEventListener('resize', resizeHandler);
+
+  // Attach DOM Listeners dynamically to current page nodes
+  sheetHeader?.addEventListener('click', () => {
+    isCollapsed = !isCollapsed;
+    updateSheetUI();
+  });
+
+  bottomSheet?.addEventListener('click', (e) => e.stopPropagation());
+  $('btn-cancel-route')?.addEventListener('click', () => clearRoute());
+  $('btn-close-detail')?.addEventListener('click', deselect);
+
+  const sInput = $<HTMLInputElement>('search-input');
+  const searchClear = $('map-search-clear');
+  const suggestionsEl = $('search-suggestions');
+  let activeSuggestionIndex = -1;
+
+  const setSearchClearVisible = (visible: boolean) => {
+    searchClear?.classList.toggle('hidden', !visible);
+    searchClear?.classList.toggle('flex', visible);
+  };
+
+  function closeSuggestions() {
+    if (suggestionsEl) {
+      suggestionsEl.classList.add('hidden');
+      suggestionsEl.innerHTML = '';
+    }
+    activeSuggestionIndex = -1;
+  }
+
+  function highlightSuggestion(
+    items: NodeListOf<HTMLButtonElement>,
+    index: number
+  ) {
+    items.forEach((item, idx) => {
+      if (idx === index) {
+        item.classList.add('bg-slate-150', 'dark:bg-slate-800');
+        item.focus();
+      } else {
+        item.classList.remove('bg-slate-150', 'dark:bg-slate-800');
+      }
+    });
+  }
+
+  function selectSearchedPlace(place: Place) {
+    const exists = nearbyPlaces.some((p) => p.id === place.id);
+    if (!exists) {
+      nearbyPlaces = [place, ...nearbyPlaces].slice(0, MAX_RENDERED_POIS);
+      renderList(getFilteredPlaces(nearbyPlaces));
+      refreshClusteredPins();
+    }
+    selectPlace(place);
+    closeSuggestions();
+    if (sInput) {
+      sInput.value = place.name;
+      setSearchClearVisible(true);
+    }
+  }
+
+  if (sInput) {
+    sInput.value = '';
+    setSearchClearVisible(false);
+
+    searchClear?.addEventListener('click', () => {
+      sInput.value = '';
+      setSearchClearVisible(false);
+      sInput.dispatchEvent(new Event('input'));
+      sInput.focus();
+    });
+
+    sInput.addEventListener('keydown', (e) => {
+      if (!suggestionsEl || suggestionsEl.classList.contains('hidden')) return;
+      const items = suggestionsEl.querySelectorAll<HTMLButtonElement>(
+        'button.suggestion-item'
+      );
+      if (items.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+        highlightSuggestion(items, activeSuggestionIndex);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeSuggestionIndex =
+          (activeSuggestionIndex - 1 + items.length) % items.length;
+        highlightSuggestion(items, activeSuggestionIndex);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeSuggestionIndex >= 0 && items[activeSuggestionIndex]) {
+          items[activeSuggestionIndex].click();
+        }
+      } else if (e.key === 'Escape') {
+        closeSuggestions();
+      }
+    });
+
+    sInput.addEventListener('focus', () => {
+      if (sInput.value.trim()) {
+        sInput.dispatchEvent(new Event('input'));
+      }
+    });
+
+    sInput.addEventListener('input', () => {
+      const q = sInput.value.trim();
+      setSearchClearVisible(Boolean(q));
+      if (!q) {
+        closeSuggestions();
+        void refreshNearbyPlacesForViewport(lifecycle, true);
+        return;
+      }
+
+      nearbyRequestController?.abort();
+      nearbyRequestController = null;
+      if (searchDebounce) clearTimeout(searchDebounce);
+      searchAbortController?.abort();
+      const requestSequence = ++searchRequestSequence;
+      searchDebounce = setTimeout(async () => {
+        searchDebounce = null;
+        if (
+          activeMapLifecycle !== lifecycle ||
+          requestSequence !== searchRequestSequence
+        )
+          return;
+        const queryLower = q.toLowerCase();
+        const locale = detectLocale();
+
+        const mapCenter = map.getCenter();
+        const isViewingCDMX =
+          haversine(mapCenter.lat, mapCenter.lng, 19.4326, -99.1332) <= 100;
+        const isUserLocal =
+          userLat !== null &&
+          userLng !== null &&
+          haversine(userLat, userLng, 19.4326, -99.1332) <= 100;
+        const isCDMXActive = isUserLocal || isViewingCDMX;
+
+        const localMatches = isCDMXActive
+          ? MONUMENTS.filter((m) => {
+              const name = pickLocalized(m, 'name', locale).toLowerCase();
+              const desc = pickLocalized(m, 'desc', locale).toLowerCase();
+              const cat = pickLocalized(m, 'category', locale).toLowerCase();
+              return (
+                name.includes(queryLower) ||
+                desc.includes(queryLower) ||
+                cat.includes(queryLower)
+              );
+            }).map((m) => {
+              const distKm =
+                userLat && userLng
+                  ? haversine(userLat, userLng, m.lat, m.lng)
+                  : undefined;
+              return {
+                id: m.id,
+                name: pickLocalized(m, 'name', locale),
+                category: normalizeCategory(m.type || 'monument'),
+                address: pickLocalized(m, 'desc', locale),
+                lat: m.lat,
+                lng: m.lng,
+                distance: distKm,
+                isLocalMonument: true,
+                emoji: m.emoji || '🏛️',
+              };
+            })
+          : [];
+
+        let mapboxMatches: Place[] = [];
+        if (q.length >= 2) {
+          const proximity =
+            userLng && userLat ? `&proximity=${userLng},${userLat}` : '';
+          const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?types=poi,place${proximity}&limit=5&language=${locale}&access_token=${MAPBOX_TOKEN}`;
+          const controller = new AbortController();
+          searchAbortController = controller;
+          try {
+            const res = await fetch(url, { signal: controller.signal });
+            const data = await res.json();
+            if (
+              activeMapLifecycle !== lifecycle ||
+              requestSequence !== searchRequestSequence ||
+              controller.signal.aborted
+            )
+              return;
+            mapboxMatches = (data.features || []).map(
+              (f: MapboxGeocodingFeature, i: number) => {
+                const [fLng, fLat] = f.center;
+                const distKm =
+                  userLat && userLng
+                    ? haversine(userLat, userLng, fLat, fLng)
+                    : undefined;
+                return {
+                  id: f.id || `search-${i}`,
+                  name: f.text || f.place_name,
+                  category: normalizeCategory(f.properties?.category),
+                  address: f.place_name || '',
+                  lat: fLat,
+                  lng: fLng,
+                  distance: distKm,
+                  isLocalMonument: false,
+                  emoji: '📍',
+                };
+              }
+            );
+          } catch (err) {
+            if (!(err instanceof DOMException && err.name === 'AbortError')) {
+              console.warn('[TuriMap] Search failed:', err);
+            }
+          } finally {
+            if (searchAbortController === controller)
+              searchAbortController = null;
+          }
+        }
+
+        if (
+          activeMapLifecycle !== lifecycle ||
+          requestSequence !== searchRequestSequence
+        )
+          return;
+
+        const displayLocalMatches = isUserLocal ? localMatches : [];
+        let displayMapboxMatches = mapboxMatches;
+
+        if (!isUserLocal && localMatches.length > 0) {
+          displayMapboxMatches = [
+            ...localMatches.map((m) => ({
+              ...m,
+              isLocalMonument: false,
+              emoji: '🏛️',
+            })),
+            ...mapboxMatches,
+          ];
+        }
+
+        if (
+          displayLocalMatches.length === 0 &&
+          displayMapboxMatches.length === 0
+        ) {
+          if (suggestionsEl) {
+            suggestionsEl.innerHTML = `<div class="p-4 text-center text-xs text-slate-400 dark:text-slate-500">No results found</div>`;
+            suggestionsEl.classList.remove('hidden');
+          }
+          return;
+        }
+
+        let suggestionsHtml = '<div class="py-1.5">';
+
+        if (displayLocalMatches.length > 0) {
+          suggestionsHtml += `
+            <div>
+              <div class="text-[9px] font-bold text-accent-500 dark:text-accent-400 uppercase tracking-wider px-3.5 py-1 select-none">
+                Local landmarks
+              </div>
+              <div class="flex flex-col">
+          `;
+          displayLocalMatches.forEach((m) => {
+            suggestionsHtml += `
+              <button
+                type="button"
+                class="suggestion-item w-full flex items-center gap-3 px-3.5 py-2 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-all text-left group outline-none focus:bg-slate-150 dark:focus:bg-slate-800"
+                data-place-id="${m.id}"
+                data-place-type="local"
+              >
+                <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-lg group-hover:scale-105 transition-transform">
+                  ${m.emoji}
+                </span>
+                <div class="min-w-0 flex-grow">
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="truncate text-[12px] font-bold text-slate-800 dark:text-white group-hover:text-accent-600 dark:group-hover:text-accent-400 transition-colors">${m.name}</p>
+                    ${m.distance ? `<span class="text-[9px] font-bold text-slate-500 whitespace-nowrap">${formatDistance(m.distance)}</span>` : ''}
+                  </div>
+                  <p class="truncate text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">${m.address}</p>
+                </div>
+              </button>
+            `;
+          });
+          suggestionsHtml += `</div></div>`;
+        }
+
+        if (displayMapboxMatches.length > 0) {
+          const borderClass =
+            displayLocalMatches.length > 0
+              ? 'border-t border-slate-200/50 dark:border-slate-800/50 mt-1.5 pt-1.5'
+              : '';
+          suggestionsHtml += `
+            <div class="${borderClass}">
+              <div class="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-3.5 py-1 select-none">
+                Other places
+              </div>
+              <div class="flex flex-col">
+          `;
+          displayMapboxMatches.forEach((m) => {
+            suggestionsHtml += `
+              <button
+                type="button"
+                class="suggestion-item w-full flex items-center gap-3 px-3.5 py-2 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-all text-left group outline-none focus:bg-slate-150 dark:focus:bg-slate-800"
+                data-place-id="${m.id}"
+                data-place-type="${m.isLocalMonument ? 'local' : 'mapbox'}"
+              >
+                <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-lg group-hover:scale-105 transition-transform">
+                  ${m.emoji}
+                </span>
+                <div class="min-w-0 flex-grow">
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="truncate text-[12px] font-bold text-slate-800 dark:text-white group-hover:text-accent-600 dark:group-hover:text-accent-400 transition-colors">${m.name}</p>
+                    ${m.distance ? `<span class="text-[9px] font-bold text-slate-500 whitespace-nowrap">${formatDistance(m.distance)}</span>` : ''}
+                  </div>
+                  <p class="truncate text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">${m.address}</p>
+                </div>
+              </button>
+            `;
+          });
+          suggestionsHtml += `</div></div>`;
+        }
+
+        suggestionsHtml += '</div>';
+
+        if (suggestionsEl) {
+          suggestionsEl.innerHTML = suggestionsHtml;
+          suggestionsEl.classList.remove('hidden');
+
+          const items = suggestionsEl.querySelectorAll<HTMLButtonElement>(
+            'button.suggestion-item'
+          );
+          items.forEach((item) => {
+            item.addEventListener('click', () => {
+              const placeId = item.getAttribute('data-place-id');
+              const placeType = item.getAttribute('data-place-type');
+
+              if (placeType === 'local') {
+                const found = localMatches.find((m) => m.id === placeId);
+                if (found) selectSearchedPlace(found);
+              } else {
+                const found =
+                  mapboxMatches.find((m) => m.id === placeId) ||
+                  localMatches.find((m) => m.id === placeId);
+                if (found) selectSearchedPlace(found);
+              }
+            });
+          });
+        }
+        activeSuggestionIndex = -1;
+      }, 300);
+    });
+  }
+
+  const documentClickHandlerForLifecycle = (e: MouseEvent) => {
+    const target = e.target as Node;
+    if (
+      sInput &&
+      !sInput.contains(target) &&
+      suggestionsEl &&
+      !suggestionsEl.contains(target)
+    ) {
+      closeSuggestions();
+    }
+  };
+  documentClickHandler = documentClickHandlerForLifecycle;
+  document.addEventListener('click', documentClickHandlerForLifecycle);
+
+  const aiRouteHandlerForLifecycle = (e: Event) => {
+    if (activeMapLifecycle !== lifecycle) return;
+    const customEvent = e as CustomEvent<{ route: string[] }>;
+    const routeMonumentIds = customEvent.detail.route;
+    if (!routeMonumentIds || routeMonumentIds.length === 0) return;
+
+    const coordinates: [number, number][] = [];
+    if (userLng !== null && userLat !== null) {
+      coordinates.push([userLng, userLat]);
+    }
+    routeMonumentIds.forEach((id) => {
+      const monument = MONUMENTS.find((m) => m.id === id);
+      if (monument) {
+        coordinates.push([monument.lng, monument.lat]);
+      }
+    });
+
+    if (coordinates.length < 2) {
+      alert('No coordinates found to draw the route.');
+      return;
+    }
+
+    routeRequestController?.abort();
+    const controller = new AbortController();
+    routeRequestController = controller;
+
+    const firstMonument = MONUMENTS.find((m) => m.id === routeMonumentIds[0]);
+    const routePlace: Place = {
+      id: 'ai-route',
+      name: 'Ruta Recomendada por IA',
+      category: 'route',
+      address: routeMonumentIds
+        .map((id) => MONUMENTS.find((m) => m.id === id)?.name || id)
+        .join(' → '),
+      lat: firstMonument?.lat || coordinates[0]?.[1] || 0,
+      lng: firstMonument?.lng || coordinates[0]?.[0] || 0,
+    };
+
+    selectPlace(routePlace);
+    void drawMultiStopRoute(coordinates, controller.signal);
+  };
+  aiRouteHandler = aiRouteHandlerForLifecycle;
+  window.addEventListener('ai-route-generated', aiRouteHandlerForLifecycle);
+
+  $('btn-style-toggle')?.addEventListener('click', () => {
+    cancelDetailed3DUpgrade();
+    currentStyleIdx = (currentStyleIdx + 1) % STYLES.length;
+    detailed3DEnabled = currentStyleIdx === 0;
+    map.setStyle(STYLES[currentStyleIdx].id);
+  });
+
+  $('btn-locate')?.addEventListener('click', () => {
+    if (userMarker && userLng && userLat) {
+      map.flyTo({
+        center: [userLng, userLat],
+        zoom: 16,
+        pitch: 45,
+        duration: 1000,
+      });
+    } else {
+      requestLocationPermission();
+    }
+  });
+
+  $('geo-status')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (userMarker && userLng && userLat) {
+      map.flyTo({
+        center: [userLng, userLat],
+        zoom: 16,
+        pitch: 45,
+        duration: 1000,
+      });
+    } else {
+      requestLocationPermission();
+    }
+  });
+
+  // Start geolocation watch immediately without welcome modal
+  startWatching();
+
+  // Check for placeId in URL parameters to auto-select a place
+  const params = new URLSearchParams(window.location.search);
+  const urlPlaceId = params.get('placeId');
+  if (urlPlaceId) {
+    const monument = MONUMENTS.find((m) => m.id === urlPlaceId);
+    if (monument) {
+      const locale = detectLocale();
+      const distKm =
+        userLat && userLng
+          ? haversine(userLat, userLng, monument.lat, monument.lng)
+          : undefined;
+      const place: Place = {
+        id: monument.id,
+        name: pickLocalized(monument, 'name', locale),
+        category: normalizeCategory(monument.type || 'monument'),
+        address: pickLocalized(monument, 'desc', locale),
+        lat: monument.lat,
+        lng: monument.lng,
+        distance: distKm,
+      };
+
+      if (map.loaded()) {
+        selectSearchedPlace(place);
+      } else {
+        map.once('load', () => selectSearchedPlace(place));
+      }
+    }
+  }
+
+  setTimeout(() => {
+    if (activeMapLifecycle === lifecycle && map) map.resize();
+  }, 200);
+}
+
+function cleanUpMap() {
+  activeMapLifecycle = ++mapLifecycleSequence;
+  cancelDetailed3DUpgrade();
+  detailed3DEnabled = false;
+  if (searchDebounce) {
+    clearTimeout(searchDebounce);
+    searchDebounce = null;
+  }
+  searchAbortController?.abort();
+  searchAbortController = null;
+  nearbyRequestController?.abort();
+  nearbyRequestController = null;
+  routeRequestController?.abort();
+  routeRequestController = null;
+  travelVisualization?.destroy();
+  travelVisualization = null;
+  if (refreshDebounce) {
+    clearTimeout(refreshDebounce);
+    refreshDebounce = null;
+  }
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler);
+    resizeHandler = null;
+  }
+  if (documentClickHandler) {
+    document.removeEventListener('click', documentClickHandler);
+    documentClickHandler = null;
+  }
+  if (aiRouteHandler) {
+    window.removeEventListener('ai-route-generated', aiRouteHandler);
+    aiRouteHandler = null;
+  }
+  window.removeEventListener('resize', updateSheetUI);
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  clearPlaceMarkers();
+  clusterIndex = null;
+  clusterDataVersion = 0;
+  if (map) {
+    try {
+      map.remove();
+    } catch {}
+  }
+  userMarker = null;
+  selectedPlace = null;
+  isCollapsed = true;
+  nearbyPlaces = [];
+  lastRenderedCacheKey = null;
+  activePinFilter = 'all';
+  firstLocationFetched = false;
+}
+
+// ---------------------------------------------------------------------------
+// Bind Astro view transition lifecycles
+// ---------------------------------------------------------------------------
+export function mountMap(): void {
+  bindFilterChips();
+  if ($('map')) initMap();
+}
+
+document.addEventListener('astro:before-swap', () => {
+  cleanUpMap();
+});
+
+window.addEventListener('pagehide', (event) => {
+  if (!event.persisted) cleanUpMap();
+});
+
+window.addEventListener('pageshow', (event) => {
+  const mapWasRemoved =
+    !map || Boolean((map as unknown as { _removed?: boolean })._removed);
+  if (event.persisted && $('map') && mapWasRemoved) {
+    initMap();
   }
 });
 
-// Click en el botón de reservar de la tarjeta de promoción en el panel
-$('btn-book-tour')?.addEventListener('click', () => {
-  if (!selectedId) return;
-  const m = MONUMENTS.find((x) => x.id === selectedId);
-  if (!m || !m.tourId) return;
-  const tour = TOURS.find((t) => t.id === m.tourId);
-  if (!tour) return;
-  openTourModal(tour.id, tour.title, tour.meetingPoint || '');
-});
-
-// Listener para cuando el AI Agent decide abrir la reservación
-window.addEventListener('ai-reserve-tour', (e: Event) => {
-  const monumentId = (e as CustomEvent<{ monumentId?: string }>).detail?.monumentId;
-  if (!monumentId) return;
-  const m = MONUMENTS.find((x) => x.id === monumentId);
-  if (!m || !m.tourId) return;
-  const tour = TOURS.find((t) => t.id === m.tourId);
-  if (!tour) return;
-  openTourModal(tour.id, tour.title, tour.meetingPoint || '');
-});
-
+window.addEventListener('beforeunload', cleanUpMap, { once: true });

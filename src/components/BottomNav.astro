@@ -1,4 +1,35 @@
 ---
+import esDict from '../i18n/es.json';
+import enDict from '../i18n/en.json';
+import { SUPPORTED_LOCALES, type Locale } from '../lib/i18n';
+
+interface Props {
+  locale?: Locale;
+}
+
+const { locale: rawLocale } = Astro.props;
+const locale: Locale = (SUPPORTED_LOCALES as string[]).includes(rawLocale ?? '')
+  ? (rawLocale as Locale)
+  : 'es';
+
+const dicts: Record<Locale, Record<string, unknown>> = {
+  es: esDict as Record<string, unknown>,
+  en: enDict as Record<string, unknown>,
+};
+
+function resolve(dict: Record<string, unknown>, key: string): string {
+  const parts = key.split('.');
+  let cur: unknown = dict;
+  for (const p of parts) {
+    if (cur && typeof cur === 'object' && p in (cur as Record<string, unknown>)) {
+      cur = (cur as Record<string, unknown>)[p];
+    } else {
+      return key.split('.').pop() ?? key;
+    }
+  }
+  return typeof cur === 'string' ? cur : (key.split('.').pop() ?? key);
+}
+
 const pathname = Astro.url.pathname;
 
 // Helper to determine if a route is active
@@ -11,113 +42,535 @@ const isActive = (route: string) => {
 
 const tabs = [
   {
-    name: 'Mapa',
+    name: 'nav.map',
     path: '/mapa',
-    icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    icon: `<svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
     </svg>`,
   },
   {
-    name: 'Explorar',
-    path: '/',
-    icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    name: 'nav.explore',
+    path: '/explorar',
+    icon: `<svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z"></path>
       <path stroke-linecap="round" stroke-linejoin="round" d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"></path>
     </svg>`,
   },
   {
-    name: 'Yo',
+    name: 'nav.shop',
+    path: '/tienda',
+    icon: `<svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+    </svg>`,
+  },
+  {
+    name: 'nav.profile',
     path: '/yo',
-    icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    icon: `<svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path>
     </svg>`,
   },
 ];
 ---
 
-<nav
+<!-- Outer wrapper: fixed + centered as floating pill -->
+<div
   id="bottom-nav"
-  class="glassmorphism fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/50 shadow-lg dark:border-slate-800/50 transition-transform duration-300 ease-in-out"
-  style="padding-bottom: env(safe-area-inset-bottom, 0px);"
+  class="fixed left-1/2 z-50 -translate-x-1/2"
+  style="bottom: calc(1rem + env(safe-area-inset-bottom, 0px));"
 >
-  <div
-    class="mx-auto flex h-16 max-w-screen-md items-center justify-around px-6"
+  <!-- Inner pill: liquid glass -->
+  <nav
+    aria-label="Primary"
+    class="ios26-bottom-nav relative flex items-center gap-1 rounded-full p-1.5 touch-none"
   >
+    <!-- Dynamic active indicator backdrop -->
+    <div
+      id="nav-indicator"
+      class="nav-active-glass pointer-events-none absolute z-0 rounded-full"
+      style="left: 0; width: 0; height: 0; top: 0;"
+    ></div>
+
     {
       tabs.map((tab) => {
         const active = isActive(tab.path);
+        const labelKey = tab.name.split('.').pop() ?? '';
+        const localizedLabel = resolve(dicts[locale], tab.name);
         return (
           <a
             href={tab.path}
-            class={`group relative flex h-full w-20 flex-col items-center justify-center transition-all duration-300`}
+            aria-current={active ? 'page' : undefined}
+            aria-label={labelKey}
+            data-i18n-attr={`nav.${labelKey}`}
+            class:list={[
+              'group relative z-10 flex min-w-[72px] flex-col items-center justify-center gap-0.5 rounded-full px-4 py-2 transition-colors duration-300 ease-out select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+              active
+                ? 'text-white dark:text-slate-900'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white',
+            ]}
           >
-            {/* Active indicator bar */}
-            {active && (
-              <span class="absolute top-0 h-1 w-12 animate-pulse rounded-full bg-brand-500 dark:bg-brand-400" />
-            )}
-
-            {/* Icon Wrapper */}
-            <div
-              class={`transition-transform duration-300 ${
-                active
-                  ? 'animate-nav-active scale-110 text-brand-600 dark:text-brand-400'
-                  : 'text-slate-400 group-hover:scale-105 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300'
-              }`}
+            <span
+              class:list={[
+                'transition-transform duration-300 ease-out',
+                active ? 'scale-105' : 'group-hover:scale-105',
+              ]}
+              aria-hidden="true"
               set:html={tab.icon}
             />
-
-            {/* Label */}
             <span
-              class={`mt-1 text-[10px] font-medium transition-all duration-300 ${
+              class:list={[
+                'nav-label text-[10px] font-semibold leading-none transition-colors duration-300',
                 active
-                  ? 'font-semibold text-brand-600 dark:text-brand-400'
-                  : 'text-slate-400 group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-400'
-              }`}
+                  ? 'text-white dark:text-slate-900'
+                  : 'text-slate-500 dark:text-slate-300',
+              ]}
+              data-i18n={tab.name}
             >
-              {tab.name}
+              {localizedLabel}
             </span>
           </a>
         );
       })
     }
-  </div>
-</nav>
+  </nav>
+</div>
 
 <script>
-  // Hide-on-scroll-down / show-on-scroll-up para el BottomNav en mobile.
-  // Throttle con requestAnimationFrame para no saturar el hilo principal.
-  const nav = document.getElementById('bottom-nav');
-  if (nav) {
+  import { navigate } from 'astro:transitions/client';
+
+  // Dynamic sliding backdrop indicator + swipe gestures for tabs (Pointer Events API)
+  document.addEventListener('astro:page-load', () => {
+    const nav = document.getElementById('bottom-nav');
+    const navContainer = nav?.querySelector('nav');
+    const indicator = document.getElementById('nav-indicator');
+    if (!nav || !navContainer || !indicator || nav.dataset.bound === 'true') return;
+    nav.dataset.bound = 'true';
+    const cleanupController = new AbortController();
+    const listenerOptions = { signal: cleanupController.signal };
+
+    const links = navContainer.querySelectorAll<HTMLAnchorElement>('a');
+    let isDragging = false;
+    let isNavigating = false;
+    let startX = 0;
+    let startY = 0;
+    let dragMoved = false; // becomes true if pointermove exceeds tap threshold
+    let activeIndex = Array.from(links).findIndex(link => link.getAttribute('aria-current') === 'page');
+    if (activeIndex === -1) activeIndex = 0; // Default to first tab
+    let targetIndex = activeIndex;
+
+    // Align helper
+    const alignIndicator = (link: HTMLElement, smooth = true) => {
+      if (!indicator) return;
+      
+      // Setting width/height is layout-triggering, but doing it in a discrete function is fine
+      indicator.style.width = `${link.offsetWidth}px`;
+      indicator.style.height = `${link.offsetHeight}px`;
+      
+      if (smooth) {
+        indicator.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)';
+      } else {
+        indicator.style.transition = 'none';
+      }
+      
+      // Use hardware-accelerated translation
+      indicator.style.transform = `translate3d(${link.offsetLeft}px, ${link.offsetTop}px, 0)`;
+      indicator.style.opacity = '1';
+    };
+
+    // Initialize position
+    const initialActive = links[activeIndex];
+    if (initialActive) {
+      // Force initial layout metrics before translating
+      indicator.style.left = '0';
+      indicator.style.top = '0';
+      setTimeout(() => alignIndicator(initialActive, false), 50);
+    }
+
+    // Bind click events on links for tap navigation. The native <a> navigation
+    // is intentionally preserved: we only animate the indicator and let the
+    // browser handle the actual route change via Astro view-transitions.
+    links.forEach((link, idx) => {
+      link.addEventListener('click', (e) => {
+        // If the gesture handler already decided to navigate via drag, or
+        // an animation is in progress, suppress the click and let the
+        // gesture own navigation.
+        if (dragMoved || isNavigating) {
+          e.preventDefault();
+          // Reset dragMoved so the next tap on the same element behaves
+          // like a fresh click.
+          dragMoved = false;
+          return;
+        }
+
+        // Already on this tab — let the browser do nothing (no navigation).
+        if (idx === activeIndex) {
+          e.preventDefault();
+          return;
+        }
+
+        // Animate the indicator and let <a> navigate naturally.
+        targetIndex = idx;
+        alignIndicator(link, true);
+
+        links.forEach((l, i) => {
+          const label = l.querySelector('.nav-label');
+          if (i === targetIndex) {
+            l.classList.add('text-white', 'dark:text-slate-900');
+            l.classList.remove('text-slate-500', 'dark:text-slate-300');
+            if (label) {
+              label.classList.add('text-white', 'dark:text-slate-900');
+              label.classList.remove('text-slate-500', 'dark:text-slate-300');
+            }
+          } else {
+            l.classList.remove('text-white', 'dark:text-slate-900');
+            l.classList.add('text-slate-500', 'dark:text-slate-300');
+            if (label) {
+              label.classList.remove('text-white', 'dark:text-slate-900');
+              label.classList.add('text-slate-500', 'dark:text-slate-300');
+            }
+          }
+        });
+
+        // Update state optimistically; the real reload happens via view
+        // transitions. We do not call navigate() — the <a> handles it.
+        activeIndex = idx;
+      });
+    });
+
+    // Adapt indicator on nav collapse/expand transition or window resize
+    const handleResize = () => {
+      const active = links[activeIndex];
+      if (active) alignIndicator(active, false);
+    };
+    window.addEventListener('resize', handleResize, listenerOptions);
+    
+    // Collapse-on-scroll-down / expand-on-scroll-up for the floating pill.
     let lastY = window.scrollY;
     let ticking = false;
-    const THRESHOLD = 8; // px mínimos de scroll para activar
+    const THRESHOLD = 8;
 
     const update = () => {
       const y = window.scrollY;
       const delta = y - lastY;
-      // Siempre mostrar cuando estamos cerca del top
+      
       if (y < 64) {
-        nav.classList.remove('translate-y-full');
+        nav.classList.remove('collapsed');
       } else if (delta > THRESHOLD) {
-        // scroll hacia abajo → ocultar
-        nav.classList.add('translate-y-full');
+        nav.classList.add('collapsed');
       } else if (delta < -THRESHOLD) {
-        // scroll hacia arriba → mostrar
-        nav.classList.remove('translate-y-full');
+        nav.classList.remove('collapsed');
       }
       lastY = y;
       ticking = false;
+      // Re-align indicator after collapse transition ends
+      setTimeout(handleResize, 150);
     };
 
-    window.addEventListener(
-      'scroll',
-      () => {
-        if (!ticking) {
-          requestAnimationFrame(update);
-          ticking = true;
+    const handleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(update);
+        ticking = true;
+      }
+    };
+
+    // Prevent immediate and over-sensitive collapsing/expanding during map gestures
+    let mapCollapseTimeout: number | undefined;
+    let mapExpandTimeout: number | undefined;
+
+    const handleMapStart = () => {
+      if (mapExpandTimeout) clearTimeout(mapExpandTimeout);
+      if (mapCollapseTimeout) clearTimeout(mapCollapseTimeout);
+      
+      mapCollapseTimeout = window.setTimeout(() => {
+        nav.classList.add('collapsed');
+        setTimeout(handleResize, 150);
+      }, 400); // 400ms delay to make sure they are actually navigating the map, not just touching it
+    };
+
+    const handleMapEnd = () => {
+      if (mapCollapseTimeout) clearTimeout(mapCollapseTimeout);
+      if (mapExpandTimeout) clearTimeout(mapExpandTimeout);
+      
+      mapExpandTimeout = window.setTimeout(() => {
+        nav.classList.remove('collapsed');
+        setTimeout(handleResize, 150);
+      }, 800); // Wait 800ms of inactivity before showing the bar again
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true, signal: cleanupController.signal });
+    window.addEventListener('map:interaction-start', handleMapStart, listenerOptions);
+    window.addEventListener('map:interaction-end', handleMapEnd, listenerOptions);
+
+    // ─── Gesture dragging / sliding tabs interaction ───────────────────────
+    const handleStart = (clientX: number, clientY: number) => {
+      isDragging = true;
+      dragMoved = false;
+      startX = clientX;
+      startY = clientY;
+      targetIndex = activeIndex;
+      indicator.style.transition = 'transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    };
+
+    const handleMove = (clientX: number) => {
+      if (!isDragging || isNavigating) return;
+
+      // Once movement exceeds tap threshold the gesture is no longer a click.
+      // The pointerdown -> pointerup sequence will still fire a click event
+      // natively, so the click handler checks this flag and bows out.
+      if (Math.abs(clientX - startX) >= 10) {
+        dragMoved = true;
+      }
+
+      const containerRect = navContainer.getBoundingClientRect();
+      const relativeX = clientX - containerRect.left;
+
+      // Follow coordinate with indicator
+      const indWidth = indicator.offsetWidth;
+      let newLeft = relativeX - indWidth / 2;
+      const maxLeft = containerRect.width - indWidth - 6; // 6px padding constraint
+      newLeft = Math.max(6, Math.min(newLeft, maxLeft));
+
+      indicator.style.transition = 'none';
+      const indTop = links[activeIndex]?.offsetTop || 6;
+      indicator.style.transform = `translate3d(${newLeft}px, ${indTop}px, 0)`;
+
+      // Find closest tab link
+      let closestIndex = targetIndex;
+      let minDistance = Infinity;
+
+      links.forEach((link, index) => {
+        const rect = link.getBoundingClientRect();
+        const linkCenterX = rect.left + rect.width / 2;
+        const dist = Math.abs(clientX - linkCenterX);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestIndex = index;
         }
-      },
-      { passive: true }
-    );
-  }
+      });
+
+      if (closestIndex !== targetIndex) {
+        targetIndex = closestIndex;
+        // Visual feedback during drag
+        links.forEach((link, idx) => {
+          const label = link.querySelector('.nav-label');
+          if (idx === targetIndex) {
+            link.classList.add('text-white', 'dark:text-slate-900');
+            link.classList.remove('text-slate-500', 'dark:text-slate-300');
+            if (label) {
+              label.classList.add('text-white', 'dark:text-slate-900');
+              label.classList.remove('text-slate-500', 'dark:text-slate-300');
+            }
+          } else {
+            link.classList.remove('text-white', 'dark:text-slate-900');
+            link.classList.add('text-slate-500', 'dark:text-slate-300');
+            if (label) {
+              label.classList.remove('text-white', 'dark:text-slate-900');
+              label.classList.add('text-slate-500', 'dark:text-slate-300');
+            }
+          }
+        });
+      }
+    };
+
+    const handleEnd = (clientX: number, clientY: number) => {
+      if (!isDragging) return;
+      isDragging = false;
+
+      // Calculate total drag distance
+      const dist = Math.sqrt(Math.pow(clientX - startX, 2) + Math.pow(clientY - startY, 2));
+
+      // Handle simple click/tap (dist < 10)
+      if (dist < 10) {
+        const clickedLink = Array.from(links).find(link => {
+          const rect = link.getBoundingClientRect();
+          return clientX >= rect.left && clientX <= rect.right &&
+                 clientY >= rect.top && clientY <= rect.bottom;
+        });
+
+        if (clickedLink) {
+          const idx = Array.from(links).indexOf(clickedLink);
+          if (idx !== activeIndex && !isNavigating) {
+            const path = clickedLink.getAttribute('href');
+            if (path) {
+              isNavigating = true;
+              alignIndicator(clickedLink, true);
+
+              // Visual feedback
+              links.forEach((l, i) => {
+                const label = l.querySelector('.nav-label');
+                if (i === idx) {
+                  l.classList.add('text-white', 'dark:text-slate-900');
+                  l.classList.remove('text-slate-500', 'dark:text-slate-300');
+                  if (label) {
+                    label.classList.add('text-white', 'dark:text-slate-900');
+                    label.classList.remove('text-slate-500', 'dark:text-slate-300');
+                  }
+                } else {
+                  l.classList.remove('text-white', 'dark:text-slate-900');
+                  l.classList.add('text-slate-500', 'dark:text-slate-300');
+                  if (label) {
+                    label.classList.remove('text-white', 'dark:text-slate-900');
+                    label.classList.add('text-slate-500', 'dark:text-slate-300');
+                  }
+                }
+              });
+
+              activeIndex = idx;
+              setTimeout(() => {
+                isNavigating = false;
+                navigate(path);
+              }, 150);
+              return;
+            }
+          }
+        }
+      }
+
+      // ONLY navigate on drag if they moved significantly (>= 10px).
+      if (dist >= 10 && targetIndex !== activeIndex && links[targetIndex] && !isNavigating) {
+        const path = links[targetIndex].getAttribute('href');
+        if (path) {
+          isNavigating = true;
+          alignIndicator(links[targetIndex], true);
+          setTimeout(() => {
+            isNavigating = false;
+            navigate(path);
+          }, 150);
+          return;
+        }
+      }
+
+      // Snap back to active
+      if (links[activeIndex]) {
+        alignIndicator(links[activeIndex], true);
+        links.forEach((link, idx) => {
+          const label = link.querySelector('.nav-label');
+          if (idx === activeIndex) {
+            link.classList.add('text-white', 'dark:text-slate-900');
+            link.classList.remove('text-slate-500', 'dark:text-slate-300');
+            if (label) {
+              label.classList.add('text-white', 'dark:text-slate-900');
+              label.classList.remove('text-slate-500', 'dark:text-slate-300');
+            }
+          } else {
+            link.classList.remove('text-white', 'dark:text-slate-900');
+            link.classList.add('text-slate-500', 'dark:text-slate-300');
+            if (label) {
+              label.classList.remove('text-white', 'dark:text-slate-900');
+              label.classList.add('text-slate-500', 'dark:text-slate-300');
+            }
+          }
+        });
+      }
+    };
+
+    // Pointer events binding
+    navContainer.addEventListener('pointerdown', (e) => {
+      if (e.button === 0 && !isNavigating) {
+        handleStart(e.clientX, e.clientY);
+        navContainer.setPointerCapture(e.pointerId);
+      }
+    });
+
+    navContainer.addEventListener('pointermove', (e) => {
+      if (isDragging) {
+        handleMove(e.clientX);
+      }
+    });
+
+    navContainer.addEventListener('pointerup', (e) => {
+      if (isDragging) {
+        handleEnd(e.clientX, e.clientY);
+        navContainer.releasePointerCapture(e.pointerId);
+      }
+    });
+
+    navContainer.addEventListener('pointercancel', (e) => {
+      if (isDragging) {
+        handleEnd(e.clientX, e.clientY);
+        navContainer.releasePointerCapture(e.pointerId);
+      }
+    });
+
+    document.addEventListener('astro:before-swap', () => {
+      cleanupController.abort();
+      window.clearTimeout(mapCollapseTimeout);
+      window.clearTimeout(mapExpandTimeout);
+    }, { once: true });
+
+  });
 </script>
+
+<style>
+  #bottom-nav nav.ios26-bottom-nav {
+    border: 1px solid rgba(255, 255, 255, 0.86);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(241, 245, 249, 0.68));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 18px 40px -18px rgba(15, 23, 42, 0.42),
+      0 4px 12px rgba(15, 23, 42, 0.1);
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+  }
+
+  #bottom-nav .nav-active-glass {
+    opacity: 0;
+    border: 1px solid rgba(255, 255, 255, 0.92);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(226, 232, 240, 0.76));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.98),
+      0 5px 14px -8px rgba(15, 23, 42, 0.38);
+    transition:
+      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      width 250ms ease,
+      height 250ms ease,
+      opacity 120ms ease;
+  }
+
+  #bottom-nav nav.ios26-bottom-nav a.text-white,
+  #bottom-nav nav.ios26-bottom-nav a.text-white .nav-label {
+    color: #0f172a !important;
+  }
+
+  #bottom-nav nav.ios26-bottom-nav a.text-slate-500,
+  #bottom-nav nav.ios26-bottom-nav a.text-slate-500 .nav-label {
+    color: #64748b !important;
+  }
+
+  /* Only transition layout/transform properties — exclude color, background,
+     box-shadow, and border-color so the glass tint changes are instant. */
+  #bottom-nav {
+    transition: transform 300ms ease-out, width 300ms ease-out,
+                min-width 300ms ease-out, max-width 300ms ease-out,
+                padding 300ms ease-out, gap 300ms ease-out,
+                opacity 300ms ease-out;
+  }
+
+  /* Transition styles for collapse interaction */
+  .nav-label {
+    transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 16px;
+    opacity: 1;
+    margin-top: 2px;
+    display: inline-block;
+    overflow: hidden;
+  }
+  
+  #bottom-nav.collapsed .nav-label {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    margin-top: 0 !important;
+    pointer-events: none;
+  }
+
+  #bottom-nav nav a {
+    transition: min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1), gap 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  #bottom-nav.collapsed nav a {
+    min-width: 48px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    gap: 0 !important;
+  }
+</style>

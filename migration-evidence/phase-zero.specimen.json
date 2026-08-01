@@ -1,0 +1,40 @@
+{
+  "illustrativeOnly": true,
+  "source": {
+    "owner": "Example owner — not production evidence",
+    "system": "Example source",
+    "deployedRuntime": "example@1",
+    "deployedSourceIdentity": "example-revision",
+    "inventory": [{ "exportId": "places", "expectedRecordCount": 2 }]
+  },
+  "exports": [
+    {
+      "exportId": "places",
+      "artifact": "output/example/places.ndjson",
+      "sha256": "replace-with-computed-sha256",
+      "recordCount": 2
+    }
+  ],
+  "backup": {
+    "artifact": "backups/example/source.ndjson",
+    "sha256": "replace-with-computed-sha256",
+    "recordCount": 2,
+    "completedAt": "2026-07-22T12:00:00.000Z"
+  },
+  "restoreDrill": {
+    "successful": false,
+    "artifact": "output/example/restore.ndjson",
+    "sha256": "replace-with-computed-sha256",
+    "recordCount": 2,
+    "completedAt": "2026-07-22T13:00:00.000Z"
+  },
+  "verifiedEvidenceSha256": "replace-after-verification",
+  "approval": {
+    "decision": "not-approved",
+    "approver": "",
+    "approvedAt": "",
+    "reasons": ["Illustrative specimen only; it is not production approval."],
+    "keyId": "illustrative-key",
+    "signature": "not-a-signature"
+  }
+}

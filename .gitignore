@@ -12,7 +12,19 @@ worker-configuration.d.ts
 # Environments & local secrets
 .env
 .env.production
+.env.local
 .dev.vars
+
+# Migration evidence outputs may contain source metadata or backups.
+migration-evidence/output/
+migration-evidence/backups/
+!migration-evidence/*.template.json
+!migration-evidence/*.specimen.json
+
+# Supabase CLI local state and secrets (never link this checkout remotely).
+supabase/.branches/
+supabase/.temp/
+supabase/.env
 
 # OS files
 .DS_Store
@@ -45,3 +57,5 @@ tianquiztlismercado
 tianquiztlismercado/
 tianquiztlismercado*
 
+.vercel
+OG/
