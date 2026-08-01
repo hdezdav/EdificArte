@@ -54,7 +54,13 @@ async function fetchWikiPages(
   categoryHint?: string,
 ): Promise<PublicInfoItem[]> {
   try {
-    const response = await fetcher(url, { signal, headers: { accept: 'application/json' } });
+    const response = await fetcher(url, {
+      signal,
+      headers: {
+        'accept': 'application/json',
+        'user-agent': 'EdificARTE/1.0 (https://edificarte.app; contact@edificarte.app)',
+      },
+    });
     if (!response.ok) return [];
     const contentLength = Number(response.headers.get('content-length') || 0);
     if (contentLength > MAX_BYTES) return [];
@@ -102,8 +108,8 @@ export async function getPublicExploreInfo(input: LocationInput, fetcher: typeof
   const longitude = typeof params.longitude === 'number' && Number.isFinite(params.longitude) ? params.longitude : null;
 
   const countryNames = COUNTRY_NAMES[countryCode];
-  const countryEs = countryNames?.[0] ?? '';
-  const countryEn = countryNames?.[1] ?? '';
+  const countryEs = countryNames?.[0] ?? 'México';
+  const countryEn = countryNames?.[1] ?? 'Mexico';
   const loc = [city, countryEs].filter(Boolean).join(' ');
   const locEn = [city, countryEn].filter(Boolean).join(' ');
 
@@ -114,7 +120,7 @@ export async function getPublicExploreInfo(input: LocationInput, fetcher: typeof
     const allResults: PublicInfoItem[] = [];
 
     if (latitude !== null && longitude !== null) {
-      // Primary: geosearch on ES Wikipedia (best for LATAM/Spain)
+      // Primary: geosearch on ES Wikipedia
       const geoEs = await fetchWikiPages(buildGeoUrl(WIKIPEDIA_ES, latitude, longitude), 'es.wikipedia.org', fetcher, controller.signal);
       allResults.push(...geoEs);
 
@@ -125,12 +131,12 @@ export async function getPublicExploreInfo(input: LocationInput, fetcher: typeof
       }
     }
 
-    // Text search: only as fallback when geosearch gives thin results.
-    // Runs 2 targeted queries to avoid returning other cities or administrative divisions.
-    if (allResults.length < 4 && (loc || locEn)) {
+    // Text search: targeted queries when geosearch yields thin or empty results
+    if (allResults.length < 4) {
+      const searchTarget = loc || 'Ciudad de México';
       const textQueries = await Promise.allSettled([
-        fetchWikiPages(buildSearchUrl(WIKIPEDIA_ES, `museos monumentos ${loc}`, 4), 'es.wikipedia.org', fetcher, controller.signal, 'museo'),
-        fetchWikiPages(buildSearchUrl(WIKIPEDIA_ES, `atracciones turísticas ${loc}`, 4), 'es.wikipedia.org', fetcher, controller.signal, 'turismo'),
+        fetchWikiPages(buildSearchUrl(WIKIPEDIA_ES, `monumentos de ${searchTarget}`, 6), 'es.wikipedia.org', fetcher, controller.signal, 'patrimonio'),
+        fetchWikiPages(buildSearchUrl(WIKIPEDIA_ES, `museos de ${searchTarget}`, 6), 'es.wikipedia.org', fetcher, controller.signal, 'museo'),
       ]);
       textQueries.forEach(r => r.status === 'fulfilled' && allResults.push(...r.value));
     }
