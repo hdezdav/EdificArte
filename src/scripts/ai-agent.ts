@@ -338,53 +338,14 @@ function initAiAgent() {
 
   if (!aiPopover) return;
 
-  if (searchbarBtns.length > 0 && aiBtn) {
-    aiBtn.classList.add('hidden');
+  if (aiBtn) {
+    aiBtn.classList.remove('hidden');
   }
 
   function resetPosition() {
     if (!aiContainer || !aiPopover) return;
-
-    if (window.location.pathname.startsWith('/mapa')) {
-      aiContainer.classList.remove('bottom-[76px]', 'right-4', 'fixed');
-      aiContainer.style.position = 'fixed';
-      aiContainer.style.top = 'calc(env(safe-area-inset-top, 0px) + 74px)';
-      aiContainer.style.left = '50%';
-      aiContainer.style.transform = 'translateX(-50%)';
-      aiContainer.style.width = '100%';
-      aiContainer.style.maxWidth = '512px';
-      aiContainer.style.paddingLeft = '16px';
-      aiContainer.style.paddingRight = '16px';
-      aiContainer.style.zIndex = '40';
-      aiContainer.style.pointerEvents = 'none';
-      aiContainer.style.bottom = '';
-      aiContainer.style.right = '';
-
-      aiPopover.classList.remove('bottom-16', 'mb-2', 'absolute', 'right-0');
-      aiPopover.classList.add('relative', 'w-full', 'mt-2');
-      aiPopover.style.pointerEvents = 'auto';
-      aiPopover.style.height = '380px';
-      aiPopover.style.maxHeight = 'calc(100vh - 150px)';
-    } else {
-      aiContainer.style.position = '';
-      aiContainer.style.top = '';
-      aiContainer.style.left = '';
-      aiContainer.style.transform = '';
-      aiContainer.style.width = '';
-      aiContainer.style.maxWidth = '';
-      aiContainer.style.paddingLeft = '';
-      aiContainer.style.paddingRight = '';
-      aiContainer.style.zIndex = '';
-      aiContainer.style.pointerEvents = '';
-      aiContainer.style.bottom = '';
-      aiContainer.style.right = '';
-
-      aiPopover.classList.add('bottom-16', 'mb-2', 'absolute', 'right-0');
-      aiPopover.classList.remove('relative', 'w-full', 'mt-2');
-      aiPopover.style.pointerEvents = '';
-      aiPopover.style.height = '';
-      aiPopover.style.maxHeight = '';
-    }
+    aiContainer.style.zIndex = '90';
+    aiPopover.style.zIndex = '99';
   }
 
   resetPosition();

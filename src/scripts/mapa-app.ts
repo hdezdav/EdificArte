@@ -758,19 +758,45 @@ async function fetchWikipediaEnrichment(name: string): Promise<{ imageUrl: strin
   const key = name.toLowerCase().trim();
   if (wikiCache.has(key)) return wikiCache.get(key)!;
 
-  const url = `https://es.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(name)}&prop=pageimages|info&piprop=thumbnail&pithumbsize=400&inprop=url&redirects=1&format=json&origin=*`;
+  const cleanQuery = name.replace(/[\u1F600-\u1F64F\u1F300-\u1F5FF\u1F680-\u1F6FF\u2600-\u26FF]/g, '').trim();
+  const searchUrl = `https://es.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(cleanQuery)}&gsrlimit=1&prop=pageimages|info&piprop=thumbnail&pithumbsize=600&inprop=url&format=json&origin=*`;
+  
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(3000), headers: { accept: 'application/json' } });
+    const res = await fetch(searchUrl, { signal: AbortSignal.timeout(5000), headers: { accept: 'application/json' } });
+    if (res.ok) {
+      const data = await res.json() as {
+        query?: { pages?: Record<string, { thumbnail?: { source?: string }; fullurl?: string }> };
+      };
+      const page = Object.values(data.query?.pages ?? {})[0];
+      if (page && (page.thumbnail?.source || page.fullurl)) {
+        const result = {
+          imageUrl: page.thumbnail?.source ?? '',
+          articleUrl: page.fullurl ?? `https://es.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`,
+        };
+        wikiCache.set(key, result);
+        return result;
+      }
+    }
+  } catch (err) {
+    console.warn('[Wikipedia] Search generator query failed, trying direct title:', err);
+  }
+
+  const titleUrl = `https://es.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(cleanQuery)}&prop=pageimages|info&piprop=thumbnail&pithumbsize=600&inprop=url&redirects=1&format=json&origin=*`;
+  try {
+    const res = await fetch(titleUrl, { signal: AbortSignal.timeout(5000), headers: { accept: 'application/json' } });
     if (!res.ok) { wikiCache.set(key, null); return null; }
     const data = await res.json() as {
       query?: { pages?: Record<string, { missing?: string; thumbnail?: { source?: string }; fullurl?: string }> };
     };
     const page = Object.values(data.query?.pages ?? {})[0];
-    if (!page || 'missing' in page || !page.thumbnail?.source) {
+    if (!page || 'missing' in page) {
       wikiCache.set(key, null);
       return null;
     }
-    const result = { imageUrl: page.thumbnail.source, articleUrl: page.fullurl ?? '' };
+    const result = {
+      imageUrl: page.thumbnail?.source ?? '',
+      articleUrl: page.fullurl ?? `https://es.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`,
+    };
     wikiCache.set(key, result);
     return result;
   } catch {
@@ -810,24 +836,35 @@ function selectPlace(place: Place) {
   }
   if (detailAddress) detailAddress.textContent = place.address;
 
+  const monumentMatch = MONUMENTS.find(
+    (m) => m.id === place.id || m.name.toLowerCase() === place.name.toLowerCase()
+  );
+
   // Wikipedia enrichment — fetch async, show photo + link if a match is found
   const wikiBlock = document.getElementById('detail-wiki');
-  if (wikiBlock) wikiBlock.classList.add('hidden');
+  const img = document.getElementById('detail-wiki-img') as HTMLImageElement | null;
+  const link = document.getElementById('detail-wiki-link') as HTMLAnchorElement | null;
+
+  if (monumentMatch?.image && img) {
+    img.src = monumentMatch.image;
+    if (link) {
+      link.href = `https://es.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(place.name)}`;
+    }
+    if (wikiBlock) wikiBlock.classList.remove('hidden');
+  } else if (wikiBlock) {
+    wikiBlock.classList.add('hidden');
+  }
+
   void fetchWikipediaEnrichment(place.name).then((wiki) => {
     if (!wiki || selectedPlace?.id !== place.id) return; // user moved on
-    const img = document.getElementById('detail-wiki-img') as HTMLImageElement | null;
-    const link = document.getElementById('detail-wiki-link') as HTMLAnchorElement | null;
-    if (img) img.src = wiki.imageUrl;
+    if (img && wiki.imageUrl) img.src = wiki.imageUrl;
     if (link && wiki.articleUrl) link.href = wiki.articleUrl;
-    wikiBlock?.classList.remove('hidden');
+    if (wikiBlock) wikiBlock.classList.remove('hidden');
   });
 
   // VR Video Experience — Embed VR video player when monument or place has videoUrl
   const vrContainer = document.getElementById('detail-vr-container');
   const vrIframe = document.getElementById('detail-vr-iframe') as HTMLIFrameElement | null;
-  const monumentMatch = MONUMENTS.find(
-    (m) => m.id === place.id || m.name.toLowerCase() === place.name.toLowerCase()
-  );
   const videoUrl = place.videoUrl || monumentMatch?.videoUrl;
 
   if (vrContainer && vrIframe) {
