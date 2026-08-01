@@ -1,25 +1,12 @@
 ---
 ---
 
-<div class="fixed bottom-[80px] right-4 z-[90]" id="ai-agent-container">
-  <div class="relative">
-
-    <!-- Floating Trigger Button -->
-    <button
-      id="ai-agent-btn"
-      type="button"
-      class="flex h-12 w-12 items-center justify-center rounded-full bg-[#3f043a] text-white shadow-xl shadow-[#3f043a]/40 transition-transform hover:scale-105 active:scale-95 border border-white/20"
-      aria-label="Abrir asistente de IA EdificARTE"
-      title="Asistente de IA EdificARTE"
-    >
-      <span class="material-symbols-outlined text-[22px]" style="font-variation-settings:'FILL' 1">auto_awesome</span>
-    </button>
-
-    <!-- AI Chat Popover -->
-    <div
-      id="ai-agent-popover"
-      class="hidden fixed bottom-[84px] right-3 left-3 sm:left-auto sm:right-4 sm:absolute sm:bottom-16 w-auto sm:w-[380px] h-[min(540px,70dvh)] sm:h-[480px] rounded-3xl border border-slate-400/20 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 shadow-2xl z-[99] [backdrop-filter:blur(24px)] text-slate-900 dark:text-slate-100 [&:not(.hidden)]:flex flex-col overflow-hidden overscroll-contain"
-    >
+<div id="ai-agent-container">
+  <!-- AI Chat Popover -->
+  <div
+    id="ai-agent-popover"
+    class="hidden fixed top-20 left-3 right-3 sm:left-auto sm:right-4 w-auto sm:w-[380px] h-[min(540px,70dvh)] sm:h-[480px] rounded-3xl border border-slate-400/20 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 shadow-2xl z-[9999] [backdrop-filter:blur(24px)] text-slate-900 dark:text-slate-100 [&:not(.hidden)]:flex flex-col overflow-hidden overscroll-contain"
+  >
       <!-- Header -->
       <div class="relative flex items-center justify-between border-b border-slate-900/[0.06] dark:border-white/[0.08] px-4 py-3">
         <div class="flex items-center gap-2.5">
@@ -84,7 +71,7 @@
           />
           <button
             type="submit"
-            class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent-600 text-white shadow-sm shadow-accent-600/30 transition-all hover:bg-accent-500 active:scale-95"
+            class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#3f043a] text-white shadow-sm shadow-[#3f043a]/30 transition-all hover:bg-[#3f043a]/90 active:scale-95"
             aria-label="Send message"
           >
             <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
@@ -92,7 +79,6 @@
         </form>
       </div>
     </div>
-  </div>
 </div>
 
 <style>

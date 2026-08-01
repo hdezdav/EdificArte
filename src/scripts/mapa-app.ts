@@ -758,7 +758,7 @@ async function fetchWikipediaEnrichment(name: string): Promise<{ imageUrl: strin
   const key = name.toLowerCase().trim();
   if (wikiCache.has(key)) return wikiCache.get(key)!;
 
-  const cleanQuery = name.replace(/[\u1F600-\u1F64F\u1F300-\u1F5FF\u1F680-\u1F6FF\u2600-\u26FF]/g, '').trim();
+  const cleanQuery = name.split(',')[0].replace(/[\u1F300-\u1FAFF\u2600-\u26FF]/g, '').trim();
   const searchUrl = `https://es.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(cleanQuery)}&gsrlimit=1&prop=pageimages|info&piprop=thumbnail&pithumbsize=600&inprop=url&format=json&origin=*`;
   
   try {
@@ -768,7 +768,7 @@ async function fetchWikipediaEnrichment(name: string): Promise<{ imageUrl: strin
         query?: { pages?: Record<string, { thumbnail?: { source?: string }; fullurl?: string }> };
       };
       const page = Object.values(data.query?.pages ?? {})[0];
-      if (page && (page.thumbnail?.source || page.fullurl)) {
+      if (page) {
         const result = {
           imageUrl: page.thumbnail?.source ?? '',
           articleUrl: page.fullurl ?? `https://es.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`,
