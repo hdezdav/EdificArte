@@ -4,7 +4,8 @@ import AiAgent from '../components/AiAgent.astro';
 import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
 // In Cloudflare adapter mode, .dev.vars are available via runtime env, not import.meta.env
 const runtimeEnv = Astro.locals?.runtime?.env;
-const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || '';
+const mapboxToken =
+  runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || '';
 ---
 
 <Layout title="EdificARTE - Explore" fullScreen={true}>
@@ -22,24 +23,55 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
       outerClass="pointer-events-auto"
     />
 
-    <!-- Filter Chips -->
-    <div id="map-filter-chips" class="no-scrollbar pointer-events-auto -mx-4 flex w-full max-w-lg gap-2 overflow-x-auto sm:overflow-x-visible sm:flex-wrap sm:justify-center scroll-smooth px-4 pb-3 pt-1">
-      <button data-filter="all" data-i18n="mapa.filters.all" class="filter-chip active flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+    <!--
+      Filter Chips — must stay BELOW the search suggestions popover. They come
+      after the search bar in the DOM, so without an explicit lower z-index they
+      would paint on top of the results dropdown.
+    -->
+    <div
+      id="map-filter-chips"
+      class="no-scrollbar pointer-events-auto relative z-10 -mx-4 flex w-full max-w-lg gap-2 overflow-x-auto scroll-smooth px-4 pb-3 pt-1 sm:flex-wrap sm:justify-center sm:overflow-x-visible"
+    >
+      <button
+        data-filter="all"
+        data-i18n="mapa.filters.all"
+        class="filter-chip active flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+      >
         All
       </button>
-      <button data-filter="museum" data-i18n="mapa.filters.museums" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+      <button
+        data-filter="museum"
+        data-i18n="mapa.filters.museums"
+        class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+      >
         🏛️ Museums
       </button>
-      <button data-filter="temple" data-i18n="mapa.filters.temples" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+      <button
+        data-filter="temple"
+        data-i18n="mapa.filters.temples"
+        class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+      >
         ⛪ Temples
       </button>
-      <button data-filter="park" data-i18n="mapa.filters.parks" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+      <button
+        data-filter="park"
+        data-i18n="mapa.filters.parks"
+        class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+      >
         🌳 Parks
       </button>
-      <button data-filter="historic" data-i18n="mapa.filters.historic" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+      <button
+        data-filter="historic"
+        data-i18n="mapa.filters.historic"
+        class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+      >
         🏰 Historic
       </button>
-      <button data-filter="viewpoint" data-i18n="mapa.filters.viewpoints" class="filter-chip flex-shrink-0 rounded-full px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95 border">
+      <button
+        data-filter="viewpoint"
+        data-i18n="mapa.filters.viewpoints"
+        class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+      >
         🔭 Viewpoints
       </button>
     </div>
@@ -53,10 +85,12 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
   >
     <button
       id="btn-locate"
-      class="flex h-11 w-11 items-center justify-center rounded-full liquid-glass text-slate-700 dark:text-slate-200 shadow-lg transition-all active:scale-90"
+      class="liquid-glass flex h-11 w-11 items-center justify-center rounded-full text-slate-700 shadow-lg transition-all active:scale-90 dark:text-slate-200"
       aria-label="Center location"
     >
-      <span class="material-symbols-outlined text-[20px]" id="locate-icon">my_location</span>
+      <span class="material-symbols-outlined text-[20px]" id="locate-icon"
+        >my_location</span
+      >
     </button>
   </div>
 
@@ -66,23 +100,44 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
   <!-- Bottom Sheet -->
   <div
     id="bottom-sheet"
-    class="absolute left-3 right-3 z-20 mx-auto max-w-lg overflow-hidden rounded-3xl liquid-glass transition-all duration-300"
+    class="liquid-glass absolute left-3 right-3 z-20 mx-auto max-w-lg overflow-hidden rounded-3xl transition-all duration-300"
     style="bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));"
   >
     <!-- Drag Handle & Toggle Header -->
-    <div id="sheet-header" class="flex w-full cursor-pointer select-none flex-col items-center pb-2 pt-3">
-      <div class="mb-2 h-[5px] w-10 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+    <div
+      id="sheet-header"
+      class="flex w-full cursor-pointer select-none flex-col items-center pb-2 pt-3"
+    >
+      <div
+        class="mb-2 h-[5px] w-10 rounded-full bg-slate-300 dark:bg-slate-700"
+      >
+      </div>
       <div class="flex w-full items-center justify-between px-4">
-        <h2 class="flex items-center gap-1.5 text-[14px] font-bold text-slate-800 dark:text-white">
-          <span class="material-symbols-outlined text-[18px] text-accent-600 dark:text-accent-400">explore</span>
+        <h2
+          class="flex items-center gap-1.5 text-[14px] font-bold text-slate-800 dark:text-white"
+        >
+          <span
+            class="material-symbols-outlined text-[18px] text-accent-600 dark:text-accent-400"
+            >explore</span
+          >
           <span data-i18n="mapa.sheet.title">Nearby Places</span>
         </h2>
         <div class="flex items-center gap-2">
-          <span id="geo-status" class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 cursor-pointer">
-            <span id="geo-dot" class="h-2 w-2 rounded-full bg-slate-350 dark:bg-slate-750"></span>
+          <span
+            id="geo-status"
+            class="inline-flex cursor-pointer items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400"
+          >
+            <span
+              id="geo-dot"
+              class="bg-slate-350 dark:bg-slate-750 h-2 w-2 rounded-full"
+            ></span>
             <span id="geo-text" data-i18n="mapa.sheet.inactive">Inactive</span>
           </span>
-          <span id="sheet-chevron" class="material-symbols-outlined text-[20px] text-slate-450 dark:text-slate-500 transition-transform duration-300">keyboard_arrow_up</span>
+          <span
+            id="sheet-chevron"
+            class="material-symbols-outlined text-slate-450 text-[20px] transition-transform duration-300 dark:text-slate-500"
+            >keyboard_arrow_up</span
+          >
         </div>
       </div>
     </div>
@@ -94,14 +149,30 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
     >
       <!-- Loading state -->
       <div id="places-loading" class="hidden py-8 text-center">
-        <span class="material-symbols-outlined animate-spin text-[24px] text-slate-400 dark:text-slate-500">progress_activity</span>
-        <p class="mt-2 text-[12px] text-slate-500 dark:text-slate-400" data-i18n="mapa.sheet.loading">Finding places near you...</p>
+        <span
+          class="material-symbols-outlined animate-spin text-[24px] text-slate-400 dark:text-slate-500"
+          >progress_activity</span
+        >
+        <p
+          class="mt-2 text-[12px] text-slate-500 dark:text-slate-400"
+          data-i18n="mapa.sheet.loading"
+        >
+          Finding places near you...
+        </p>
       </div>
 
       <!-- List View -->
       <div id="view-list">
-        <div class="no-scrollbar flex flex-col gap-2" id="places-list-container">
-          <p class="py-6 text-center text-[12px] text-slate-400 dark:text-slate-500" data-i18n="mapa.sheet.empty_cta">Enable location to discover nearby places</p>
+        <div
+          class="no-scrollbar flex flex-col gap-2"
+          id="places-list-container"
+        >
+          <p
+            class="py-6 text-center text-[12px] text-slate-400 dark:text-slate-500"
+            data-i18n="mapa.sheet.empty_cta"
+          >
+            Enable location to discover nearby places
+          </p>
         </div>
       </div>
 
@@ -109,54 +180,111 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
       <div id="view-detail" class="hidden">
         <div class="mb-2.5 flex items-start justify-between">
           <div class="flex gap-2.5">
-            <span id="detail-emoji" class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-xl">📍</span>
+            <span
+              id="detail-emoji"
+              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xl dark:bg-slate-800"
+              >📍</span
+            >
             <div>
-              <h3 id="detail-name" class="text-[13px] font-bold leading-tight text-slate-800 dark:text-white">Place Name</h3>
-              <p id="detail-category" class="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">Category</p>
+              <h3
+                id="detail-name"
+                class="text-[13px] font-bold leading-tight text-slate-800 dark:text-white"
+              >
+                Place Name
+              </h3>
+              <p
+                id="detail-category"
+                class="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400"
+              >
+                Category
+              </p>
             </div>
           </div>
-          <button id="btn-close-detail" class="rounded-full p-1 text-slate-400 dark:text-slate-500 transition-colors hover:bg-slate-150 dark:hover:bg-slate-800" aria-label="Close detail">
+          <button
+            id="btn-close-detail"
+            class="hover:bg-slate-150 rounded-full p-1 text-slate-400 transition-colors dark:text-slate-500 dark:hover:bg-slate-800"
+            aria-label="Close detail"
+          >
             <span class="material-symbols-outlined text-[18px]">close</span>
           </button>
         </div>
 
-        <p id="detail-address" class="mb-3 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400"></p>
+        <p
+          id="detail-address"
+          class="mb-3 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400"
+        >
+        </p>
 
         <!-- Wikipedia enrichment: hidden until a match is found -->
-        <div id="detail-wiki" class="hidden mb-3.5 overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-900/60">
-          <div class="relative h-32 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-            <img id="detail-wiki-img" src="" alt="" class="h-full w-full object-cover" loading="lazy" />
+        <div
+          id="detail-wiki"
+          class="mb-3.5 hidden overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50 dark:border-slate-800/60 dark:bg-slate-900/60"
+        >
+          <div
+            class="relative h-32 w-full overflow-hidden bg-slate-100 dark:bg-slate-800"
+          >
+            <img
+              id="detail-wiki-img"
+              src=""
+              alt=""
+              class="h-full w-full object-cover"
+              loading="lazy"
+            />
           </div>
           <div class="flex items-center justify-between px-3 py-2">
-            <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1">
-              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93v15.86zm2 0V4.07c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93z"/></svg>
+            <span
+              class="flex items-center gap-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500"
+            >
+              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"
+                ><path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93v15.86zm2 0V4.07c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93z"
+                ></path></svg
+              >
               Wikipedia
             </span>
-            <a id="detail-wiki-link" href="#" target="_blank" rel="noopener noreferrer"
-              class="inline-flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-[10px] font-bold text-brand-600 dark:text-brand-400 shadow-xs transition-all hover:bg-brand-50 dark:hover:bg-brand-950/30 active:scale-95">
+            <a
+              id="detail-wiki-link"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="shadow-xs inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-brand-600 transition-all hover:bg-brand-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-brand-400 dark:hover:bg-brand-950/30"
+            >
               Ver artículo
-              <span class="material-symbols-outlined text-[11px]">open_in_new</span>
+              <span class="material-symbols-outlined text-[11px]"
+                >open_in_new</span
+              >
             </a>
           </div>
         </div>
         <!-- VR Video Experience Container: shown when isVRAvailable or videoUrl exists -->
-        <div id="detail-vr-container" class="hidden mb-3.5 overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-950 p-2 shadow-md">
+        <div
+          id="detail-vr-container"
+          class="mb-3.5 hidden overflow-hidden rounded-2xl border border-accent-500/25 bg-white p-2 shadow-md dark:border-accent-400/30 dark:bg-accent-950"
+        >
           <div class="mb-2 flex items-center justify-between px-1.5 pt-1">
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-amber-400">
-              <span class="material-symbols-outlined text-[16px]">view_in_ar</span>
+            <span
+              class="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-accent-500 dark:text-accent-300"
+            >
+              <span class="material-symbols-outlined text-[16px]"
+                >view_in_ar</span
+              >
               Experiencia Realidad Virtual (360 VR)
             </span>
-            <span class="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-amber-300">VR 360</span>
+            <span
+              class="rounded-full bg-accent-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-accent-500 dark:bg-accent-400/20 dark:text-accent-200"
+              >VR 360</span
+            >
           </div>
-          <div class="relative w-full aspect-video overflow-hidden rounded-xl bg-black shadow-inner">
+          <div
+            class="relative aspect-video w-full overflow-hidden rounded-xl bg-accent-950 shadow-inner"
+          >
             <iframe
               id="detail-vr-iframe"
               src=""
               title="VR Video Experience"
               class="h-full w-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen
-            ></iframe>
+              allowfullscreen></iframe>
           </div>
         </div>
 
@@ -165,14 +293,15 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
           <button
             id="btn-navigate"
             data-i18n="mapa.detail.navigate"
-            class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent-600 hover:bg-accent-700 px-4 py-2 font-semibold text-white shadow-lg shadow-accent-600/20 transition-all active:scale-[0.97]"
+            class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent-600 px-4 py-2 font-semibold text-white shadow-lg shadow-accent-600/20 transition-all hover:bg-accent-700 active:scale-[0.97]"
           >
-            <span class="material-symbols-outlined text-[16px]">directions</span>
+            <span class="material-symbols-outlined text-[16px]">directions</span
+            >
             <span class="text-[11px]">Navigate</span>
           </button>
           <button
             id="btn-share"
-            class="flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-slate-600 dark:text-slate-400 transition-all hover:bg-slate-100 dark:hover:bg-slate-800/80 active:scale-[0.97]"
+            class="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-slate-600 transition-all hover:bg-slate-100 active:scale-[0.97] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/80"
             aria-label="Share"
             data-i18n-attr="aria-label|mapa.detail.share"
           >
@@ -182,10 +311,20 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
 
         <!-- Route info (shown when navigating) -->
         <div id="route-info" class="mt-3 hidden">
-          <div class="flex items-center justify-between rounded-xl border border-accent-500/20 bg-accent-500/10 px-3 py-2.5">
+          <div
+            class="flex items-center justify-between rounded-xl border border-accent-500/20 bg-accent-500/10 px-3 py-2.5"
+          >
             <div class="flex items-center gap-2">
-              <span id="route-mode-icon" class="material-symbols-outlined text-[18px] text-accent-400">directions</span>
-              <span id="route-info-text" class="text-[12px] font-semibold text-accent-300" data-i18n="mapa.detail.calculating">Calculating...</span>
+              <span
+                id="route-mode-icon"
+                class="material-symbols-outlined text-[18px] text-accent-400"
+                >directions</span
+              >
+              <span
+                id="route-info-text"
+                class="text-[12px] font-semibold text-accent-300"
+                data-i18n="mapa.detail.calculating">Calculating...</span
+              >
             </div>
             <button
               id="btn-cancel-route"
@@ -201,6 +340,149 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
     </div>
   </div>
 
+  <!--
+    Zone Info Card — independent from the bottom sheet on purpose.
+    A zone is an area, not a point, so it must not reuse the pin detail flow
+    (which flies to zoom 17 and reframes the area as a single place).
+
+    Positioning: this element is a TEMPLATE. At runtime it is moved into a
+    Mapbox Popup anchored to the zone's own coordinates (see attachZoneCard in
+    mapa-app.ts), so the card travels with the zone like a pin instead of
+    floating in a fixed corner.
+  -->
+  <div
+    id="zone-card"
+    class="liquid-glass hidden w-[19rem] overflow-hidden rounded-3xl shadow-xl"
+    role="dialog"
+    aria-modal="false"
+    aria-labelledby="zone-card-name"
+  >
+    <!-- Accent bar carries the zone's own category color -->
+    <div id="zone-card-accent" class="h-1.5 w-full bg-slate-400"></div>
+
+    <div class="px-4 pb-4 pt-3">
+      <div class="flex items-start gap-3">
+        <span
+          id="zone-card-emoji"
+          class="text-2xl leading-none"
+          aria-hidden="true">🏛️</span
+        >
+        <div class="min-w-0 flex-1">
+          <p
+            id="zone-card-kind"
+            class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+            data-i18n="mapa.zone.kind"
+          >
+            Zone
+          </p>
+          <h3
+            id="zone-card-name"
+            class="truncate text-base font-bold text-slate-900 dark:text-white"
+          >
+          </h3>
+          <p
+            id="zone-card-meta"
+            class="mt-0.5 text-xs text-slate-500 dark:text-slate-400"
+          >
+          </p>
+        </div>
+        <button
+          id="zone-card-close"
+          class="pointer-events-auto -mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-black/5 dark:text-slate-400 dark:hover:bg-white/10"
+          data-i18n-attr="aria-label|mapa.zone.close"
+          aria-label="Close zone info"
+        >
+          <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+            >close</span
+          >
+        </button>
+      </div>
+
+      <p
+        id="zone-card-desc"
+        class="mt-2.5 text-sm leading-snug text-slate-700 dark:text-slate-300"
+      >
+      </p>
+
+      <div
+        id="zone-card-fact-wrap"
+        class="mt-2.5 hidden rounded-xl bg-black/[0.04] px-3 py-2 dark:bg-white/[0.06]"
+      >
+        <p
+          class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          data-i18n="mapa.zone.fact"
+        >
+          Did you know
+        </p>
+        <p
+          id="zone-card-fact"
+          class="mt-0.5 text-xs leading-snug text-slate-700 dark:text-slate-300"
+        >
+        </p>
+      </div>
+
+      <!-- Shown only when the drawn shape is an approximation, never silently -->
+      <p
+        id="zone-card-approx"
+        class="mt-2.5 hidden text-[11px] leading-snug text-amber-700 dark:text-amber-400"
+        data-i18n="mapa.zone.approximate"
+      >
+        Approximate area — no official boundary is published for this zone.
+      </p>
+
+      <div class="mt-3 flex items-center gap-2">
+        <a
+          id="zone-card-wiki"
+          class="inline-flex items-center gap-1.5 rounded-full bg-black/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-black/10 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i18n="mapa.zone.read_more"
+        >
+          Read more
+        </a>
+        <button
+          id="zone-card-fit"
+          class="inline-flex items-center gap-1.5 rounded-full bg-black/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-black/10 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
+          data-i18n="mapa.zone.fit"
+        >
+          Fit zone
+        </button>
+      </div>
+
+      <!-- Places that actually fall inside this zone's polygon -->
+      <div
+        id="zone-card-places-wrap"
+        class="mt-3 hidden border-t border-black/[0.07] pt-2.5 dark:border-white/10"
+      >
+        <p
+          class="flex items-baseline gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+        >
+          <span data-i18n="mapa.zone.places">Places in this zone</span>
+          <span
+            id="zone-card-places-count"
+            class="font-bold text-slate-400 dark:text-slate-500"></span>
+        </p>
+        <div
+          id="zone-card-places"
+          class="no-scrollbar mt-1.5 flex max-h-40 flex-col gap-1 overflow-y-auto"
+        >
+        </div>
+        <p
+          id="zone-card-places-empty"
+          class="hidden py-1 text-xs text-slate-400 dark:text-slate-500"
+          data-i18n="mapa.zone.places_empty"
+        >
+          No places loaded here yet — zoom in to discover them.
+        </p>
+      </div>
+
+      <p
+        id="zone-card-attrib"
+        class="mt-2.5 text-[10px] text-slate-400 dark:text-slate-500"
+      >
+      </p>
+    </div>
+  </div>
 
   <AiAgent />
 </Layout>
@@ -219,20 +501,25 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
     color: #cbd5e1 !important; /* slate-300 */
   }
   .filter-chip.active {
-    background-color: #3f043a !important;   /* OG brand-500 */
+    background-color: #3f043a !important; /* OG brand-500 */
     color: #ffffff !important;
     border-color: #3f043a !important;
     box-shadow: 0 4px 12px rgba(63, 4, 58, 0.25) !important;
   }
   .dark .filter-chip.active {
-    background-color: #c45490 !important;   /* OG brand-400 */
+    background-color: #c45490 !important; /* OG brand-400 */
     color: #ffffff !important;
     border-color: #c45490 !important;
     box-shadow: 0 4px 12px rgba(196, 84, 144, 0.35) !important;
   }
 
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
   :global(.turimap-pin) {
     display: flex;
@@ -257,12 +544,14 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
   }
   :global(.turimap-pin:hover) {
     transform: scale(1.15);
-    border-color: rgba(37, 99, 235, 0.6);  /* accent-600/60 */
+    border-color: rgba(37, 99, 235, 0.6); /* accent-600/60 */
     box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
   }
   :global(.turimap-pin.selected) {
     border-color: rgba(37, 99, 235, 0.8);
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2), 0 4px 20px rgba(37, 99, 235, 0.4);
+    box-shadow:
+      0 0 0 4px rgba(37, 99, 235, 0.2),
+      0 4px 20px rgba(37, 99, 235, 0.4);
     transform: scale(1.25) translateY(-4px);
     z-index: 1000 !important;
     background: rgba(37, 99, 235, 0.3);
@@ -272,11 +561,11 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
   :global(.turimap-pin-cluster) {
     width: 46px;
     height: 46px;
-    border-color: rgba(37, 99, 235, 0.55);   /* accent-600/55 */
+    border-color: rgba(37, 99, 235, 0.55); /* accent-600/55 */
     box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22);
   }
   .dark :global(.turimap-pin-cluster) {
-    border-color: rgba(96, 165, 250, 0.55);  /* accent-400/55 */
+    border-color: rgba(96, 165, 250, 0.55); /* accent-400/55 */
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
   }
   :global(.turimap-pin-cluster-count) {
@@ -285,10 +574,10 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
     line-height: 1;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
-    color: #1d4ed8;                          /* accent-700 */
+    color: #1d4ed8; /* accent-700 */
   }
   .dark :global(.turimap-pin-cluster-count) {
-    color: #93c5fd;                          /* accent-300 */
+    color: #93c5fd; /* accent-300 */
   }
 
   @media (max-width: 767px), (pointer: coarse) {
@@ -297,7 +586,9 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
       box-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
-      transition: transform 0.18s ease, border-color 0.18s ease;
+      transition:
+        transform 0.18s ease,
+        border-color 0.18s ease;
     }
   }
 
@@ -305,7 +596,7 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
     position: relative;
     width: 18px;
     height: 18px;
-    background: #2563eb;                   /* accent-600 */
+    background: #2563eb; /* accent-600 */
     border: 3px solid white;
     border-radius: 50%;
     box-shadow: 0 2px 8px rgba(37, 99, 235, 0.5);
@@ -319,8 +610,128 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
     animation: loc-pulse 2s ease-out infinite;
   }
   @keyframes loc-pulse {
-    0% { transform: scale(0.5); opacity: 1; }
-    100% { transform: scale(2.5); opacity: 0; }
+    0% {
+      transform: scale(0.5);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(2.5);
+      opacity: 0;
+    }
+  }
+
+  /*
+    Zone popup: strip Mapbox's default white box/padding so our own glass card
+    is the only visible surface, and tint the tail to match it. Without this the
+    card renders inside a second, squarer white container with a black-ish edge.
+  */
+  :global(.zone-popup .mapboxgl-popup-content) {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 1.5rem;
+  }
+  :global(.zone-popup .mapboxgl-popup-close-button) {
+    display: none;
+  }
+  :global(.zone-popup .mapboxgl-popup-tip) {
+    border-top-color: #ffffff;
+    border-bottom-color: #ffffff;
+  }
+  .dark :global(.zone-popup .mapboxgl-popup-tip) {
+    border-top-color: #0f172a;
+    border-bottom-color: #0f172a;
+  }
+  /* Anchor the popup above the marker without covering the zone itself. */
+  :global(.zone-popup) {
+    z-index: 40;
+  }
+  /*
+    Readability: the translucent glass card is unreadable over a detailed map
+    (streets and labels bleed straight through 65% white). Inside the popup we
+    use a near-opaque surface instead — the card is transient and sits ON the
+    content it would otherwise blur, so glass buys nothing here.
+  */
+  :global(.zone-popup #zone-card) {
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 18px 48px -12px rgba(15, 23, 42, 0.4),
+      0 4px 12px -4px rgba(15, 23, 42, 0.18);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .dark :global(.zone-popup #zone-card) {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 18px 48px -12px rgba(0, 0, 0, 0.65),
+      0 4px 12px -4px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Permanent zone label: reuses the glass pin language, plus the zone name. */
+  :global(.zone-marker) {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 6px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 12rem;
+  }
+  .dark :global(.zone-marker) {
+    background: rgba(15, 23, 42, 0.78);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+  :global(.zone-marker:hover) {
+    transform: scale(1.06);
+  }
+  :global(.zone-marker.active) {
+    transform: scale(1.08);
+    border-color: rgba(63, 4, 58, 0.55);
+  }
+  .dark :global(.zone-marker.active) {
+    border-color: rgba(196, 84, 144, 0.6);
+  }
+  :global(.zone-marker-dot) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 13px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  :global(.zone-marker-label) {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dark :global(.zone-marker-label) {
+    color: #f8fafc;
+  }
+  @media (max-width: 767px), (pointer: coarse) {
+    :global(.zone-marker) {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .dark :global(.zone-marker) {
+      background: rgba(15, 23, 42, 0.96);
+    }
   }
 
   :global(.mapboxgl-ctrl-logo) {
@@ -337,14 +748,30 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
   }
 </style>
 
-<div id="map-token-error" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md px-4">
-  <div class="ios-card max-w-sm p-6 text-center shadow-xl border border-slate-200/60 dark:border-slate-800/60">
-    <span class="material-symbols-outlined text-[48px] text-rose-400 mb-3 block">map</span>
-    <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Mapa no disponible</h2>
-    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+<div
+  id="map-token-error"
+  style="display: none;"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-md"
+>
+  <div
+    class="ios-card max-w-sm border border-slate-200/60 p-6 text-center shadow-xl dark:border-slate-800/60"
+  >
+    <span class="material-symbols-outlined mb-3 block text-[48px] text-rose-400"
+      >map</span
+    >
+    <h2 class="mb-2 text-lg font-bold text-slate-900 dark:text-white">
+      Mapa no disponible
+    </h2>
+    <p class="mb-4 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
       El token de Mapbox no está configurado. Seteá la variable de entorno
-      <code class="rounded bg-rose-100 dark:bg-rose-900/40 px-1.5 py-0.5 text-rose-600 dark:text-rose-300 text-xs font-mono">MAPBOX_TOKEN</code>
-      en tu archivo <code class="rounded bg-rose-100 dark:bg-rose-900/40 px-1.5 py-0.5 text-rose-600 dark:text-rose-300 text-xs font-mono">.dev.vars</code>
+      <code
+        class="rounded bg-rose-100 px-1.5 py-0.5 font-mono text-xs text-rose-600 dark:bg-rose-900/40 dark:text-rose-300"
+        >MAPBOX_TOKEN</code
+      >
+      en tu archivo <code
+        class="rounded bg-rose-100 px-1.5 py-0.5 font-mono text-xs text-rose-600 dark:bg-rose-900/40 dark:text-rose-300"
+        >.dev.vars</code
+      >
       o en las variables de entorno del deploy.
     </p>
   </div>
@@ -363,7 +790,9 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
 
 <script>
   let mapLoadRequest = 0;
-  let mapModulePromise: Promise<typeof import('../scripts/mapa-app.ts')> | null = null;
+  let mapModulePromise: Promise<
+    typeof import('../scripts/mapa-app.ts')
+  > | null = null;
 
   function scheduleMapLoad() {
     const request = ++mapLoadRequest;
@@ -372,10 +801,12 @@ const mapboxToken = runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || 
     // Let the navigation shell and controls paint before parsing Mapbox GL.
     requestAnimationFrame(() => {
       requestAnimationFrame(async () => {
-        if (request !== mapLoadRequest || !document.getElementById('map')) return;
+        if (request !== mapLoadRequest || !document.getElementById('map'))
+          return;
         mapModulePromise ??= import('../scripts/mapa-app.ts');
         const mapModule = await mapModulePromise;
-        if (request !== mapLoadRequest || !document.getElementById('map')) return;
+        if (request !== mapLoadRequest || !document.getElementById('map'))
+          return;
         mapModule.mountMap();
       });
     });

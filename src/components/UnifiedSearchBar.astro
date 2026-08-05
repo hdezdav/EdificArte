@@ -24,13 +24,24 @@ const {
 } = Astro.props;
 ---
 
+<!--
+  z-index note: this wrapper must outrank later siblings (e.g. the map's filter
+  chips row, which follows it in the DOM). The suggestions popover is a child of
+  this wrapper, so its own z-index only competes INSIDE here — the wrapper is
+  what has to win against the chips.
+-->
 <div
-  class:list={['relative mx-auto w-full max-w-lg', outerClass]}
+  class:list={['relative z-30 mx-auto w-full max-w-lg', outerClass]}
   role="search"
   transition:name="unified-search"
 >
-  <div class:list={['ios26-search', variant === 'hero' && 'ios26-search--hero']}>
-    <span class="material-symbols-outlined ios26-search__icon" aria-hidden="true">search</span>
+  <div
+    class:list={['ios26-search', variant === 'hero' && 'ios26-search--hero']}
+  >
+    <span
+      class="material-symbols-outlined ios26-search__icon"
+      aria-hidden="true">search</span
+    >
     <input
       id={inputId}
       type="search"
@@ -50,7 +61,12 @@ const {
           aria-label="Limpiar búsqueda"
           title="Limpiar búsqueda"
         >
-          <span class="material-symbols-outlined text-[17px]" aria-hidden="true">close</span>
+          <span
+            class="material-symbols-outlined text-[17px]"
+            aria-hidden="true"
+          >
+            close
+          </span>
         </button>
       )
     }

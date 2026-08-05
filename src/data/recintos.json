@@ -1,51 +1,220 @@
 {
-  "generatedAt": "2026-07-11",
+  "generatedAt": "2026-08-05",
   "source": "es.wikipedia.org",
   "recintos": [
     {
-      "id": "templo-mayor",
-      "name": "Templo Mayor",
-      "type": "prehispanico",
-      "foundedYear": 1325,
-      "era": "Imperio mexica",
-      "shortDesc": "Pirámide doble dedicada a Huitzilopochtli y Tláloc, centro ceremonial y político del imperio mexica en Tenochtitlan.",
-      "fact": "Redescubierto en 1978 al hallar el monolito de Coyolxauhqi durante obras del metro.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Templo_Mayor",
+      "id": "centro-historico",
+      "name": "Centro Histórico",
+      "type": "barrio",
+      "foundedYear": 1980,
+      "era": "Zona de Monumentos Históricos",
+      "shortDesc": "Núcleo original de la ciudad, sobre el islote de México-Tenochtitlan: 9.7 km² con la mayor concentración de monumentos históricos del país.",
+      "fact": "Declarada Zona de Monumentos Históricos por decreto el 11 de abril de 1980 y Patrimonio de la Humanidad por la UNESCO en 1987.",
+      "wikipediaUrl": "https://es.wikipedia.org/wiki/Centro_Hist%C3%B3rico_de_la_Ciudad_de_M%C3%A9xico",
       "lat": 19.435,
       "lng": -99.131389,
-      "emoji": "🏺",
-      "category": "arqueologia",
-      "radiusMeters": 250
-    },
-    {
-      "id": "tlatelolco",
-      "name": "Tlatelolco",
-      "type": "prehispanico",
-      "foundedYear": 1337,
-      "era": "Imperio mexica",
-      "shortDesc": "Antiguo altépetl mexica fundado al norte de Tenochtitlan, célebre por su enorme tianguis prehispánico.",
-      "fact": "Más de 40.000 indígenas murieron en la matanza de 1521 cuando los españoles lo conquistaron.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Tlatelolco_(zona_arqueol%C3%B3gica)",
-      "lat": 19.451083,
-      "lng": -99.1375,
       "emoji": "🏛️",
       "category": "arqueologia",
-      "radiusMeters": 250
-    },
-    {
-      "id": "tenochtitlan",
-      "name": "Tenochtitlan",
-      "type": "prehispanico",
-      "foundedYear": 1325,
-      "era": "Imperio mexica",
-      "shortDesc": "Capital de la civilización mexica, fundada sobre un islote del lago de Texcoco; una de las mayores urbes de su tiempo.",
-      "fact": "Cayó ante Hernán Cortés el 13 de agosto de 1521, marcando el fin del Imperio mexica.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/M%C3%A9xico-Tenochtitlan",
-      "lat": 19.435,
-      "lng": -99.131389,
-      "emoji": "🦅",
-      "category": "arqueologia",
-      "radiusMeters": 250
+      "translations": {
+        "en": {
+          "era": "Historic Monuments Zone",
+          "shortDesc": "The city's original core, on the islet of Mexico-Tenochtitlan: 9.7 km2 holding the country's densest concentration of historic monuments.",
+          "fact": "Declared a Historic Monuments Zone by decree on 11 April 1980 and a UNESCO World Heritage Site in 1987."
+        }
+      },
+      "polygon": [
+        [
+          19.437895,
+          -99.149168
+        ],
+        [
+          19.437385,
+          -99.146684
+        ],
+        [
+          19.437202,
+          -99.145873
+        ],
+        [
+          19.435092,
+          -99.146252
+        ],
+        [
+          19.4342,
+          -99.140873
+        ],
+        [
+          19.434119,
+          -99.140883
+        ],
+        [
+          19.432805,
+          -99.141086
+        ],
+        [
+          19.430294,
+          -99.141445
+        ],
+        [
+          19.429084,
+          -99.141636
+        ],
+        [
+          19.428977,
+          -99.141652
+        ],
+        [
+          19.42794,
+          -99.141831
+        ],
+        [
+          19.427445,
+          -99.141915
+        ],
+        [
+          19.426586,
+          -99.142083
+        ],
+        [
+          19.426551,
+          -99.141652
+        ],
+        [
+          19.426653,
+          -99.141278
+        ],
+        [
+          19.42612,
+          -99.135273
+        ],
+        [
+          19.425772,
+          -99.131291
+        ],
+        [
+          19.426279,
+          -99.130085
+        ],
+        [
+          19.425568,
+          -99.125596
+        ],
+        [
+          19.428311,
+          -99.125207
+        ],
+        [
+          19.433924,
+          -99.124335
+        ],
+        [
+          19.433984,
+          -99.12509
+        ],
+        [
+          19.434208,
+          -99.126845
+        ],
+        [
+          19.438877,
+          -99.126295
+        ],
+        [
+          19.438964,
+          -99.127472
+        ],
+        [
+          19.440217,
+          -99.127314
+        ],
+        [
+          19.44023,
+          -99.127598
+        ],
+        [
+          19.440209,
+          -99.128947
+        ],
+        [
+          19.440713,
+          -99.128886
+        ],
+        [
+          19.442131,
+          -99.128815
+        ],
+        [
+          19.442311,
+          -99.130882
+        ],
+        [
+          19.442442,
+          -99.13287
+        ],
+        [
+          19.441629,
+          -99.132977
+        ],
+        [
+          19.441907,
+          -99.135313
+        ],
+        [
+          19.440877,
+          -99.135336
+        ],
+        [
+          19.440755,
+          -99.135283
+        ],
+        [
+          19.439632,
+          -99.135316
+        ],
+        [
+          19.439588,
+          -99.137427
+        ],
+        [
+          19.439667,
+          -99.140035
+        ],
+        [
+          19.438641,
+          -99.140196
+        ],
+        [
+          19.438963,
+          -99.142176
+        ],
+        [
+          19.439118,
+          -99.143429
+        ],
+        [
+          19.439605,
+          -99.146308
+        ],
+        [
+          19.439952,
+          -99.148746
+        ],
+        [
+          19.439102,
+          -99.148891
+        ],
+        [
+          19.437895,
+          -99.149168
+        ]
+      ],
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "R16865226",
+        "wikidata": "Q2146288",
+        "license": "ODbL-1.0",
+        "caveat": "INAH Perimetro A, the protected core (~3 km2). The full decreed zone is 9.7 km2 and Perimetro B (R16865356, ~10 km2) covers the outer ring."
+      }
     },
     {
       "id": "teotihuacan",
@@ -60,7 +229,429 @@
       "lng": -98.843889,
       "emoji": "🗿",
       "category": "arqueologia",
-      "radiusMeters": 250
+      "translations": {
+        "en": {
+          "era": "Mesoamerican Classic period",
+          "shortDesc": "Vast archaeological complex north-east of Mexico City, home to as many as 200,000 people at its peak.",
+          "fact": "Its name means 'the place where men become gods', and it has been a UNESCO World Heritage Site since 1987."
+        }
+      },
+      "polygon": [
+        [
+          19.681134,
+          -98.853659
+        ],
+        [
+          19.680947,
+          -98.85362
+        ],
+        [
+          19.68073,
+          -98.853523
+        ],
+        [
+          19.680525,
+          -98.853356
+        ],
+        [
+          19.680347,
+          -98.853143
+        ],
+        [
+          19.680184,
+          -98.852769
+        ],
+        [
+          19.680044,
+          -98.852359
+        ],
+        [
+          19.679794,
+          -98.851513
+        ],
+        [
+          19.67971,
+          -98.851101
+        ],
+        [
+          19.679586,
+          -98.85018
+        ],
+        [
+          19.679326,
+          -98.847994
+        ],
+        [
+          19.679222,
+          -98.847046
+        ],
+        [
+          19.679132,
+          -98.845899
+        ],
+        [
+          19.679413,
+          -98.845126
+        ],
+        [
+          19.679891,
+          -98.84433
+        ],
+        [
+          19.680659,
+          -98.84383
+        ],
+        [
+          19.681478,
+          -98.843587
+        ],
+        [
+          19.682596,
+          -98.843434
+        ],
+        [
+          19.687377,
+          -98.842489
+        ],
+        [
+          19.68906,
+          -98.842147
+        ],
+        [
+          19.689178,
+          -98.842107
+        ],
+        [
+          19.68931,
+          -98.84202
+        ],
+        [
+          19.689368,
+          -98.841964
+        ],
+        [
+          19.689448,
+          -98.841864
+        ],
+        [
+          19.689541,
+          -98.841704
+        ],
+        [
+          19.690495,
+          -98.83873
+        ],
+        [
+          19.690567,
+          -98.838514
+        ],
+        [
+          19.69063,
+          -98.838388
+        ],
+        [
+          19.690741,
+          -98.83829
+        ],
+        [
+          19.690872,
+          -98.838227
+        ],
+        [
+          19.691602,
+          -98.837939
+        ],
+        [
+          19.691712,
+          -98.837884
+        ],
+        [
+          19.691756,
+          -98.837797
+        ],
+        [
+          19.692035,
+          -98.837618
+        ],
+        [
+          19.693174,
+          -98.837179
+        ],
+        [
+          19.693397,
+          -98.837103
+        ],
+        [
+          19.693521,
+          -98.837051
+        ],
+        [
+          19.694003,
+          -98.837144
+        ],
+        [
+          19.69422,
+          -98.837821
+        ],
+        [
+          19.694362,
+          -98.838225
+        ],
+        [
+          19.694589,
+          -98.838447
+        ],
+        [
+          19.694679,
+          -98.838535
+        ],
+        [
+          19.694753,
+          -98.838607
+        ],
+        [
+          19.694921,
+          -98.83877
+        ],
+        [
+          19.698043,
+          -98.837684
+        ],
+        [
+          19.698138,
+          -98.837659
+        ],
+        [
+          19.698234,
+          -98.837643
+        ],
+        [
+          19.698294,
+          -98.837644
+        ],
+        [
+          19.698353,
+          -98.837656
+        ],
+        [
+          19.698409,
+          -98.837683
+        ],
+        [
+          19.698464,
+          -98.837732
+        ],
+        [
+          19.698509,
+          -98.837798
+        ],
+        [
+          19.698561,
+          -98.837919
+        ],
+        [
+          19.698813,
+          -98.838566
+        ],
+        [
+          19.699311,
+          -98.840017
+        ],
+        [
+          19.699773,
+          -98.841048
+        ],
+        [
+          19.700081,
+          -98.841781
+        ],
+        [
+          19.700541,
+          -98.843052
+        ],
+        [
+          19.70061,
+          -98.843345
+        ],
+        [
+          19.700811,
+          -98.844549
+        ],
+        [
+          19.70081,
+          -98.844595
+        ],
+        [
+          19.700801,
+          -98.844648
+        ],
+        [
+          19.700785,
+          -98.844689
+        ],
+        [
+          19.700737,
+          -98.844797
+        ],
+        [
+          19.700837,
+          -98.844896
+        ],
+        [
+          19.701014,
+          -98.84506
+        ],
+        [
+          19.701046,
+          -98.8452
+        ],
+        [
+          19.701138,
+          -98.845168
+        ],
+        [
+          19.701254,
+          -98.845126
+        ],
+        [
+          19.701739,
+          -98.847426
+        ],
+        [
+          19.70099,
+          -98.848235
+        ],
+        [
+          19.698625,
+          -98.848062
+        ],
+        [
+          19.69723,
+          -98.848988
+        ],
+        [
+          19.697178,
+          -98.849114
+        ],
+        [
+          19.697036,
+          -98.849122
+        ],
+        [
+          19.69527,
+          -98.849701
+        ],
+        [
+          19.695102,
+          -98.849743
+        ],
+        [
+          19.695048,
+          -98.849684
+        ],
+        [
+          19.694618,
+          -98.849674
+        ],
+        [
+          19.693897,
+          -98.849629
+        ],
+        [
+          19.693607,
+          -98.849598
+        ],
+        [
+          19.6935,
+          -98.849446
+        ],
+        [
+          19.693135,
+          -98.849508
+        ],
+        [
+          19.692535,
+          -98.849715
+        ],
+        [
+          19.690036,
+          -98.850505
+        ],
+        [
+          19.689768,
+          -98.850633
+        ],
+        [
+          19.688998,
+          -98.851185
+        ],
+        [
+          19.688575,
+          -98.851538
+        ],
+        [
+          19.687139,
+          -98.851988
+        ],
+        [
+          19.686476,
+          -98.852175
+        ],
+        [
+          19.686123,
+          -98.852407
+        ],
+        [
+          19.684945,
+          -98.852796
+        ],
+        [
+          19.684328,
+          -98.853079
+        ],
+        [
+          19.684233,
+          -98.853422
+        ],
+        [
+          19.684005,
+          -98.853502
+        ],
+        [
+          19.683892,
+          -98.853547
+        ],
+        [
+          19.683807,
+          -98.85339
+        ],
+        [
+          19.683711,
+          -98.853289
+        ],
+        [
+          19.683644,
+          -98.853232
+        ],
+        [
+          19.683282,
+          -98.853122
+        ],
+        [
+          19.681377,
+          -98.853646
+        ],
+        [
+          19.681134,
+          -98.853659
+        ]
+      ],
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "W558067645",
+        "wikidata": "Q172613",
+        "license": "ODbL-1.0"
+      }
     },
     {
       "id": "cuicuilco",
@@ -75,97 +666,165 @@
       "lng": -99.181667,
       "emoji": "🌋",
       "category": "arqueologia",
-      "radiusMeters": 250
-    },
-    {
-      "id": "palacio-nacional",
-      "name": "Palacio Nacional",
-      "type": "colonial",
-      "foundedYear": 1522,
-      "era": "Virreinato",
-      "shortDesc": "Sede del Poder Ejecutivo Federal, construido sobre las ruinas del palacio de Moctezuma en el Zócalo.",
-      "fact": "En 1692 una hambruna provocó un motín indígena que quemó parcialmente el palacio virreinal.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Palacio_Nacional_(M%C3%A9xico)",
-      "lat": 19.4325,
-      "lng": -99.131389,
-      "emoji": "🏛️",
-      "category": "templo",
-      "radiusMeters": 200
-    },
-    {
-      "id": "catedral-metropolitana",
-      "name": "Catedral Metropolitana",
-      "type": "colonial",
-      "foundedYear": 1573,
-      "era": "Virreinato",
-      "shortDesc": "Catedral católica en el Zócalo, construida durante casi 250 años fusionando estilos gótico, barroco y neoclásico.",
-      "fact": "Aquí fue coronado Agustín de Iturbide como emperador de México el 21 de julio de 1822.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Catedral_Metropolitana_de_la_Ciudad_de_M%C3%A9xico",
-      "lat": 19.434394,
-      "lng": -99.133082,
-      "emoji": "⛪",
-      "category": "templo",
-      "radiusMeters": 200
-    },
-    {
-      "id": "casa-de-los-azulejos",
-      "name": "Casa de los Azulejos",
-      "type": "colonial",
-      "foundedYear": 1596,
-      "era": "Virreinato",
-      "shortDesc": "Palacio barroco novohispano del centro histórico, célebre por su fachada de azulejos de talavera poblana.",
-      "fact": "Por aquí entró triunfal el Ejército Trigarante de Iturbide el 27 de septiembre de 1821.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Casa_de_los_Azulejos",
-      "lat": 19.434219,
-      "lng": -99.140206,
-      "emoji": "🏺",
-      "category": "templo",
-      "radiusMeters": 200
-    },
-    {
-      "id": "templo-san-felipe-de-jesus",
-      "name": "Templo de San Felipe de Jesús",
-      "type": "colonial",
-      "foundedYear": 1597,
-      "era": "Virreinato",
-      "shortDesc": "Iglesia colonial dedicada al primer santo mártir mexicano, patrón de la Ciudad de México.",
-      "fact": "Conserva la imagen original de San Felipe de Jesús, ajusticiado en Japón en 1597.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/San_Felipe_de_Jes%C3%BAs",
-      "lat": 19.4358,
-      "lng": -99.1372,
-      "emoji": "⛪",
-      "category": "templo",
-      "radiusMeters": 200
-    },
-    {
-      "id": "iglesia-santo-domingo",
-      "name": "Iglesia de Santo Domingo",
-      "type": "colonial",
-      "foundedYear": 1527,
-      "era": "Virreinato",
-      "shortDesc": "Templo barroco del siglo XVIII, único vestigio del antiguo convento dominico en el Centro Histórico.",
-      "fact": "Alberga la tumba del conquistador Francisco Vázquez de Coronado.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Iglesia_de_Santo_Domingo_(Ciudad_de_M%C3%A9xico)",
-      "lat": 19.438378,
-      "lng": -99.133717,
-      "emoji": "⛪",
-      "category": "templo",
-      "radiusMeters": 200
-    },
-    {
-      "id": "palacio-inquisicion",
-      "name": "Palacio de la Inquisición",
-      "type": "colonial",
-      "foundedYear": 1732,
-      "era": "Virreinato",
-      "shortDesc": "Edificio barroco que albergó la Santa Inquisición en la Nueva España; hoy Museo de la Medicina.",
-      "fact": "Su fachada combina tezontle y chiluca con una singular esquina 'cortada' hacia la Plaza de Santo Domingo.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Palacio_de_la_Escuela_de_Medicina",
-      "lat": 19.43789,
-      "lng": -99.13332,
-      "emoji": "🏛️",
-      "category": "museo",
-      "radiusMeters": 200
+      "translations": {
+        "en": {
+          "era": "Mesoamerican Preclassic",
+          "shortDesc": "Archaeological site with a circular pyramid, one of the earliest ceremonial centres of the Trans-Mexican Volcanic Belt.",
+          "fact": "Destroyed around 250-300 AD by the eruption of the Xitle volcano, which buried it in lava."
+        }
+      },
+      "polygon": [
+        [
+          19.300988,
+          -99.185554
+        ],
+        [
+          19.300936,
+          -99.185551
+        ],
+        [
+          19.300923,
+          -99.18555
+        ],
+        [
+          19.300839,
+          -99.185546
+        ],
+        [
+          19.300833,
+          -99.185546
+        ],
+        [
+          19.300747,
+          -99.185488
+        ],
+        [
+          19.300722,
+          -99.185532
+        ],
+        [
+          19.300295,
+          -99.185477
+        ],
+        [
+          19.300266,
+          -99.185446
+        ],
+        [
+          19.300198,
+          -99.185475
+        ],
+        [
+          19.299141,
+          -99.185361
+        ],
+        [
+          19.299689,
+          -99.185103
+        ],
+        [
+          19.299548,
+          -99.180786
+        ],
+        [
+          19.298742,
+          -99.17955
+        ],
+        [
+          19.299854,
+          -99.179098
+        ],
+        [
+          19.300323,
+          -99.178971
+        ],
+        [
+          19.30053,
+          -99.179648
+        ],
+        [
+          19.30058,
+          -99.179802
+        ],
+        [
+          19.300721,
+          -99.179898
+        ],
+        [
+          19.301048,
+          -99.179815
+        ],
+        [
+          19.301048,
+          -99.180191
+        ],
+        [
+          19.302162,
+          -99.180201
+        ],
+        [
+          19.302162,
+          -99.180438
+        ],
+        [
+          19.30229,
+          -99.180446
+        ],
+        [
+          19.302679,
+          -99.18047
+        ],
+        [
+          19.302679,
+          -99.180792
+        ],
+        [
+          19.303115,
+          -99.180804
+        ],
+        [
+          19.303009,
+          -99.182243
+        ],
+        [
+          19.3028,
+          -99.183831
+        ],
+        [
+          19.302712,
+          -99.184104
+        ],
+        [
+          19.302602,
+          -99.184256
+        ],
+        [
+          19.301863,
+          -99.184957
+        ],
+        [
+          19.301364,
+          -99.1854
+        ],
+        [
+          19.301241,
+          -99.185482
+        ],
+        [
+          19.301113,
+          -99.185533
+        ],
+        [
+          19.300988,
+          -99.185554
+        ]
+      ],
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "W54446511",
+        "wikidata": "Q1143307",
+        "license": "ODbL-1.0"
+      }
     },
     {
       "id": "barrio-roma",
@@ -181,13 +840,217 @@
       "emoji": "🏘️",
       "category": "templo",
       "polygon": [
-        [19.4220, -99.1770],
-        [19.4220, -99.1650],
-        [19.4120, -99.1600],
-        [19.4080, -99.1680],
-        [19.4150, -99.1800],
-        [19.4220, -99.1770]
-      ]
+        [
+          19.420465,
+          -99.176906
+        ],
+        [
+          19.418116,
+          -99.174985
+        ],
+        [
+          19.418002,
+          -99.174875
+        ],
+        [
+          19.415719,
+          -99.171724
+        ],
+        [
+          19.415938,
+          -99.171478
+        ],
+        [
+          19.416113,
+          -99.171124
+        ],
+        [
+          19.416226,
+          -99.170744
+        ],
+        [
+          19.416284,
+          -99.170326
+        ],
+        [
+          19.415827,
+          -99.170001
+        ],
+        [
+          19.416209,
+          -99.169698
+        ],
+        [
+          19.416386,
+          -99.169439
+        ],
+        [
+          19.416753,
+          -99.167448
+        ],
+        [
+          19.415518,
+          -99.165402
+        ],
+        [
+          19.410435,
+          -99.167058
+        ],
+        [
+          19.411936,
+          -99.159281
+        ],
+        [
+          19.411701,
+          -99.15881
+        ],
+        [
+          19.411788,
+          -99.154801
+        ],
+        [
+          19.422557,
+          -99.153935
+        ],
+        [
+          19.425596,
+          -99.15369
+        ],
+        [
+          19.425839,
+          -99.15373
+        ],
+        [
+          19.425452,
+          -99.155457
+        ],
+        [
+          19.425232,
+          -99.156438
+        ],
+        [
+          19.423896,
+          -99.162398
+        ],
+        [
+          19.423807,
+          -99.162367
+        ],
+        [
+          19.423751,
+          -99.162356
+        ],
+        [
+          19.423677,
+          -99.162349
+        ],
+        [
+          19.423607,
+          -99.162352
+        ],
+        [
+          19.42354,
+          -99.162364
+        ],
+        [
+          19.423445,
+          -99.162396
+        ],
+        [
+          19.423355,
+          -99.162445
+        ],
+        [
+          19.423266,
+          -99.162518
+        ],
+        [
+          19.423212,
+          -99.16258
+        ],
+        [
+          19.423168,
+          -99.162647
+        ],
+        [
+          19.423117,
+          -99.162762
+        ],
+        [
+          19.423098,
+          -99.162828
+        ],
+        [
+          19.423088,
+          -99.162892
+        ],
+        [
+          19.423084,
+          -99.162963
+        ],
+        [
+          19.423087,
+          -99.163032
+        ],
+        [
+          19.423097,
+          -99.163098
+        ],
+        [
+          19.423112,
+          -99.163159
+        ],
+        [
+          19.423132,
+          -99.163214
+        ],
+        [
+          19.423198,
+          -99.163335
+        ],
+        [
+          19.423256,
+          -99.163406
+        ],
+        [
+          19.423327,
+          -99.16347
+        ],
+        [
+          19.42341,
+          -99.163523
+        ],
+        [
+          19.423528,
+          -99.16357
+        ],
+        [
+          19.423077,
+          -99.165619
+        ],
+        [
+          19.420616,
+          -99.176814
+        ],
+        [
+          19.420465,
+          -99.176906
+        ]
+      ],
+      "translations": {
+        "en": {
+          "era": "Porfiriato",
+          "shortDesc": "Upper-class neighbourhood from the Porfirio Diaz era, famous for its eclectic architecture and rich cultural life.",
+          "fact": "The 1985 earthquake left deep scars here and ultimately sparked the area's cultural revival."
+        }
+      },
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "R16823842",
+        "wikidata": "Q584381",
+        "license": "ODbL-1.0",
+        "caveat": "Official Roma Norte colonia boundary. Colonia Roma also includes Roma Sur (R16823836)."
+      }
     },
     {
       "id": "barrio-condesa",
@@ -203,12 +1066,128 @@
       "emoji": "☕",
       "category": "templo",
       "polygon": [
-        [19.4170, -99.1780],
-        [19.4120, -99.1770],
-        [19.4080, -99.1730],
-        [19.4100, -99.1690],
-        [19.4170, -99.1780]
-      ]
+        [
+          19.411413,
+          -99.182243
+        ],
+        [
+          19.41048,
+          -99.180336
+        ],
+        [
+          19.411372,
+          -99.179831
+        ],
+        [
+          19.411518,
+          -99.174302
+        ],
+        [
+          19.411416,
+          -99.173977
+        ],
+        [
+          19.413449,
+          -99.17215
+        ],
+        [
+          19.413169,
+          -99.171522
+        ],
+        [
+          19.414144,
+          -99.171088
+        ],
+        [
+          19.414744,
+          -99.170767
+        ],
+        [
+          19.415505,
+          -99.170254
+        ],
+        [
+          19.415827,
+          -99.170001
+        ],
+        [
+          19.416284,
+          -99.170326
+        ],
+        [
+          19.416226,
+          -99.170744
+        ],
+        [
+          19.416113,
+          -99.171124
+        ],
+        [
+          19.415938,
+          -99.171478
+        ],
+        [
+          19.415719,
+          -99.171724
+        ],
+        [
+          19.418002,
+          -99.174875
+        ],
+        [
+          19.418116,
+          -99.174985
+        ],
+        [
+          19.420465,
+          -99.176906
+        ],
+        [
+          19.419333,
+          -99.177602
+        ],
+        [
+          19.418162,
+          -99.178323
+        ],
+        [
+          19.417541,
+          -99.178672
+        ],
+        [
+          19.415445,
+          -99.179853
+        ],
+        [
+          19.413812,
+          -99.180773
+        ],
+        [
+          19.413095,
+          -99.181177
+        ],
+        [
+          19.412381,
+          -99.18163
+        ],
+        [
+          19.411413,
+          -99.182243
+        ]
+      ],
+      "translations": {
+        "en": {
+          "era": "Post-revolutionary",
+          "shortDesc": "Neighbourhood south-west of Cuauhtemoc, celebrated for its cafes, bookshops, restaurants and nightlife.",
+          "fact": "Charles Lindbergh landed the Spirit of St. Louis on the grounds of what is now Parque Mexico."
+        }
+      },
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "R16823615",
+        "wikidata": "Q1020125",
+        "license": "ODbL-1.0"
+      }
     },
     {
       "id": "barrio-coyoacan",
@@ -223,13 +1202,17 @@
       "lng": -99.162222,
       "emoji": "🎨",
       "category": "templo",
-      "polygon": [
-        [19.3490, -99.1630],
-        [19.3490, -99.1560],
-        [19.3440, -99.1560],
-        [19.3440, -99.1640],
-        [19.3490, -99.1630]
-      ]
+      "translations": {
+        "en": {
+          "era": "Viceroyalty",
+          "shortDesc": "Intellectual, bohemian neighbourhood in southern Mexico City; the first seat of colonial government after the conquest.",
+          "fact": "Hernan Cortes made this the first capital of New Spain, on the site of the former Tepanec lordship."
+        }
+      },
+      "radiusMeters": 900,
+      "geometryFallback": {
+        "reason": "The only Coyoacan polygon in OSM is the admin_level=6 alcaldia (~54 km2), roughly 25x the historic barrio. Using it would misrepresent the zone, so a circle is kept instead."
+      }
     },
     {
       "id": "barrio-san-angel",
@@ -244,7 +1227,273 @@
       "lng": -99.187,
       "emoji": "🌺",
       "category": "templo",
-      "radiusMeters": 800
+      "translations": {
+        "en": {
+          "era": "Viceroyalty",
+          "shortDesc": "Original township of the Alvaro Obregon borough, known for its colonial architecture and its Flower Fair.",
+          "fact": "Seventy-one Irish and German soldiers of the Saint Patrick's Battalion were executed here in 1847."
+        }
+      },
+      "polygon": [
+        [
+          19.345167,
+          -99.202371
+        ],
+        [
+          19.34513,
+          -99.201384
+        ],
+        [
+          19.344278,
+          -99.200672
+        ],
+        [
+          19.344199,
+          -99.200248
+        ],
+        [
+          19.344048,
+          -99.199484
+        ],
+        [
+          19.344014,
+          -99.199338
+        ],
+        [
+          19.343915,
+          -99.199266
+        ],
+        [
+          19.343777,
+          -99.199222
+        ],
+        [
+          19.342459,
+          -99.199238
+        ],
+        [
+          19.343017,
+          -99.198426
+        ],
+        [
+          19.342998,
+          -99.198195
+        ],
+        [
+          19.342988,
+          -99.198007
+        ],
+        [
+          19.341682,
+          -99.197802
+        ],
+        [
+          19.341803,
+          -99.196413
+        ],
+        [
+          19.341857,
+          -99.195881
+        ],
+        [
+          19.342009,
+          -99.194855
+        ],
+        [
+          19.341642,
+          -99.194363
+        ],
+        [
+          19.341592,
+          -99.194271
+        ],
+        [
+          19.341538,
+          -99.194055
+        ],
+        [
+          19.341519,
+          -99.193884
+        ],
+        [
+          19.341566,
+          -99.193506
+        ],
+        [
+          19.34161,
+          -99.193315
+        ],
+        [
+          19.34162,
+          -99.193277
+        ],
+        [
+          19.34162,
+          -99.192465
+        ],
+        [
+          19.341677,
+          -99.192154
+        ],
+        [
+          19.341698,
+          -99.191893
+        ],
+        [
+          19.34239,
+          -99.191794
+        ],
+        [
+          19.342274,
+          -99.190752
+        ],
+        [
+          19.342561,
+          -99.189538
+        ],
+        [
+          19.342642,
+          -99.189247
+        ],
+        [
+          19.343803,
+          -99.188756
+        ],
+        [
+          19.344115,
+          -99.188624
+        ],
+        [
+          19.344915,
+          -99.188327
+        ],
+        [
+          19.3454,
+          -99.188132
+        ],
+        [
+          19.346738,
+          -99.187636
+        ],
+        [
+          19.347429,
+          -99.187412
+        ],
+        [
+          19.349137,
+          -99.186847
+        ],
+        [
+          19.34942,
+          -99.186754
+        ],
+        [
+          19.349808,
+          -99.186624
+        ],
+        [
+          19.350195,
+          -99.186494
+        ],
+        [
+          19.350332,
+          -99.186474
+        ],
+        [
+          19.350585,
+          -99.189383
+        ],
+        [
+          19.350691,
+          -99.190486
+        ],
+        [
+          19.351201,
+          -99.190437
+        ],
+        [
+          19.351304,
+          -99.191545
+        ],
+        [
+          19.351495,
+          -99.193698
+        ],
+        [
+          19.351192,
+          -99.193776
+        ],
+        [
+          19.350611,
+          -99.193912
+        ],
+        [
+          19.349542,
+          -99.194174
+        ],
+        [
+          19.348706,
+          -99.194429
+        ],
+        [
+          19.348143,
+          -99.194717
+        ],
+        [
+          19.346395,
+          -99.195161
+        ],
+        [
+          19.345682,
+          -99.195306
+        ],
+        [
+          19.345742,
+          -99.195379
+        ],
+        [
+          19.345873,
+          -99.195889
+        ],
+        [
+          19.346063,
+          -99.197472
+        ],
+        [
+          19.346129,
+          -99.197997
+        ],
+        [
+          19.34617,
+          -99.198458
+        ],
+        [
+          19.34647,
+          -99.200092
+        ],
+        [
+          19.346735,
+          -99.201003
+        ],
+        [
+          19.347064,
+          -99.201984
+        ],
+        [
+          19.345554,
+          -99.202292
+        ],
+        [
+          19.345167,
+          -99.202371
+        ]
+      ],
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "R20071361",
+        "wikidata": "Q2067789",
+        "license": "ODbL-1.0"
+      }
     },
     {
       "id": "barrio-tepito",
@@ -259,7 +1508,17 @@
       "lng": -99.127889,
       "emoji": "🥊",
       "category": "templo",
-      "radiusMeters": 800
+      "radiusMeters": 700,
+      "translations": {
+        "en": {
+          "era": "Pre-Hispanic / Viceroyalty",
+          "shortDesc": "Historic neighbourhood known as the 'barrio bravo', birthplace of boxers and famous for its street market.",
+          "fact": "It was one of the last sites of Mexica and Tlatelolca resistance against Cortes in 1521."
+        }
+      },
+      "geometryFallback": {
+        "reason": "Tepito exists in OSM only as nodes; it is a vernacular barrio with no mapped administrative boundary (surrounding colonias are Morelos and Felipe Pescador)."
+      }
     },
     {
       "id": "ciudad-universitaria",
@@ -275,87 +1534,465 @@
       "emoji": "🎓",
       "category": "templo",
       "polygon": [
-        [19.3260, -99.1830],
-        [19.3260, -99.1650],
-        [19.3110, -99.1700],
-        [19.3140, -99.1880],
-        [19.3260, -99.1830]
-      ]
-    },
-    {
-      "id": "reforma-222",
-      "name": "Reforma 222",
-      "type": "moderno",
-      "foundedYear": 2008,
-      "era": "Siglo XXI",
-      "shortDesc": "Complejo de tres torres en Paseo de la Reforma, diseñado por Teodoro González de León con uso mixto.",
-      "fact": "Su cimentación alcanzó casi 100 metros, la más profunda jamás realizada en la CDMX.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Reforma_222",
-      "lat": 19.42895,
-      "lng": -99.16165,
-      "emoji": "🏙️",
-      "category": "rascacielos",
-      "radiusMeters": 400
-    },
-    {
-      "id": "auditorio-nacional",
-      "name": "Auditorio Nacional",
-      "type": "moderno",
-      "foundedYear": 1952,
-      "era": "Siglo XX",
-      "shortDesc": "Sala de conciertos con aforo para 10.000 personas, sede de eventos artísticos y tomas de posesión presidencial.",
-      "fact": "Aquí asumieron la presidencia Luis Echeverría (1970) y José López Portillo (1976).",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Auditorio_Nacional_(M%C3%A9xico)",
-      "lat": 19.424722,
-      "lng": -99.194917,
-      "emoji": "🎭",
-      "category": "museo",
-      "radiusMeters": 400
-    },
-    {
-      "id": "estadio-azteca",
-      "name": "Estadio Azteca",
-      "type": "moderno",
-      "foundedYear": 1966,
-      "era": "Siglo XX",
-      "shortDesc": "Estadio de fútbol más grande de México, con capacidad para 87.000 espectadores.",
-      "fact": "Único estadio del mundo sede de tres finales de Copa Mundial (1970, 1986 y 2026).",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Estadio_Azteca",
-      "lat": 19.303056,
-      "lng": -99.150556,
-      "emoji": "⚽",
-      "category": "templo",
-      "radiusMeters": 400
-    },
-    {
-      "id": "plaza-tres-culturas",
-      "name": "Plaza de las Tres Culturas",
-      "type": "moderno",
-      "foundedYear": 1964,
-      "era": "Siglo XX",
-      "shortDesc": "Plaza que reúne ruinas prehispánicas, templo colonial y edificios modernos del Conjunto Urbano Nonoalco.",
-      "fact": "Aquí ocurrió la matanza de Tlatelolco el 2 de octubre de 1968.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Plaza_de_las_Tres_Culturas",
-      "lat": 19.451667,
-      "lng": -99.136111,
-      "emoji": "🕊️",
-      "category": "templo",
-      "radiusMeters": 400
-    },
-    {
-      "id": "museo-soumaya",
-      "name": "Museo Soumaya",
-      "type": "museo",
-      "foundedYear": 2011,
-      "era": "Siglo XXI",
-      "shortDesc": "Museo de arte con cerca de 70.000 piezas que abarcan 30 siglos, fundado por Carlos Slim en honor a su esposa.",
-      "fact": "Su fachada en Plaza Carso tiene más de 16.000 módulos hexagonales de aluminio.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Museo_Soumaya",
-      "lat": 19.44066,
-      "lng": -99.20462,
-      "emoji": "🖼️",
-      "category": "museo",
-      "radiusMeters": 150
+        [
+          19.314041,
+          -99.199866
+        ],
+        [
+          19.313851,
+          -99.199479
+        ],
+        [
+          19.314237,
+          -99.199358
+        ],
+        [
+          19.314092,
+          -99.198842
+        ],
+        [
+          19.313935,
+          -99.198891
+        ],
+        [
+          19.313924,
+          -99.198838
+        ],
+        [
+          19.313864,
+          -99.198848
+        ],
+        [
+          19.313694,
+          -99.198152
+        ],
+        [
+          19.313292,
+          -99.197623
+        ],
+        [
+          19.312105,
+          -99.198078
+        ],
+        [
+          19.312059,
+          -99.197542
+        ],
+        [
+          19.311681,
+          -99.197555
+        ],
+        [
+          19.311649,
+          -99.196689
+        ],
+        [
+          19.311419,
+          -99.196378
+        ],
+        [
+          19.311395,
+          -99.195725
+        ],
+        [
+          19.310951,
+          -99.194035
+        ],
+        [
+          19.310851,
+          -99.193893
+        ],
+        [
+          19.310638,
+          -99.19383
+        ],
+        [
+          19.30982,
+          -99.190247
+        ],
+        [
+          19.309628,
+          -99.188698
+        ],
+        [
+          19.310205,
+          -99.188618
+        ],
+        [
+          19.310164,
+          -99.187912
+        ],
+        [
+          19.310288,
+          -99.186657
+        ],
+        [
+          19.309444,
+          -99.186605
+        ],
+        [
+          19.3064,
+          -99.183476
+        ],
+        [
+          19.311068,
+          -99.172911
+        ],
+        [
+          19.311221,
+          -99.172699
+        ],
+        [
+          19.311433,
+          -99.172511
+        ],
+        [
+          19.31184,
+          -99.172333
+        ],
+        [
+          19.312291,
+          -99.172306
+        ],
+        [
+          19.312571,
+          -99.172408
+        ],
+        [
+          19.3128,
+          -99.172535
+        ],
+        [
+          19.313362,
+          -99.173052
+        ],
+        [
+          19.313676,
+          -99.17327
+        ],
+        [
+          19.313856,
+          -99.173348
+        ],
+        [
+          19.31472,
+          -99.173946
+        ],
+        [
+          19.315417,
+          -99.174579
+        ],
+        [
+          19.315698,
+          -99.174724
+        ],
+        [
+          19.316096,
+          -99.174815
+        ],
+        [
+          19.320173,
+          -99.174686
+        ],
+        [
+          19.322633,
+          -99.174485
+        ],
+        [
+          19.322756,
+          -99.174436
+        ],
+        [
+          19.323121,
+          -99.174381
+        ],
+        [
+          19.323508,
+          -99.174497
+        ],
+        [
+          19.323917,
+          -99.174482
+        ],
+        [
+          19.325395,
+          -99.17432
+        ],
+        [
+          19.325493,
+          -99.174285
+        ],
+        [
+          19.325617,
+          -99.174127
+        ],
+        [
+          19.326124,
+          -99.174128
+        ],
+        [
+          19.327343,
+          -99.174003
+        ],
+        [
+          19.3281,
+          -99.1738
+        ],
+        [
+          19.329525,
+          -99.17411
+        ],
+        [
+          19.329701,
+          -99.175583
+        ],
+        [
+          19.329837,
+          -99.17596
+        ],
+        [
+          19.331125,
+          -99.176802
+        ],
+        [
+          19.331608,
+          -99.178157
+        ],
+        [
+          19.333398,
+          -99.177582
+        ],
+        [
+          19.333537,
+          -99.177281
+        ],
+        [
+          19.333755,
+          -99.177381
+        ],
+        [
+          19.334947,
+          -99.180909
+        ],
+        [
+          19.335376,
+          -99.182283
+        ],
+        [
+          19.335847,
+          -99.183585
+        ],
+        [
+          19.336468,
+          -99.185506
+        ],
+        [
+          19.336448,
+          -99.185694
+        ],
+        [
+          19.336633,
+          -99.18584
+        ],
+        [
+          19.336541,
+          -99.186051
+        ],
+        [
+          19.336551,
+          -99.186198
+        ],
+        [
+          19.336828,
+          -99.186601
+        ],
+        [
+          19.336569,
+          -99.189138
+        ],
+        [
+          19.336509,
+          -99.190238
+        ],
+        [
+          19.336511,
+          -99.190539
+        ],
+        [
+          19.336634,
+          -99.191064
+        ],
+        [
+          19.336474,
+          -99.190917
+        ],
+        [
+          19.33635,
+          -99.19087
+        ],
+        [
+          19.335867,
+          -99.190826
+        ],
+        [
+          19.336013,
+          -99.191582
+        ],
+        [
+          19.335828,
+          -99.193249
+        ],
+        [
+          19.335496,
+          -99.195048
+        ],
+        [
+          19.33539,
+          -99.195502
+        ],
+        [
+          19.335368,
+          -99.195498
+        ],
+        [
+          19.335344,
+          -99.195589
+        ],
+        [
+          19.335295,
+          -99.195574
+        ],
+        [
+          19.335241,
+          -99.195769
+        ],
+        [
+          19.335292,
+          -99.195783
+        ],
+        [
+          19.335065,
+          -99.196559
+        ],
+        [
+          19.33513,
+          -99.196577
+        ],
+        [
+          19.335124,
+          -99.196686
+        ],
+        [
+          19.335698,
+          -99.196584
+        ],
+        [
+          19.335545,
+          -99.197372
+        ],
+        [
+          19.334923,
+          -99.197425
+        ],
+        [
+          19.334924,
+          -99.19755
+        ],
+        [
+          19.334994,
+          -99.197678
+        ],
+        [
+          19.334882,
+          -99.197904
+        ],
+        [
+          19.334581,
+          -99.197794
+        ],
+        [
+          19.334375,
+          -99.197808
+        ],
+        [
+          19.334184,
+          -99.197957
+        ],
+        [
+          19.33364,
+          -99.197879
+        ],
+        [
+          19.333609,
+          -99.198135
+        ],
+        [
+          19.333414,
+          -99.19812
+        ],
+        [
+          19.333463,
+          -99.197768
+        ],
+        [
+          19.332921,
+          -99.19763
+        ],
+        [
+          19.330264,
+          -99.194881
+        ],
+        [
+          19.330117,
+          -99.194771
+        ],
+        [
+          19.329939,
+          -99.194727
+        ],
+        [
+          19.328849,
+          -99.194833
+        ],
+        [
+          19.3219,
+          -99.194988
+        ],
+        [
+          19.32179,
+          -99.195086
+        ],
+        [
+          19.321793,
+          -99.195309
+        ],
+        [
+          19.321655,
+          -99.195374
+        ],
+        [
+          19.321538,
+          -99.195174
+        ],
+        [
+          19.314041,
+          -99.199866
+        ]
+      ],
+      "translations": {
+        "en": {
+          "era": "20th century",
+          "shortDesc": "UNAM's main campus in the Pedregal de San Angel, a collective work declared a UNESCO World Heritage Site.",
+          "fact": "It includes the iconic Central Library, wrapped in Juan O'Gorman's mural."
+        }
+      },
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "W26531801",
+        "wikidata": "Q130025",
+        "license": "ODbL-1.0",
+        "caveat": "UNAM main campus landuse footprint."
+      }
     },
     {
       "id": "bosque-chapultepec",
@@ -366,17 +2003,238 @@
       "shortDesc": "Parque urbano de 866 hectáreas, el más grande de América Latina, dividido en cuatro secciones.",
       "fact": "En el cerro se libró la Batalla de Chapultepec de 1847, donde cayeron los Niños Héroes.",
       "wikipediaUrl": "https://es.wikipedia.org/wiki/Bosque_de_Chapultepec",
-      "lat": 19.413056,
-      "lng": -99.197778,
+      "lat": 19.40672,
+      "lng": -99.210056,
       "emoji": "🌳",
       "category": "museo",
       "polygon": [
-        [19.4310, -99.2050],
-        [19.4310, -99.1730],
-        [19.4100, -99.1650],
-        [19.4100, -99.2100],
-        [19.4310, -99.2050]
-      ]
+        [
+          19.379638,
+          -99.253518
+        ],
+        [
+          19.380873,
+          -99.255175
+        ],
+        [
+          19.38721,
+          -99.245165
+        ],
+        [
+          19.384802,
+          -99.2412
+        ],
+        [
+          19.385837,
+          -99.240409
+        ],
+        [
+          19.389124,
+          -99.23932
+        ],
+        [
+          19.39144,
+          -99.238889
+        ],
+        [
+          19.393151,
+          -99.238091
+        ],
+        [
+          19.393027,
+          -99.235266
+        ],
+        [
+          19.394647,
+          -99.232979
+        ],
+        [
+          19.394622,
+          -99.23114
+        ],
+        [
+          19.39583,
+          -99.227618
+        ],
+        [
+          19.398191,
+          -99.226252
+        ],
+        [
+          19.400264,
+          -99.225387
+        ],
+        [
+          19.403567,
+          -99.221965
+        ],
+        [
+          19.402312,
+          -99.226121
+        ],
+        [
+          19.396947,
+          -99.234272
+        ],
+        [
+          19.403424,
+          -99.226738
+        ],
+        [
+          19.404563,
+          -99.228442
+        ],
+        [
+          19.404247,
+          -99.22604
+        ],
+        [
+          19.406653,
+          -99.221466
+        ],
+        [
+          19.409789,
+          -99.219368
+        ],
+        [
+          19.409734,
+          -99.217468
+        ],
+        [
+          19.411459,
+          -99.214162
+        ],
+        [
+          19.414363,
+          -99.213579
+        ],
+        [
+          19.41412,
+          -99.216214
+        ],
+        [
+          19.415622,
+          -99.211827
+        ],
+        [
+          19.417396,
+          -99.208419
+        ],
+        [
+          19.419405,
+          -99.207363
+        ],
+        [
+          19.419245,
+          -99.205294
+        ],
+        [
+          19.421658,
+          -99.202144
+        ],
+        [
+          19.425247,
+          -99.199572
+        ],
+        [
+          19.427318,
+          -99.198284
+        ],
+        [
+          19.426623,
+          -99.194697
+        ],
+        [
+          19.425997,
+          -99.191439
+        ],
+        [
+          19.429745,
+          -99.182655
+        ],
+        [
+          19.427445,
+          -99.180698
+        ],
+        [
+          19.424014,
+          -99.180077
+        ],
+        [
+          19.423174,
+          -99.175124
+        ],
+        [
+          19.420668,
+          -99.176667
+        ],
+        [
+          19.420451,
+          -99.178212
+        ],
+        [
+          19.416815,
+          -99.181215
+        ],
+        [
+          19.400313,
+          -99.211748
+        ],
+        [
+          19.389386,
+          -99.218372
+        ],
+        [
+          19.389214,
+          -99.221359
+        ],
+        [
+          19.390433,
+          -99.221719
+        ],
+        [
+          19.389423,
+          -99.223044
+        ],
+        [
+          19.386835,
+          -99.226725
+        ],
+        [
+          19.38431,
+          -99.232635
+        ],
+        [
+          19.384943,
+          -99.235902
+        ],
+        [
+          19.382483,
+          -99.242388
+        ],
+        [
+          19.381057,
+          -99.246725
+        ],
+        [
+          19.380647,
+          -99.249001
+        ],
+        [
+          19.379638,
+          -99.253518
+        ]
+      ],
+      "translations": {
+        "en": {
+          "era": "Viceroyalty",
+          "shortDesc": "Urban park of 866 hectares, the largest in Latin America, divided into four sections.",
+          "fact": "The 1847 Battle of Chapultepec was fought on this hill, where the Ninos Heroes died."
+        }
+      },
+      "geometryFallback": {
+        "reason": "Hand-traced by the maintainer over the visible park extent, covering all 4 secciones in a single ring, and used verbatim at their explicit request. No single public polygon exists (live OSM, Nominatim and Wikidata all lack one)."
+      }
     },
     {
       "id": "parque-mexico",
@@ -391,7 +2249,137 @@
       "lng": -99.169167,
       "emoji": "🌳",
       "category": "museo",
-      "radiusMeters": 1500
+      "translations": {
+        "en": {
+          "era": "Post-revolutionary",
+          "shortDesc": "Nine-hectare elliptical art deco park, built over the old Jockey Club racetrack.",
+          "fact": "Its Lindbergh Forum has hosted artists such as The Rolling Stones and Bob Marley."
+        }
+      },
+      "polygon": [
+        [
+          19.410925,
+          -99.170717
+        ],
+        [
+          19.410855,
+          -99.170698
+        ],
+        [
+          19.410689,
+          -99.170624
+        ],
+        [
+          19.410598,
+          -99.17056
+        ],
+        [
+          19.410524,
+          -99.170474
+        ],
+        [
+          19.410464,
+          -99.170361
+        ],
+        [
+          19.410449,
+          -99.170219
+        ],
+        [
+          19.410451,
+          -99.170085
+        ],
+        [
+          19.41048,
+          -99.169909
+        ],
+        [
+          19.410524,
+          -99.169749
+        ],
+        [
+          19.41067,
+          -99.169438
+        ],
+        [
+          19.410783,
+          -99.169287
+        ],
+        [
+          19.410927,
+          -99.169135
+        ],
+        [
+          19.411038,
+          -99.169032
+        ],
+        [
+          19.411166,
+          -99.168933
+        ],
+        [
+          19.411278,
+          -99.16886
+        ],
+        [
+          19.411479,
+          -99.168749
+        ],
+        [
+          19.411797,
+          -99.168589
+        ],
+        [
+          19.412103,
+          -99.168426
+        ],
+        [
+          19.4127,
+          -99.168216
+        ],
+        [
+          19.413114,
+          -99.168068
+        ],
+        [
+          19.41425,
+          -99.168942
+        ],
+        [
+          19.414262,
+          -99.16904
+        ],
+        [
+          19.413993,
+          -99.169268
+        ],
+        [
+          19.413773,
+          -99.169432
+        ],
+        [
+          19.412608,
+          -99.169997
+        ],
+        [
+          19.411587,
+          -99.170436
+        ],
+        [
+          19.411439,
+          -99.170494
+        ],
+        [
+          19.410925,
+          -99.170717
+        ]
+      ],
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "W4758891",
+        "wikidata": "Q3376971",
+        "license": "ODbL-1.0"
+      }
     },
     {
       "id": "alameda-central",
@@ -406,7 +2394,49 @@
       "lng": -99.143889,
       "emoji": "🌳",
       "category": "museo",
-      "radiusMeters": 1500
+      "translations": {
+        "en": {
+          "era": "Viceroyalty",
+          "shortDesc": "The oldest public garden in Mexico and the Americas, modelled on the Alameda de Hercules in Seville.",
+          "fact": "It holds the Monument to Beethoven, a replica donated by the German community."
+        }
+      },
+      "polygon": [
+        [
+          19.435191,
+          -99.146196
+        ],
+        [
+          19.434982,
+          -99.144894
+        ],
+        [
+          19.434685,
+          -99.143215
+        ],
+        [
+          19.434493,
+          -99.14208
+        ],
+        [
+          19.436241,
+          -99.141798
+        ],
+        [
+          19.437003,
+          -99.145861
+        ],
+        [
+          19.435191,
+          -99.146196
+        ]
+      ],
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "W4758957",
+        "wikidata": "Q3355305",
+        "license": "ODbL-1.0"
+      }
     },
     {
       "id": "parque-bicentenario",
@@ -421,52 +2451,366 @@
       "lng": -99.196944,
       "emoji": "🌿",
       "category": "museo",
-      "radiusMeters": 1500
-    },
-    {
-      "id": "mirador-angel-independencia",
-      "name": "Mirador del Ángel",
-      "type": "mirador",
-      "foundedYear": 1910,
-      "era": "Porfiriato",
-      "shortDesc": "Columna neoclásica de 52 m en Paseo de la Reforma, coronada por la Victoria Alada.",
-      "fact": "Inaugurada por Porfirio Díaz para conmemorar el Centenario de la Independencia en 1910.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/%C3%81ngel_de_la_Independencia",
-      "lat": 19.427,
-      "lng": -99.16771,
-      "emoji": "🗽",
-      "category": "museo",
-      "radiusMeters": 100
-    },
-    {
-      "id": "torre-latinoamericana-mirador",
-      "name": "Mirador de la Torre Latinoamericana",
-      "type": "mirador",
-      "foundedYear": 1956,
-      "era": "Siglo XX",
-      "shortDesc": "Mirador en el piso 44 de la Torre Latinoamericana, con vista panorámica del centro histórico.",
-      "fact": "Fue el primer edificio antisísmico del mundo; resistió los sismos de 1957, 1985 y 2017.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Torre_Latinoamericana",
-      "lat": 19.433889,
-      "lng": -99.140556,
-      "emoji": "🔭",
-      "category": "rascacielos",
-      "radiusMeters": 100
-    },
-    {
-      "id": "mirador-castillo-chapultepec",
-      "name": "Mirador del Castillo de Chapultepec",
-      "type": "mirador",
-      "foundedYear": 1785,
-      "era": "Virreinato",
-      "shortDesc": "Mirador en lo alto del Castillo de Chapultepec, con vistas a toda la ciudad y a los volcanes.",
-      "fact": "El castillo fue casa de descanso virreinal, palacio de Maximiliano y hoy Museo Nacional de Historia.",
-      "wikipediaUrl": "https://es.wikipedia.org/wiki/Castillo_de_Chapultepec",
-      "lat": 19.420556,
-      "lng": -99.181667,
-      "emoji": "🏰",
-      "category": "museo",
-      "radiusMeters": 100
+      "translations": {
+        "en": {
+          "era": "21st century",
+          "shortDesc": "Fifty-five-hectare park between Azcapotzalco and Miguel Hidalgo, the second-largest green lung in Mexico City.",
+          "fact": "Built on the remediated grounds of Pemex's decommissioned 18 de Marzo refinery."
+        }
+      },
+      "polygon": [
+        [
+          19.469614,
+          -99.207041
+        ],
+        [
+          19.469597,
+          -99.206977
+        ],
+        [
+          19.469514,
+          -99.206715
+        ],
+        [
+          19.467735,
+          -99.201188
+        ],
+        [
+          19.466975,
+          -99.198821
+        ],
+        [
+          19.466688,
+          -99.197922
+        ],
+        [
+          19.466086,
+          -99.196147
+        ],
+        [
+          19.465756,
+          -99.195129
+        ],
+        [
+          19.465573,
+          -99.194429
+        ],
+        [
+          19.465328,
+          -99.193337
+        ],
+        [
+          19.465262,
+          -99.193104
+        ],
+        [
+          19.465177,
+          -99.192887
+        ],
+        [
+          19.465034,
+          -99.192582
+        ],
+        [
+          19.464919,
+          -99.192393
+        ],
+        [
+          19.464849,
+          -99.192264
+        ],
+        [
+          19.464824,
+          -99.192129
+        ],
+        [
+          19.464802,
+          -99.191945
+        ],
+        [
+          19.464806,
+          -99.191779
+        ],
+        [
+          19.464823,
+          -99.191608
+        ],
+        [
+          19.464862,
+          -99.191421
+        ],
+        [
+          19.464972,
+          -99.19123
+        ],
+        [
+          19.465156,
+          -99.191032
+        ],
+        [
+          19.465301,
+          -99.190931
+        ],
+        [
+          19.465385,
+          -99.190884
+        ],
+        [
+          19.465507,
+          -99.190828
+        ],
+        [
+          19.465593,
+          -99.190806
+        ],
+        [
+          19.465803,
+          -99.190788
+        ],
+        [
+          19.47028,
+          -99.190578
+        ],
+        [
+          19.470385,
+          -99.190852
+        ],
+        [
+          19.470416,
+          -99.190944
+        ],
+        [
+          19.470657,
+          -99.191929
+        ],
+        [
+          19.470698,
+          -99.19192
+        ],
+        [
+          19.470829,
+          -99.192494
+        ],
+        [
+          19.470814,
+          -99.192545
+        ],
+        [
+          19.470796,
+          -99.192567
+        ],
+        [
+          19.470772,
+          -99.192588
+        ],
+        [
+          19.470735,
+          -99.192608
+        ],
+        [
+          19.470738,
+          -99.192617
+        ],
+        [
+          19.47076,
+          -99.192713
+        ],
+        [
+          19.470762,
+          -99.192721
+        ],
+        [
+          19.470823,
+          -99.192718
+        ],
+        [
+          19.470854,
+          -99.192728
+        ],
+        [
+          19.470877,
+          -99.192743
+        ],
+        [
+          19.470896,
+          -99.192768
+        ],
+        [
+          19.4709,
+          -99.192789
+        ],
+        [
+          19.468621,
+          -99.193473
+        ],
+        [
+          19.468971,
+          -99.194784
+        ],
+        [
+          19.469373,
+          -99.194658
+        ],
+        [
+          19.469465,
+          -99.194697
+        ],
+        [
+          19.469527,
+          -99.194909
+        ],
+        [
+          19.469552,
+          -99.194902
+        ],
+        [
+          19.469733,
+          -99.195578
+        ],
+        [
+          19.469827,
+          -99.195685
+        ],
+        [
+          19.47032,
+          -99.197516
+        ],
+        [
+          19.4697,
+          -99.197686
+        ],
+        [
+          19.469769,
+          -99.197978
+        ],
+        [
+          19.469865,
+          -99.198387
+        ],
+        [
+          19.47032,
+          -99.198259
+        ],
+        [
+          19.470453,
+          -99.198766
+        ],
+        [
+          19.471314,
+          -99.198568
+        ],
+        [
+          19.47156,
+          -99.19956
+        ],
+        [
+          19.472696,
+          -99.199253
+        ],
+        [
+          19.472739,
+          -99.199434
+        ],
+        [
+          19.472684,
+          -99.199447
+        ],
+        [
+          19.472819,
+          -99.200001
+        ],
+        [
+          19.472853,
+          -99.200125
+        ],
+        [
+          19.472881,
+          -99.200237
+        ],
+        [
+          19.4729,
+          -99.200309
+        ],
+        [
+          19.473057,
+          -99.200265
+        ],
+        [
+          19.473153,
+          -99.20065
+        ],
+        [
+          19.473175,
+          -99.200879
+        ],
+        [
+          19.473189,
+          -99.201157
+        ],
+        [
+          19.473156,
+          -99.201421
+        ],
+        [
+          19.473104,
+          -99.201643
+        ],
+        [
+          19.473033,
+          -99.201899
+        ],
+        [
+          19.472745,
+          -99.202998
+        ],
+        [
+          19.472143,
+          -99.204897
+        ],
+        [
+          19.472103,
+          -99.204913
+        ],
+        [
+          19.472091,
+          -99.204929
+        ],
+        [
+          19.472079,
+          -99.204959
+        ],
+        [
+          19.472092,
+          -99.205001
+        ],
+        [
+          19.471221,
+          -99.206558
+        ],
+        [
+          19.471193,
+          -99.206581
+        ],
+        [
+          19.471133,
+          -99.206611
+        ],
+        [
+          19.470731,
+          -99.206705
+        ],
+        [
+          19.469614,
+          -99.207041
+        ]
+      ],
+      "geometrySource": {
+        "provider": "openstreetmap",
+        "osm": "W186399291",
+        "wikidata": "Q6062023",
+        "license": "ODbL-1.0"
+      }
     }
-  ]
+  ],
+  "geometryAttribution": "Zone boundaries © OpenStreetMap contributors, ODbL 1.0 (via Nominatim). Cross-referenced with Wikidata."
 }

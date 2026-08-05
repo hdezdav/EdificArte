@@ -16,6 +16,7 @@
     "test:phase-zero": "vitest run tests/phase-zero-evidence.test.ts",
     "verify:phase-zero": "node ./src/lib/migration/phase-zero-evidence.ts",
     "catalog:plan": "node --experimental-strip-types scripts/import/static-catalog.ts",
+    "geo:recintos": "node --experimental-strip-types scripts/geo/recinto-geometry.ts",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "astro check && tsc --noEmit",

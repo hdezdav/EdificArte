@@ -2,7 +2,12 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl';
 import type { Map, Marker } from 'mapbox-gl';
 import { MONUMENTS } from '../data/monuments';
-import { RECINTOS, RECINTO_TYPES, RECINTO_DEFAULT_RADIUS } from '../data/recintos';
+import {
+  RECINTOS,
+  RECINTO_TYPES,
+  RECINTO_TYPE_I18N_KEY,
+  RECINTO_DEFAULT_RADIUS,
+} from '../data/recintos';
 import { detectLocale, pickLocalized, translate } from '../lib/i18n';
 import {
   createPaddedViewport,
@@ -639,6 +644,9 @@ function renderClusteredPins(): void {
 
 // Rebuild the cluster index (data, filter or selection changed) and render.
 function refreshClusteredPins(): void {
+  // Nearby places or the active filter may have changed, so the open zone
+  // card's place list would otherwise go stale.
+  if (activeZone) renderZonePlaces(activeZone);
   clusterIndex = buildClusterIndex(
     getFilteredPlaces(nearbyPlaces).filter(
       (place) => place.category !== 'route' && place.id !== selectedPlace?.id
@@ -752,41 +760,77 @@ function bindFilterChips(): void {
 // ---------------------------------------------------------------------------
 // Wikipedia enrichment
 // ---------------------------------------------------------------------------
-const wikiCache = new globalThis.Map<string, { imageUrl: string; articleUrl: string } | null>();
+const wikiCache = new globalThis.Map<
+  string,
+  { imageUrl: string; articleUrl: string } | null
+>();
 
-async function fetchWikipediaEnrichment(name: string): Promise<{ imageUrl: string; articleUrl: string } | null> {
+async function fetchWikipediaEnrichment(
+  name: string
+): Promise<{ imageUrl: string; articleUrl: string } | null> {
   const key = name.toLowerCase().trim();
   if (wikiCache.has(key)) return wikiCache.get(key)!;
 
-  const cleanQuery = name.split(',')[0].replace(/[\u1F300-\u1FAFF\u2600-\u26FF]/g, '').trim();
+  const cleanQuery = name
+    .split(',')[0]
+    .replace(/[\u1F300-\u1FAFF\u2600-\u26FF]/g, '')
+    .trim();
   const searchUrl = `https://es.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(cleanQuery)}&gsrlimit=1&prop=pageimages|info&piprop=thumbnail&pithumbsize=600&inprop=url&format=json&origin=*`;
-  
+
   try {
-    const res = await fetch(searchUrl, { signal: AbortSignal.timeout(5000), headers: { accept: 'application/json' } });
+    const res = await fetch(searchUrl, {
+      signal: AbortSignal.timeout(5000),
+      headers: { accept: 'application/json' },
+    });
     if (res.ok) {
-      const data = await res.json() as {
-        query?: { pages?: Record<string, { thumbnail?: { source?: string }; fullurl?: string }> };
+      const data = (await res.json()) as {
+        query?: {
+          pages?: Record<
+            string,
+            { thumbnail?: { source?: string }; fullurl?: string }
+          >;
+        };
       };
       const page = Object.values(data.query?.pages ?? {})[0];
       if (page) {
         const result = {
           imageUrl: page.thumbnail?.source ?? '',
-          articleUrl: page.fullurl ?? `https://es.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`,
+          articleUrl:
+            page.fullurl ??
+            `https://es.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`,
         };
         wikiCache.set(key, result);
         return result;
       }
     }
   } catch (err) {
-    console.warn('[Wikipedia] Search generator query failed, trying direct title:', err);
+    console.warn(
+      '[Wikipedia] Search generator query failed, trying direct title:',
+      err
+    );
   }
 
   const titleUrl = `https://es.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(cleanQuery)}&prop=pageimages|info&piprop=thumbnail&pithumbsize=600&inprop=url&redirects=1&format=json&origin=*`;
   try {
-    const res = await fetch(titleUrl, { signal: AbortSignal.timeout(5000), headers: { accept: 'application/json' } });
-    if (!res.ok) { wikiCache.set(key, null); return null; }
-    const data = await res.json() as {
-      query?: { pages?: Record<string, { missing?: string; thumbnail?: { source?: string }; fullurl?: string }> };
+    const res = await fetch(titleUrl, {
+      signal: AbortSignal.timeout(5000),
+      headers: { accept: 'application/json' },
+    });
+    if (!res.ok) {
+      wikiCache.set(key, null);
+      return null;
+    }
+    const data = (await res.json()) as {
+      query?: {
+        pages?: Record<
+          string,
+          {
+            missing?: string;
+            thumbnail?: { source?: string };
+            fullurl?: string;
+          }
+        >;
+      };
     };
     const page = Object.values(data.query?.pages ?? {})[0];
     if (!page || 'missing' in page) {
@@ -795,7 +839,9 @@ async function fetchWikipediaEnrichment(name: string): Promise<{ imageUrl: strin
     }
     const result = {
       imageUrl: page.thumbnail?.source ?? '',
-      articleUrl: page.fullurl ?? `https://es.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`,
+      articleUrl:
+        page.fullurl ??
+        `https://es.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(cleanQuery)}`,
     };
     wikiCache.set(key, result);
     return result;
@@ -837,13 +883,18 @@ function selectPlace(place: Place) {
   if (detailAddress) detailAddress.textContent = place.address;
 
   const monumentMatch = MONUMENTS.find(
-    (m) => m.id === place.id || m.name.toLowerCase() === place.name.toLowerCase()
+    (m) =>
+      m.id === place.id || m.name.toLowerCase() === place.name.toLowerCase()
   );
 
   // Wikipedia enrichment — fetch async, show photo + link if a match is found
   const wikiBlock = document.getElementById('detail-wiki');
-  const img = document.getElementById('detail-wiki-img') as HTMLImageElement | null;
-  const link = document.getElementById('detail-wiki-link') as HTMLAnchorElement | null;
+  const img = document.getElementById(
+    'detail-wiki-img'
+  ) as HTMLImageElement | null;
+  const link = document.getElementById(
+    'detail-wiki-link'
+  ) as HTMLAnchorElement | null;
 
   if (monumentMatch?.image && img) {
     img.src = monumentMatch.image;
@@ -864,7 +915,9 @@ function selectPlace(place: Place) {
 
   // VR Video Experience — Embed VR video player when monument or place has videoUrl
   const vrContainer = document.getElementById('detail-vr-container');
-  const vrIframe = document.getElementById('detail-vr-iframe') as HTMLIFrameElement | null;
+  const vrIframe = document.getElementById(
+    'detail-vr-iframe'
+  ) as HTMLIFrameElement | null;
   const videoUrl = place.videoUrl || monumentMatch?.videoUrl;
 
   if (vrContainer && vrIframe) {
@@ -1117,7 +1170,9 @@ function clearRoute() {
 function deselect() {
   selectedPlace = null;
   const vrContainer = document.getElementById('detail-vr-container');
-  const vrIframe = document.getElementById('detail-vr-iframe') as HTMLIFrameElement | null;
+  const vrIframe = document.getElementById(
+    'detail-vr-iframe'
+  ) as HTMLIFrameElement | null;
   if (vrIframe) vrIframe.src = '';
   if (vrContainer) vrContainer.classList.add('hidden');
 
@@ -1448,19 +1503,40 @@ function createCirclePolygon(
 }
 
 function buildRecintosGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.Geometry> {
+  // Zone prose is localized here, so the layer must be rebuilt on locale change.
+  const locale = detectLocale();
   const features: GeoJSON.Feature<GeoJSON.Geometry>[] = RECINTOS.map((r) => {
-    let polygonCoords: [number, number][];
-    if (r.polygon && r.polygon.length >= 3) {
-      polygonCoords = r.polygon.map(([lat, lng]) => [lng, lat]);
-      const first = polygonCoords[0];
-      const last = polygonCoords[polygonCoords.length - 1];
+    // A real boundary is always preferred. The circle is a documented
+    // approximation for the few zones with no published public geometry.
+    const hasRealBoundary = Boolean(r.polygon && r.polygon.length >= 3);
+
+    /** Converts a stored [lat, lng] ring into a closed GeoJSON [lng, lat] ring. */
+    const toGeoRing = (ring: [number, number][]): [number, number][] => {
+      const coords: [number, number][] = ring.map(([lat, lng]) => [lng, lat]);
+      const first = coords[0];
+      const last = coords[coords.length - 1];
       if (first[0] !== last[0] || first[1] !== last[1]) {
-        polygonCoords.push([first[0], first[1]]);
+        coords.push([first[0], first[1]]);
       }
-    } else {
-      const radius = r.radiusMeters ?? RECINTO_DEFAULT_RADIUS[r.type] ?? 250;
-      polygonCoords = createCirclePolygon(r.lng, r.lat, radius);
-    }
+      return coords;
+    };
+
+    // Zones can be made of disjoint parts (Chapultepec's 4th section is
+    // detached), so build a MultiPolygon whenever extra rings exist.
+    const rings: [number, number][][] = hasRealBoundary
+      ? [
+          toGeoRing(r.polygon as [number, number][]),
+          ...(r.polygons ?? [])
+            .filter((ring) => ring.length >= 3)
+            .map(toGeoRing),
+        ]
+      : [
+          createCirclePolygon(
+            r.lng,
+            r.lat,
+            r.radiusMeters ?? RECINTO_DEFAULT_RADIUS[r.type] ?? 250
+          ),
+        ];
 
     const typeColor = RECINTO_TYPES[r.type]?.color || '#a16207';
 
@@ -1470,18 +1546,32 @@ function buildRecintosGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.Geometry> {
         id: r.id,
         name: r.name,
         type: r.type,
-        era: r.era,
-        fact: r.fact,
-        shortDesc: r.shortDesc,
+        typeLabel: trMapa(
+          RECINTO_TYPE_I18N_KEY[r.type],
+          RECINTO_TYPES[r.type]?.label ?? r.type
+        ),
+        era: pickLocalized(r, 'era', locale),
+        fact: pickLocalized(r, 'fact', locale),
+        shortDesc: pickLocalized(r, 'shortDesc', locale),
         emoji: r.emoji,
         color: typeColor,
         lat: r.lat,
         lng: r.lng,
+        foundedYear: r.foundedYear,
+        wikipediaUrl: r.wikipediaUrl,
+        approximate: !hasRealBoundary,
+        attribution: hasRealBoundary ? r.geometrySource?.osm : undefined,
       },
-      geometry: {
-        type: 'Polygon',
-        coordinates: [polygonCoords],
-      },
+      geometry:
+        rings.length > 1
+          ? {
+              type: 'MultiPolygon',
+              coordinates: rings.map((ring) => [ring]),
+            }
+          : {
+              type: 'Polygon',
+              coordinates: [rings[0]],
+            },
     };
   });
 
@@ -1491,10 +1581,481 @@ function buildRecintosGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.Geometry> {
   };
 }
 
+/** Bounds of a GeoJSON Polygon ring, used to frame a zone without zooming to a pin. */
+/** Outer rings of a Polygon or MultiPolygon, as [lng, lat]. */
+function geometryOuterRings(geometry: GeoJSON.Geometry): [number, number][][] {
+  if (geometry.type === 'Polygon') {
+    const [ring] = geometry.coordinates as [number, number][][];
+    return ring?.length ? [ring] : [];
+  }
+  if (geometry.type === 'MultiPolygon') {
+    return (geometry.coordinates as [number, number][][][])
+      .map((polygon) => polygon[0])
+      .filter((ring): ring is [number, number][] => Boolean(ring?.length));
+  }
+  return [];
+}
+
+function polygonBounds(
+  geometry: GeoJSON.Geometry
+): mapboxgl.LngLatBounds | null {
+  const rings = geometryOuterRings(geometry);
+  if (!rings.length) return null;
+  const bounds = new mapboxgl.LngLatBounds();
+  for (const ring of rings) {
+    for (const [lng, lat] of ring) bounds.extend([lng, lat]);
+  }
+  return bounds;
+}
+
+interface ZoneCardData {
+  id: string;
+  name: string;
+  typeLabel: string;
+  era: string;
+  shortDesc: string;
+  fact: string;
+  emoji: string;
+  color: string;
+  foundedYear?: number;
+  wikipediaUrl?: string;
+  approximate: boolean;
+  attribution?: string;
+  bounds: mapboxgl.LngLatBounds | null;
+  lat: number;
+  lng: number;
+  /** Outer rings as [lng, lat], used for point-in-polygon place lookup. */
+  rings: [number, number][][];
+}
+
+let activeZone: ZoneCardData | null = null;
+let zonePopup: mapboxgl.Popup | null = null;
+const zoneMarkers: Marker[] = [];
+
+/**
+ * Ray-casting point-in-polygon. Ring is [lng, lat] and assumed closed.
+ * Good enough at city scale; zones are small relative to Earth curvature.
+ */
+function isPointInRing(
+  lng: number,
+  lat: number,
+  ring: [number, number][]
+): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersects =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi + Number.EPSILON) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Area centroid of a closed [lng, lat] ring.
+ *
+ * Needed because the stored lat/lng comes from Wikipedia and for 3 of 26 real
+ * boundaries (San Felipe de Jesús, Condesa, San Ángel) it falls OUTSIDE the
+ * zone's own polygon — anchoring the label there would place the zone's marker
+ * outside the zone. The polygon centroid is inside for all 26.
+ */
+function ringCentroid(ring: [number, number][]): [number, number] | null {
+  if (ring.length < 4) return null;
+  let area = 0;
+  let x = 0;
+  let y = 0;
+  for (let i = 0; i < ring.length - 1; i++) {
+    const [x1, y1] = ring[i];
+    const [x2, y2] = ring[i + 1];
+    const cross = x1 * y2 - x2 * y1;
+    area += cross;
+    x += (x1 + x2) * cross;
+    y += (y1 + y2) * cross;
+  }
+  area /= 2;
+  if (!area) return null;
+  return [x / (6 * area), y / (6 * area)];
+}
+
+/** Places currently loaded that actually fall inside the zone's boundary. */
+function placesInsideZone(zone: ZoneCardData): Place[] {
+  const rings = zone.rings.filter((ring) => ring.length >= 4);
+  if (!rings.length) return [];
+  return getFilteredPlaces(nearbyPlaces).filter(
+    (place) =>
+      place.category !== 'route' &&
+      // A multi-part zone counts a place inside ANY of its parts.
+      rings.some((ring) => isPointInRing(place.lng, place.lat, ring))
+  );
+}
+
+function renderZonePlaces(zone: ZoneCardData) {
+  const wrap = $('zone-card-places-wrap');
+  const list = $('zone-card-places');
+  const empty = $('zone-card-places-empty');
+  const count = $('zone-card-places-count');
+  if (!wrap || !list) return;
+
+  // Only meaningful for real boundaries — a fallback circle would imply
+  // membership that the data does not actually support.
+  if (zone.approximate) {
+    wrap.classList.add('hidden');
+    return;
+  }
+  wrap.classList.remove('hidden');
+
+  const places = placesInsideZone(zone);
+  if (count) count.textContent = places.length ? `(${places.length})` : '';
+  empty?.classList.toggle('hidden', places.length > 0);
+
+  list.textContent = '';
+  for (const place of places.slice(0, 12)) {
+    const info = getCategoryInfo(place.category);
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className =
+      'flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-black/[0.05] dark:hover:bg-white/10';
+    const icon = document.createElement('span');
+    icon.className = 'text-sm leading-none';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = place.emoji || info.emoji;
+    const label = document.createElement('span');
+    label.className =
+      'min-w-0 flex-1 truncate text-xs font-medium text-slate-700 dark:text-slate-200';
+    label.textContent = place.name;
+    row.append(icon, label);
+    if (place.distance !== undefined) {
+      const distance = document.createElement('span');
+      distance.className =
+        'shrink-0 text-[10px] font-semibold text-slate-400 dark:text-slate-500';
+      distance.textContent = formatDistance(place.distance);
+      row.append(distance);
+    }
+    // Selecting a place from the list is a pin action, so the pin flow is
+    // correct here — but close the zone card first so they don't stack.
+    row.addEventListener('click', () => {
+      hideZoneCard();
+      selectPlace(place);
+    });
+    list.append(row);
+  }
+}
+
+function fitZoneBounds(zone: ZoneCardData) {
+  if (!zone.bounds || isMapRemoved()) return;
+  // Frame the whole area. Deliberately NOT flyTo/zoom-17: a zone is a region,
+  // and the card stays anchored at the top, so pad for it.
+  map.fitBounds(zone.bounds, {
+    padding: { top: 260, bottom: 120, left: 48, right: 48 },
+    maxZoom: 16,
+    duration: 900,
+  });
+}
+
+function hideZoneCard() {
+  activeZone = null;
+  const card = $('zone-card');
+  if (card) {
+    card.classList.add('hidden');
+    // Return the template to the page so the popup can be torn down safely.
+    if (card.parentElement !== document.body) document.body.append(card);
+  }
+  for (const marker of zoneMarkers) {
+    marker.getElement().classList.remove('active');
+  }
+  zonePopup?.remove();
+  zonePopup = null;
+}
+
+/**
+ * Anchors the card to the zone's own coordinates via a Mapbox Popup, so it
+ * reads as a pin over the area rather than a panel pinned to the viewport.
+ */
+function attachZoneCard(zone: ZoneCardData, card: HTMLElement) {
+  if (isMapRemoved()) return;
+  zonePopup?.remove();
+  zonePopup = new mapboxgl.Popup({
+    closeButton: false,
+    // Clicking the map elsewhere should dismiss it, like any pin popup.
+    closeOnClick: true,
+    closeOnMove: false,
+    maxWidth: 'none',
+    offset: 18,
+    className: 'zone-popup',
+    // No fixed anchor: let Mapbox flip the card to whichever side keeps it on
+    // screen. Forcing 'bottom' pushed it off the top edge near the viewport top,
+    // which is what made it hard to read.
+  })
+    .setLngLat([zone.lng, zone.lat])
+    .setDOMContent(card)
+    .addTo(map);
+
+  zonePopup.on('close', () => {
+    // Keep our state in sync when Mapbox closes the popup itself.
+    if (activeZone?.id === zone.id) hideZoneCard();
+  });
+
+  // Pan just enough to bring the whole card into view, accounting for the
+  // search/chips layer on top and the bottom sheet below.
+  ensureZoneCardVisible(card);
+}
+
+/**
+ * Nudges the map so the popup card is fully visible. Mapbox only flips the
+ * anchor; it does not scroll the map, so a card near an edge can still be
+ * clipped by our own floating chrome.
+ */
+function ensureZoneCardVisible(card: HTMLElement) {
+  if (isMapRemoved()) return;
+  requestAnimationFrame(() => {
+    if (isMapRemoved() || !card.isConnected) return;
+    const container = map.getContainer().getBoundingClientRect();
+    const rect = card.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    // Reserve room for the top search + filter chips and the bottom sheet.
+    const topInset = 132;
+    const bottomInset = 148;
+    const margin = 12;
+
+    let panX = 0;
+    let panY = 0;
+    const overflowTop = container.top + topInset - rect.top + margin;
+    const overflowBottom =
+      rect.bottom - (container.bottom - bottomInset) + margin;
+    const overflowLeft = container.left - rect.left + margin;
+    const overflowRight = rect.right - container.right + margin;
+
+    // Vertical: prefer fixing the top edge, since the card grows upward.
+    if (overflowTop > 0) panY = -overflowTop;
+    else if (overflowBottom > 0) panY = overflowBottom;
+
+    if (overflowLeft > 0) panX = -overflowLeft;
+    else if (overflowRight > 0) panX = overflowRight;
+
+    if (panX === 0 && panY === 0) return;
+    map.panBy([panX, panY], { duration: 320 });
+  });
+}
+
+function showZoneCard(zone: ZoneCardData) {
+  const card = $('zone-card');
+  if (!card) return;
+  // Tear down any previous popup before re-parenting the shared template.
+  hideZoneCard();
+  activeZone = zone;
+
+  const setText = (id: string, value: string) => {
+    const el = $(id);
+    if (el) el.textContent = value;
+  };
+
+  const accent = $('zone-card-accent');
+  if (accent) accent.style.backgroundColor = zone.color;
+
+  setText('zone-card-emoji', zone.emoji || '🏛️');
+  setText('zone-card-kind', zone.typeLabel);
+  setText('zone-card-name', zone.name);
+  setText(
+    'zone-card-meta',
+    [
+      zone.era,
+      zone.foundedYear
+        ? trMapa('mapa.zone.founded', 'Since {year}').replace(
+            '{year}',
+            String(zone.foundedYear)
+          )
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  );
+  setText('zone-card-desc', zone.shortDesc);
+
+  const factWrap = $('zone-card-fact-wrap');
+  if (factWrap) {
+    if (zone.fact) {
+      setText('zone-card-fact', zone.fact);
+      factWrap.classList.remove('hidden');
+    } else {
+      factWrap.classList.add('hidden');
+    }
+  }
+
+  // Only ever shown for the documented circle fallbacks.
+  $('zone-card-approx')?.classList.toggle('hidden', !zone.approximate);
+
+  const wiki = $('zone-card-wiki') as HTMLAnchorElement | null;
+  if (wiki) {
+    if (zone.wikipediaUrl) {
+      wiki.href = zone.wikipediaUrl;
+      wiki.classList.remove('hidden');
+    } else {
+      wiki.classList.add('hidden');
+    }
+  }
+
+  $('zone-card-fit')?.classList.toggle('hidden', !zone.bounds);
+
+  setText(
+    'zone-card-attrib',
+    zone.attribution
+      ? `${trMapa('mapa.zone.source', 'Boundaries © OpenStreetMap contributors (ODbL)')} · ${zone.attribution}`
+      : ''
+  );
+
+  renderZonePlaces(zone);
+
+  card.classList.remove('hidden');
+  attachZoneCard(zone, card);
+
+  for (const marker of zoneMarkers) {
+    const element = marker.getElement();
+    element.classList.toggle('active', element.dataset.zoneId === zone.id);
+  }
+}
+
+/** Builds the zone data the card needs from a rendered zone feature. */
+function zoneDataFromFeature(
+  properties: Record<string, unknown>,
+  geometry: GeoJSON.Geometry
+): ZoneCardData {
+  const rings = geometryOuterRings(geometry);
+  return {
+    id: String(properties.id),
+    name: String(properties.name ?? ''),
+    typeLabel: String(properties.typeLabel ?? properties.type ?? ''),
+    era: String(properties.era ?? ''),
+    shortDesc: String(properties.shortDesc ?? ''),
+    fact: String(properties.fact ?? ''),
+    emoji: String(properties.emoji ?? '🏛️'),
+    color: String(properties.color ?? '#a16207'),
+    foundedYear:
+      properties.foundedYear === undefined || properties.foundedYear === null
+        ? undefined
+        : Number(properties.foundedYear),
+    wikipediaUrl: properties.wikipediaUrl
+      ? String(properties.wikipediaUrl)
+      : undefined,
+    // Mapbox serializes feature properties, so booleans can arrive as strings.
+    approximate:
+      properties.approximate === true || properties.approximate === 'true',
+    attribution: properties.attribution
+      ? String(properties.attribution)
+      : undefined,
+    bounds: polygonBounds(geometry),
+    ...anchorFor(rings, Number(properties.lat), Number(properties.lng)),
+    rings,
+  };
+}
+
+/**
+ * Where the zone's marker and popup should sit. Prefers the polygon centroid so
+ * the label is always visually inside its own area.
+ */
+function anchorFor(
+  rings: [number, number][][],
+  lat: number,
+  lng: number
+): { lat: number; lng: number } {
+  // Anchor to the largest part, so a multi-part zone labels its main body.
+  const ring = rings.reduce<[number, number][] | null>(
+    (largest, candidate) =>
+      !largest || candidate.length > largest.length ? candidate : largest,
+    null
+  );
+  if (!ring) return { lat, lng };
+  const centroid = ringCentroid(ring);
+  if (centroid && isPointInRing(centroid[0], centroid[1], ring)) {
+    return { lng: centroid[0], lat: centroid[1] };
+  }
+  return { lat, lng };
+}
+
+/**
+ * Renders one always-visible glass label per zone, matching the pin language.
+ * These are what the user reads as "the zone's pin"; tapping one opens the card.
+ */
+function renderZoneMarkers(
+  mapInstance: mapboxgl.Map,
+  geojson: GeoJSON.FeatureCollection<GeoJSON.Geometry>
+) {
+  for (const marker of zoneMarkers) marker.remove();
+  zoneMarkers.length = 0;
+
+  for (const feature of geojson.features) {
+    const properties = feature.properties as Record<string, unknown> | null;
+    if (!properties) continue;
+    // Same anchor as the popup, so the label and its card never disagree.
+    const zone = zoneDataFromFeature(properties, feature.geometry);
+    const { lat, lng } = zone;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+    const element = document.createElement('div');
+    element.className = 'zone-marker';
+    element.dataset.zoneId = String(properties.id);
+    element.setAttribute('role', 'button');
+    element.setAttribute('tabindex', '0');
+    element.setAttribute('aria-label', String(properties.name ?? 'Zone'));
+
+    const dot = document.createElement('span');
+    dot.className = 'zone-marker-dot';
+    dot.setAttribute('aria-hidden', 'true');
+    dot.textContent = String(properties.emoji ?? '🏛️');
+    dot.style.backgroundColor = `${String(properties.color ?? '#a16207')}26`;
+
+    const label = document.createElement('span');
+    label.className = 'zone-marker-label';
+    label.textContent = String(properties.name ?? '');
+
+    element.append(dot, label);
+
+    const open = () => {
+      bindZoneCardControls();
+      showZoneCard(zone);
+    };
+    element.addEventListener('click', (event) => {
+      event.stopPropagation();
+      open();
+    });
+    element.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        open();
+      }
+    });
+
+    zoneMarkers.push(
+      new mapboxgl.Marker({ element, anchor: 'center' })
+        .setLngLat([lng, lat])
+        .addTo(mapInstance)
+    );
+  }
+}
+
+function bindZoneCardControls() {
+  const close = $('zone-card-close');
+  if (close && !close.dataset.bound) {
+    close.dataset.bound = 'true';
+    close.addEventListener('click', hideZoneCard);
+  }
+  const fit = $('zone-card-fit');
+  if (fit && !fit.dataset.bound) {
+    fit.dataset.bound = 'true';
+    fit.addEventListener('click', () => {
+      if (activeZone) fitZoneBounds(activeZone);
+    });
+  }
+}
+
 function setupRecintosLayer(mapInstance: mapboxgl.Map): void {
   if (!mapInstance) return;
 
   const geojson = buildRecintosGeoJSON();
+
+  renderZoneMarkers(mapInstance, geojson);
 
   if (mapInstance.getSource('recintos-zones')) {
     (mapInstance.getSource('recintos-zones') as mapboxgl.GeoJSONSource).setData(
@@ -1560,16 +2121,16 @@ function setupRecintosLayer(mapInstance: mapboxgl.Map): void {
       const feature = e.features?.[0];
       if (!feature || !feature.properties) return;
       const props = feature.properties;
-      selectPlace({
-        id: props.id,
-        name: props.name,
-        category: props.type || 'historic',
-        address: props.shortDesc || props.fact || '',
-        lat: Number(props.lat),
-        lng: Number(props.lng),
-        emoji: props.emoji || '🏛️',
-        isLocalMonument: true,
-      });
+      // A zone gets its own card and keeps the map framed on the AREA.
+      // It must not go through selectPlace(), which flies to zoom 17 / pitch 55
+      // and reframes a whole region as if it were a single pin.
+      bindZoneCardControls();
+      showZoneCard(
+        zoneDataFromFeature(
+          props as unknown as Record<string, unknown>,
+          feature.geometry
+        )
+      );
     });
 
     mapInstance.on('mouseenter', 'recintos-zones-fill', () => {
@@ -2242,6 +2803,9 @@ function cleanUpMap() {
     navigator.geolocation.clearWatch(watchId);
     watchId = null;
   }
+  hideZoneCard();
+  for (const marker of zoneMarkers) marker.remove();
+  zoneMarkers.length = 0;
   clearPlaceMarkers();
   clusterIndex = null;
   clusterDataVersion = 0;

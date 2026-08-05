@@ -37,6 +37,27 @@
       "share": "Share",
       "cancel": "Cancel",
       "calculating": "Calculating..."
+    },
+    "zone": {
+      "kind": "Zone",
+      "close": "Close zone info",
+      "fact": "Did you know",
+      "approximate": "Approximate area — no official boundary is published for this zone.",
+      "read_more": "Read more",
+      "fit": "Fit zone",
+      "places": "Places in this zone",
+      "places_empty": "No places loaded here yet — zoom in to discover them.",
+      "founded": "Since {year}",
+      "source": "Boundaries © OpenStreetMap contributors (ODbL)",
+      "types": {
+        "prehispanico": "Pre-Hispanic",
+        "colonial": "Colonial",
+        "moderno": "Modern",
+        "barrio": "Neighbourhood",
+        "parque": "Park",
+        "museo": "Museum",
+        "mirador": "Viewpoint"
+      }
     }
   },
   "ai": {

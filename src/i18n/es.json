@@ -37,6 +37,27 @@
       "share": "Compartir",
       "cancel": "Cancelar",
       "calculating": "Calculando..."
+    },
+    "zone": {
+      "kind": "Zona",
+      "close": "Cerrar información de la zona",
+      "fact": "Sabías que",
+      "approximate": "Área aproximada: no existe un límite oficial publicado para esta zona.",
+      "read_more": "Leer más",
+      "fit": "Ver zona completa",
+      "places": "Lugares en esta zona",
+      "places_empty": "Todavía no hay lugares cargados acá: acercate para descubrirlos.",
+      "founded": "Desde {year}",
+      "source": "Límites © colaboradores de OpenStreetMap (ODbL)",
+      "types": {
+        "prehispanico": "Prehispánico",
+        "colonial": "Colonial",
+        "moderno": "Moderno",
+        "barrio": "Barrio",
+        "parque": "Parque",
+        "museo": "Museo",
+        "mirador": "Mirador"
+      }
     }
   },
   "ai": {
