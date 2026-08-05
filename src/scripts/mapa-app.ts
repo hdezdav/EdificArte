@@ -2050,10 +2050,87 @@ function bindZoneCardControls() {
   }
 }
 
+/**
+ * Zone layer state, mirroring the pin layer's loading policy: zones only
+ * materialize above MIN_POI_ZOOM and only for the padded viewport, and a cache
+ * key skips redundant rebuilds. Without this, all 13 zones (610+ polygon
+ * vertices) plus their DOM markers were built on every style load regardless of
+ * where the user was looking.
+ */
+let zoneRenderCacheKey: string | null = null;
+/** Full zone GeoJSON, built once and then filtered per viewport. */
+let allZonesGeoJSON: GeoJSON.FeatureCollection<GeoJSON.Geometry> | null = null;
+/** Locale the cached GeoJSON was built with, so prose updates on switch. */
+let zonesGeoJSONLocale: string | null = null;
+
+const EMPTY_ZONE_COLLECTION: GeoJSON.FeatureCollection<GeoJSON.Geometry> = {
+  type: 'FeatureCollection',
+  features: [],
+};
+
+/** Builds (and caches) the full zone collection. Rebuilt only on locale change. */
+function getAllZonesGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.Geometry> {
+  const locale = detectLocale();
+  if (!allZonesGeoJSON || zonesGeoJSONLocale !== locale) {
+    allZonesGeoJSON = buildRecintosGeoJSON();
+    zonesGeoJSONLocale = locale;
+  }
+  return allZonesGeoJSON;
+}
+
+/**
+ * Zones whose extent overlaps the padded viewport. A zone is an AREA, so this
+ * is a bounding-box intersection, not a vertex test: standing deep inside
+ * Chapultepec puts none of its vertices on screen, and a vertex test would make
+ * the zone vanish exactly when the user is inside it.
+ */
+function getZonesInViewport(
+  viewport: PaddedViewport
+): GeoJSON.FeatureCollection<GeoJSON.Geometry> {
+  const features = getAllZonesGeoJSON().features.filter((feature) => {
+    const rings = geometryOuterRings(feature.geometry);
+    if (!rings.length) return false;
+    let west = Infinity;
+    let east = -Infinity;
+    let south = Infinity;
+    let north = -Infinity;
+    for (const ring of rings) {
+      for (const [lng, lat] of ring) {
+        if (lng < west) west = lng;
+        if (lng > east) east = lng;
+        if (lat < south) south = lat;
+        if (lat > north) north = lat;
+      }
+    }
+    // Latitude never wraps; longitude spans here are far below the 180 deg
+    // seam, so a direct interval overlap is safe for CDMX-scale zones.
+    return (
+      north >= viewport.south &&
+      south <= viewport.north &&
+      east >= viewport.west &&
+      west <= viewport.east
+    );
+  });
+  return { type: 'FeatureCollection', features };
+}
+
 function setupRecintosLayer(mapInstance: mapboxgl.Map): void {
   if (!mapInstance) return;
 
-  const geojson = buildRecintosGeoJSON();
+  // Zoom gate: below MIN_POI_ZOOM the zone layer stays empty, exactly like pins.
+  const zoomAllows = shouldLoadPois(mapInstance.getZoom());
+  const context = zoomAllows ? getCurrentViewport() : null;
+  const geojson = context
+    ? getZonesInViewport(context.viewport)
+    : EMPTY_ZONE_COLLECTION;
+
+  // No-op guard: same quantized viewport → skip marker/DOM rebuild.
+  const cacheKey = zoomAllows
+    ? `${zonesGeoJSONLocale}:${context?.cacheKey ?? 'none'}`
+    : 'below-zoom';
+  const sourceExists = Boolean(mapInstance.getSource('recintos-zones'));
+  if (sourceExists && cacheKey === zoneRenderCacheKey) return;
+  zoneRenderCacheKey = cacheKey;
 
   renderZoneMarkers(mapInstance, geojson);
 
@@ -2216,6 +2293,9 @@ function initMap() {
 
   // Setup style.load hook
   map.on('style.load', () => {
+    // A style swap destroys sources and layers, so the cached render key no
+    // longer reflects reality — force a rebuild.
+    zoneRenderCacheKey = null;
     setupRecintosLayer(map);
     let labelLayerId: string | undefined;
     const layers = map.getStyle().layers;
@@ -2279,6 +2359,9 @@ function initMap() {
     if (activeMapLifecycle !== lifecycle) return;
     window.dispatchEvent(new CustomEvent('map:interaction-end'));
     renderClusteredPins();
+    // Zones follow the same viewport policy as pins; the cache key inside
+    // setupRecintosLayer makes this a no-op when nothing relevant changed.
+    setupRecintosLayer(map);
     if (refreshDebounce) clearTimeout(refreshDebounce);
     refreshDebounce = setTimeout(async () => {
       refreshDebounce = null;
@@ -2806,6 +2889,8 @@ function cleanUpMap() {
   hideZoneCard();
   for (const marker of zoneMarkers) marker.remove();
   zoneMarkers.length = 0;
+  // Reset the zone render cache so the next mount rebuilds from scratch.
+  zoneRenderCacheKey = null;
   clearPlaceMarkers();
   clusterIndex = null;
   clusterDataVersion = 0;
