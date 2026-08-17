@@ -27,6 +27,8 @@ interface Env {
   // Admin wallet private key (la que deploya + firma mints/emits).
   // Opcional: sin esto, el factory cae a modo MOCK.
   ADMIN_PRIVATE_KEY?: string;
+  // AI Service API key (euromodels.xyz / xAI).
+  AI_API_KEY?: string;
   // Grok / xAI API key (chat AI).
   GROK_API_KEY?: string;
   // Alchemy API key para Polygon mainnet RPC. Recomendado: subir como

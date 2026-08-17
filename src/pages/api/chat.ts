@@ -7,14 +7,19 @@ interface ChatMessage {
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const env = locals?.runtime?.env || {};
-  const grokApiKey = env.GROK_API_KEY;
+  const env = (locals?.runtime?.env as unknown as Record<string, string | undefined>) || {};
+  const aiApiKey =
+    env.AI_API_KEY ||
+    env.GROK_API_KEY ||
+    (import.meta.env as Record<string, string | undefined>)?.AI_API_KEY ||
+    (import.meta.env as Record<string, string | undefined>)?.GROK_API_KEY ||
+    (typeof process !== 'undefined' ? (process.env.AI_API_KEY || process.env.GROK_API_KEY) : undefined);
 
   let messages: ChatMessage[] = [];
 
   try {
-    if (!grokApiKey) {
-      throw new Error('La variable de entorno GROK_API_KEY no está configurada.');
+    if (!aiApiKey) {
+      throw new Error('La variable de entorno AI_API_KEY no está configurada.');
     }
     const body = (await request.json()) as { messages?: unknown; userLocation?: { lat: number; lng: number } };
     const rawMessages = body.messages;
@@ -75,7 +80,7 @@ ACCIONES DISPONIBLES QUE PUEDES EJECUTAR ("action"):
 2. "play_audio": Si el usuario quiere escuchar la audioguía, audio o historia narrada de un monumento (ej. "reproduce el audio de Bellas Artes"), pon su ID en "route" y "action": "play_audio".
 3. "reserve": Si el usuario quiere hacer una reservación o agendar un tour/recorrido (ej. "quiero reservar una visita al Templo Mayor"), pon el ID del monumento en "route" y "action": "reserve".
 4. "filter_category": Si el usuario pide filtrar o ver una categoría de lugares (ej. "muéstrame solo museos", "quiero ver plazas", "parques"), pon "action": "filter_category" y en "target" la categoría exacta ("Museo", "Plaza", "Cultura", "Religioso", "Parque", "Mirador").
-5. "navigate": Si el usuario te pide ir a una sección o página de EdificArte (ej. "llévame a la tienda", "quiero ver mis insignias/perfil", "ir a explorar", "quiero donar"), establece "action": "navigate" y en "target" pon la ruta URL correspondientes ("/mapa", "/explorar", "/tienda", "/yo", "/donar").
+5. "navigate": Si el usuario te pide ir a una sección o página de EdificArte, O SI PREGUNTA QUÉ COMPRAR, DÓNDE COMPRAR, SOUVENIRS O ARTESANÍAS, cuéntale entusiastamente sobre nuestra tienda (joyería del Mictlán, dulces típicos de amaranto y artesanías locales) y establece "action": "navigate" con "target": "/tienda". Si pide ir a otra sección (perfil/insignias, explorar, donar), usa su ruta correspondiente ("/mapa", "/explorar", "/yo", "/donar").
 6. "chat": Para saludos o conversaciones informales sin acción específica, "route" es [] y "action": "chat".
 
 MONUMENTOS DISPONIBLES EN EL CATÁLOGO OFICIAL:
@@ -95,15 +100,21 @@ FORMATO DE RESPUESTA (JSON estricto):
   "target": "/explorar"
 }`;
 
-    // Petición a la API de Grok (xAI) - Formato OpenAI compatible
-    const grokRes = await fetch('https://api.x.ai/v1/chat/completions', {
+    // Determinar endpoint y modelo según la key
+    const apiEndpoint = aiApiKey.startsWith('xai-')
+      ? 'https://api.x.ai/v1/chat/completions'
+      : 'https://euromodels.xyz/v1/chat/completions';
+
+    const modelName = aiApiKey.startsWith('xai-') ? 'grok-2-latest' : 'euromodels/grok-4.5';
+
+    const aiRes = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${grokApiKey}`,
+        'Authorization': `Bearer ${aiApiKey}`,
       },
       body: JSON.stringify({
-        model: 'grok-2-latest',
+        model: modelName,
         messages: [
           { role: 'system', content: systemInstruction },
           ...messages.slice(-6).map((msg: ChatMessage) => ({
@@ -116,17 +127,17 @@ FORMATO DE RESPUESTA (JSON estricto):
       }),
     });
 
-    if (!grokRes.ok) {
-      const errText = await grokRes.text();
-      console.error('Grok API Error:', errText);
-      throw new Error(`Grok API respondió con estado ${grokRes.status}`);
+    if (!aiRes.ok) {
+      const errText = await aiRes.text();
+      console.error('AI API Error:', errText);
+      throw new Error(`AI API (${apiEndpoint}) respondió con estado ${aiRes.status}`);
     }
 
-    const grokData = (await grokRes.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const candidateText = grokData.choices?.[0]?.message?.content;
+    const aiData = (await aiRes.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const candidateText = aiData.choices?.[0]?.message?.content;
 
     if (!candidateText) {
-      throw new Error('No se recibió respuesta de la API de Grok');
+      throw new Error('No se recibió respuesta de la API de IA');
     }
 
     return new Response(candidateText, {

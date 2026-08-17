@@ -346,7 +346,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       TURIMAP_DONATION_ADDRESS: process.env.EDIFICARTE_DONATION_ADDRESS || process.env.TURIMAP_DONATION_ADDRESS || '',
       ADMIN_PRIVATE_KEY: process.env.ADMIN_PRIVATE_KEY || '',
       ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH || '',
-      GROK_API_KEY: process.env.GROK_API_KEY || '',
+      AI_API_KEY: process.env.AI_API_KEY || process.env.GROK_API_KEY || '',
+      GROK_API_KEY: process.env.GROK_API_KEY || process.env.AI_API_KEY || '',
       ALCHEMY_KEY: process.env.ALCHEMY_KEY || '',
       MAPBOX_TOKEN: process.env.MAPBOX_TOKEN || '',
     };
