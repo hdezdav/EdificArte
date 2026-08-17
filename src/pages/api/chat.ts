@@ -7,14 +7,15 @@ interface ChatMessage {
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const env = locals.runtime.env;
-  const apiKey = env.GEMINI_API_KEY;
+  const env = locals?.runtime?.env || {};
+  const grokApiKey = env.GROK_API_KEY;
+  const geminiApiKey = env.GEMINI_API_KEY;
 
   let messages: ChatMessage[] = [];
 
   try {
-    if (!apiKey) {
-      throw new Error('La variable de entorno GEMINI_API_KEY no esta configurada.');
+    if (!grokApiKey && !geminiApiKey) {
+      throw new Error('La variable de entorno GROK_API_KEY (o GEMINI_API_KEY) no está configurada.');
     }
     const body = (await request.json()) as { messages?: unknown; userLocation?: { lat: number; lng: number } };
     const rawMessages = body.messages;
@@ -92,65 +93,90 @@ FORMATO DE RESPUESTA (JSON estricto):
   "action": "chat"
 }`;
 
-    // Construir los contents para la API de Gemini (formatear la historia de mensajes)
-    // Nos interesa mantener los últimos mensajes para el contexto de chat
-    const formattedContents = messages.slice(-6).map((msg: ChatMessage) => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }));
+    let candidateText: string | undefined;
 
-    // Hacer la petición a la API de Gemini 3.5 Flash
-    const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent',
-      {
+    if (grokApiKey) {
+      // Petición a la API de Grok (xAI) - Formato OpenAI compatible
+      const grokRes = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
+          'Authorization': `Bearer ${grokApiKey}`,
         },
         body: JSON.stringify({
-          contents: formattedContents,
-          systemInstruction: {
-            parts: [{ text: systemInstruction }]
-          },
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'OBJECT',
-              properties: {
-                reply: { type: 'STRING' },
-                route: {
-                  type: 'ARRAY',
-                  items: { type: 'STRING' }
-                },
-                action: { type: 'STRING', enum: ['chat', 'route', 'reserve'] }
-              },
-              required: ['reply', 'route', 'action']
-            }
-          }
+          model: 'grok-2-latest',
+          messages: [
+            { role: 'system', content: systemInstruction },
+            ...messages.slice(-6).map((msg: ChatMessage) => ({
+              role: msg.role === 'assistant' ? 'assistant' : 'user',
+              content: msg.content,
+            })),
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.3,
         }),
+      });
+
+      if (!grokRes.ok) {
+        const errText = await grokRes.text();
+        console.error('Grok API Error:', errText);
+        throw new Error(`Grok API respondió con estado ${grokRes.status}`);
       }
-    );
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini API Error:', errText);
-      throw new Error(`Gemini API respondió con estado ${response.status}`);
+      const grokData = (await grokRes.json()) as { choices?: Array<{ message?: { content?: string } }> };
+      candidateText = grokData.choices?.[0]?.message?.content;
+    } else if (geminiApiKey) {
+      // Fallback a Gemini API
+      const formattedContents = messages.slice(-6).map((msg: ChatMessage) => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }],
+      }));
+
+      const geminiRes = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': geminiApiKey,
+          },
+          body: JSON.stringify({
+            contents: formattedContents,
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            generationConfig: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'OBJECT',
+                properties: {
+                  reply: { type: 'STRING' },
+                  route: { type: 'ARRAY', items: { type: 'STRING' } },
+                  action: { type: 'STRING', enum: ['chat', 'route', 'reserve'] },
+                },
+                required: ['reply', 'route', 'action'],
+              },
+            },
+          }),
+        }
+      );
+
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        console.error('Gemini API Error:', errText);
+        throw new Error(`Gemini API respondió con estado ${geminiRes.status}`);
+      }
+
+      const geminiData = (await geminiRes.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+      candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
     }
-
-    const data = await response.json();
-    const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!candidateText) {
-      throw new Error('No se recibió texto de Gemini');
+      throw new Error('No se recibió respuesta válida del proveedor de IA');
     }
 
-    // Retornar la respuesta estructurada tal cual la entrega Gemini
     return new Response(candidateText, {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
       },
     });
 

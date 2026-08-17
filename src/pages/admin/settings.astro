@@ -9,6 +9,7 @@ const env = Astro.locals.runtime.env;
 const mask = (s: string | undefined) => s ? s.slice(0, 4) + '••••' + s.slice(-4) : 'No configurado';
 
 const settings = [
+  { label: 'GROK_API_KEY', value: mask(env.GROK_API_KEY), category: 'AI' },
   { label: 'GEMINI_API_KEY', value: mask(env.GEMINI_API_KEY), category: 'AI' },
   { label: 'MAPBOX_TOKEN', value: mask(env.MAPBOX_TOKEN), category: 'Mapas' },
   { label: 'TURIMAP_PAYMENT_ADDRESS', value: mask(env.TURIMAP_PAYMENT_ADDRESS), category: 'Pagos' },

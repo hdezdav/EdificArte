@@ -937,7 +937,7 @@ function selectPlace(place: Place) {
   if (audioContainer) {
     if (monumentMatch?.audioDuration || (monumentMatch as any)?.audioUrl) {
       if (detailDuration)
-        detailDuration.textContent = monumentMatch.audioDuration || '1:50';
+        detailDuration.textContent = monumentMatch?.audioDuration || '1:50';
       audioContainer.classList.remove('hidden');
     } else {
       audioContainer.classList.add('hidden');
