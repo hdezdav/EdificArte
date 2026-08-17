@@ -29,8 +29,6 @@ interface Env {
   ADMIN_PRIVATE_KEY?: string;
   // Grok / xAI API key (chat AI).
   GROK_API_KEY?: string;
-  // Google Gemini API key (chat AI).
-  GEMINI_API_KEY?: string;
   // Alchemy API key para Polygon mainnet RPC. Recomendado: subir como
   // secret en prod (no hardcodear en wrangler.jsonc). Si está, se usa
   // ALCHEMY_KEY; si no, fallback a POLYGON_RPC_URL.

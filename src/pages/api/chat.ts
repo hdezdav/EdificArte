@@ -9,13 +9,12 @@ interface ChatMessage {
 export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals?.runtime?.env || {};
   const grokApiKey = env.GROK_API_KEY;
-  const geminiApiKey = env.GEMINI_API_KEY;
 
   let messages: ChatMessage[] = [];
 
   try {
-    if (!grokApiKey && !geminiApiKey) {
-      throw new Error('La variable de entorno GROK_API_KEY (o GEMINI_API_KEY) no está configurada.');
+    if (!grokApiKey) {
+      throw new Error('La variable de entorno GROK_API_KEY no está configurada.');
     }
     const body = (await request.json()) as { messages?: unknown; userLocation?: { lat: number; lng: number } };
     const rawMessages = body.messages;
@@ -65,112 +64,69 @@ Recomienda monumentos indicando explícitamente la distancia (en metros) y calcu
       locationPromptAddition = `UBICACIÓN ACTUAL DEL USUARIO: No disponible. Menciona que lo ideal para recorrer estas atracciones en el Centro Histórico es ir a pie, salvo que las distancias sean muy largas, en cuyo caso es mejor ir en auto.`;
     }
 
-    const systemInstruction = `Eres el asistente de IA de EdificARTE, una guía interactiva inteligente para el patrimonio y cultura de la Ciudad de México (CDMX).
+    const systemInstruction = `Eres el Agente Inteligente Oficial de EdificARTE, la plataforma interactiva de patrimonio, monumentos y cultura de la Ciudad de México (CDMX). Tu rol es ser un asistente conversacional inteligente que además PUEDE CONTROLAR acciones en la aplicación según lo que el usuario pida.
 
-REGLAS DE PERSONALIDAD:
-- Habla en español mexicano natural y cálido (tuteo, nada de voseo).
-- Respuestas conversacionales: máximo 2-3 oraciones CORTAS. Nada de párrafos largos.
+REGLAS DE PERSONALIDAD Y TONO:
+- Habla en español mexicano natural, cálido, conversacional y muy servicial.
+- Respuestas concisas: máximo 2-3 oraciones CORTAS. Directo al punto.
 
-REGLA ESTRICTA DE RECOMENDACIONES:
-- SOLO puedes recomendar y hablar sobre los monumentos y servicios que ofrecemos en nuestra página (listados abajo). Si el usuario pide recomendaciones de lugares, restaurantes o atracciones que no están en la lista, dile amablemente que por ahora solo cubres los lugares de tu catálogo oficial de EdificARTE.
+ACCIONES DISPONIBLES QUE PUEDES EJECUTAR ("action"):
+1. "route": Si el usuario pide una ruta, paseo o recomendación de varios lugares (selecciona 2 a 5 IDs de monumentos) O si pide ver un monumento en particular (selecciona 1 ID).
+2. "play_audio": Si el usuario quiere escuchar la audioguía, audio o historia narrada de un monumento (ej. "reproduce el audio de Bellas Artes"), pon su ID en "route" y "action": "play_audio".
+3. "reserve": Si el usuario quiere hacer una reservación o agendar un tour/recorrido (ej. "quiero reservar una visita al Templo Mayor"), pon el ID del monumento en "route" y "action": "reserve".
+4. "filter_category": Si el usuario pide filtrar o ver una categoría de lugares (ej. "muéstrame solo museos", "quiero ver plazas", "parques"), pon "action": "filter_category" y en "target" la categoría exacta ("Museo", "Plaza", "Cultura", "Religioso", "Parque", "Mirador").
+5. "navigate": Si el usuario te pide ir a una sección o página de EdificArte (ej. "llévame a la tienda", "quiero ver mis insignias/perfil", "ir a explorar", "quiero donar"), establece "action": "navigate" y en "target" pon la ruta URL correspondientes ("/mapa", "/explorar", "/tienda", "/yo", "/donar").
+6. "chat": Para saludos o conversaciones informales sin acción específica, "route" es [] y "action": "chat".
 
-MONUMENTOS DISPONIBLES EN EL SISTEMA:
+MONUMENTOS DISPONIBLES EN EL CATÁLOGO OFICIAL:
 ${monumentsContext}
 
 ${locationPromptAddition}
 
-CAPACIDAD DE RUTAS Y RESERVACIONES:
-- Si el usuario pide ruta/paseo/itinerario: selecciona 2-5 monumentos, ponlos en "route" y establece "action": "route".
-- Si pregunta por un monumento específico: incluye solo su ID en "route" y establece "action": "route".
-- Si el usuario quiere hacer una RESERVACIÓN (o agendar un tour/recorrido) para un lugar: responde que con gusto le abres la pestaña de reservación, pon el ID del monumento (solo uno) en "route" y establece "action": "reserve".
-- Si es saludo o pregunta casual: "route" debe ser [] y "action": "chat".
-- NUNCA inventes IDs.
+REGLAS ESTRICTAS:
+- NUNCA inventes IDs de monumentos que no estén en la lista anterior.
+- Responde SIEMPRE en formato JSON estricto.
 
 FORMATO DE RESPUESTA (JSON estricto):
 {
-  "reply": "Tu respuesta corta y amigable.",
+  "reply": "Tu respuesta corta, entusiasta y amigable.",
   "route": ["id1", "id2"],
-  "action": "chat"
+  "action": "chat",
+  "target": "/explorar"
 }`;
 
-    let candidateText: string | undefined;
+    // Petición a la API de Grok (xAI) - Formato OpenAI compatible
+    const grokRes = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${grokApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'grok-2-latest',
+        messages: [
+          { role: 'system', content: systemInstruction },
+          ...messages.slice(-6).map((msg: ChatMessage) => ({
+            role: msg.role === 'assistant' ? 'assistant' : 'user',
+            content: msg.content,
+          })),
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+      }),
+    });
 
-    if (grokApiKey) {
-      // Petición a la API de Grok (xAI) - Formato OpenAI compatible
-      const grokRes = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${grokApiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'grok-2-latest',
-          messages: [
-            { role: 'system', content: systemInstruction },
-            ...messages.slice(-6).map((msg: ChatMessage) => ({
-              role: msg.role === 'assistant' ? 'assistant' : 'user',
-              content: msg.content,
-            })),
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.3,
-        }),
-      });
-
-      if (!grokRes.ok) {
-        const errText = await grokRes.text();
-        console.error('Grok API Error:', errText);
-        throw new Error(`Grok API respondió con estado ${grokRes.status}`);
-      }
-
-      const grokData = (await grokRes.json()) as { choices?: Array<{ message?: { content?: string } }> };
-      candidateText = grokData.choices?.[0]?.message?.content;
-    } else if (geminiApiKey) {
-      // Fallback a Gemini API
-      const formattedContents = messages.slice(-6).map((msg: ChatMessage) => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }],
-      }));
-
-      const geminiRes = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': geminiApiKey,
-          },
-          body: JSON.stringify({
-            contents: formattedContents,
-            systemInstruction: { parts: [{ text: systemInstruction }] },
-            generationConfig: {
-              responseMimeType: 'application/json',
-              responseSchema: {
-                type: 'OBJECT',
-                properties: {
-                  reply: { type: 'STRING' },
-                  route: { type: 'ARRAY', items: { type: 'STRING' } },
-                  action: { type: 'STRING', enum: ['chat', 'route', 'reserve'] },
-                },
-                required: ['reply', 'route', 'action'],
-              },
-            },
-          }),
-        }
-      );
-
-      if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
-        console.error('Gemini API Error:', errText);
-        throw new Error(`Gemini API respondió con estado ${geminiRes.status}`);
-      }
-
-      const geminiData = (await geminiRes.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-      candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!grokRes.ok) {
+      const errText = await grokRes.text();
+      console.error('Grok API Error:', errText);
+      throw new Error(`Grok API respondió con estado ${grokRes.status}`);
     }
 
+    const grokData = (await grokRes.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const candidateText = grokData.choices?.[0]?.message?.content;
+
     if (!candidateText) {
-      throw new Error('No se recibió respuesta válida del proveedor de IA');
+      throw new Error('No se recibió respuesta de la API de Grok');
     }
 
     return new Response(candidateText, {
@@ -183,16 +139,13 @@ FORMATO DE RESPUESTA (JSON estricto):
   } catch (err: unknown) {
     console.error('Error en /api/chat:', err);
     
-    // Fallback amigable si la API falla o la key no es válida
-    let fallbackReply = '¡Hola! Qué tal. Ando con algunos problemas de conexión en mi cerebro digital. ¿Te puedo ayudar con otra cosa?';
-    
-    // Si el usuario pidió una ruta, podemos hacer un fallback manual para simular el funcionamiento
+    let fallbackReply = '¡Hola! Ando con algunos problemas de conexión en mi cerebro digital. ¿Te puedo ayudar con otra cosa?';
     const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
     let fallbackRoute: string[] = [];
     
     if (lastMessage.includes('ruta') || lastMessage.includes('itinerario') || lastMessage.includes('paseo')) {
       fallbackRoute = ['bellas-artes', 'catedral', 'templo-mayor'];
-      fallbackReply = '¡Hola! Como ando con un problemita de conexión, te armé una ruta rápida que arranca en el Palacio de Bellas Artes, pasa por la Catedral Metropolitana y termina en el Templo Mayor. ¡Disfruta el recorrido!';
+      fallbackReply = '¡Hola! Te armé una ruta rápida que arranca en el Palacio de Bellas Artes, pasa por la Catedral Metropolitana y termina en el Templo Mayor. ¡Disfruta el recorrido!';
     }
 
     return new Response(

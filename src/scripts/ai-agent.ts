@@ -433,12 +433,32 @@ function initAiAgent() {
       const botReply = data.reply || 'Disculpa, se me complicó procesar la respuesta en este momento.';
       const botRoute = data.route || [];
       const botAction = data.action || 'chat';
+      const botTarget = data.target || '';
 
       chatHistory.push({ role: 'assistant', content: botReply });
       updateAssistantMessage(loaderId, botReply, botRoute, botAction);
 
+      // Ejecución automática de acciones del Agente Inteligente:
       if (botAction === 'route' && botRoute.length > 0 && window.location.pathname.startsWith('/mapa')) {
         window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route: botRoute } }));
+      } else if (botAction === 'play_audio' && botRoute.length > 0) {
+        if (window.location.pathname.startsWith('/mapa')) {
+          window.dispatchEvent(new CustomEvent('ai-play-audio', { detail: { monumentId: botRoute[0] } }));
+        } else {
+          window.location.href = `/mapa?route=${botRoute[0]}&play=true`;
+        }
+      } else if (botAction === 'reserve' && botRoute.length > 0) {
+        window.dispatchEvent(new CustomEvent('ai-reserve-tour', { detail: { monumentId: botRoute[0] } }));
+      } else if (botAction === 'navigate' && botTarget) {
+        setTimeout(() => {
+          window.location.href = botTarget;
+        }, 1000);
+      } else if (botAction === 'filter_category' && botTarget) {
+        if (window.location.pathname.startsWith('/mapa') || window.location.pathname.startsWith('/explorar')) {
+          window.dispatchEvent(new CustomEvent('ai-filter-category', { detail: { category: botTarget } }));
+        } else {
+          window.location.href = `/explorar?category=${encodeURIComponent(botTarget)}`;
+        }
       }
 
     } catch (err) {
@@ -451,120 +471,9 @@ function initAiAgent() {
   });
 }
 
-  let recognition: SpeechRecognitionLike | null = null;
-  let isListening = false;
-
-  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognitionCtor = (window as unknown as {
-      SpeechRecognition?: new () => SpeechRecognitionLike;
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-    }).SpeechRecognition ?? (window as unknown as {
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-    }).webkitSpeechRecognition;
-
-    if (SpeechRecognitionCtor) {
-      recognition = new SpeechRecognitionCtor();
-      activeRecognition = recognition;
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      const userLang = navigator.language || 'es-MX';
-      recognition.lang = ['es-MX', 'es-ES', 'es-AR', 'es'].includes(userLang) ? userLang : 'es-MX';
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => {
-        if (lifecycleVersion !== aiLifecycleVersion) return;
-        isListening = true;
-        if (micBtn) {
-          micBtn.classList.remove('bg-slate-50', 'text-slate-500', 'dark:bg-slate-800');
-          micBtn.classList.add('bg-red-500', 'text-white', 'animate-pulse');
-          const icon = micBtn.querySelector('.material-symbols-outlined');
-          if (icon) icon.textContent = 'mic_off';
-        }
-        if (aiInput) {
-          aiInput.placeholder = 'Escuchando...';
-        }
-      };
-
-      recognition.onend = () => {
-        if (lifecycleVersion !== aiLifecycleVersion) return;
-        isListening = false;
-        if (micBtn) {
-          micBtn.classList.add('bg-slate-50', 'text-slate-500', 'dark:bg-slate-800');
-          micBtn.classList.remove('bg-red-500', 'text-white', 'animate-pulse');
-          const icon = micBtn.querySelector('.material-symbols-outlined');
-          if (icon) icon.textContent = 'mic';
-        }
-        if (aiInput) {
-          aiInput.placeholder = '¿Qué ruta querés hacer hoy?...';
-        }
-      };
-
-      recognition.onresult = (event: SpeechRecognitionEventLike) => {
-        if (lifecycleVersion !== aiLifecycleVersion) return;
-        const transcript = event.results[0][0].transcript;
-        if (aiInput && transcript && aiForm) {
-          aiInput.value = transcript;
-          aiForm.requestSubmit();
-        }
-      };
-
-      recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
-        if (lifecycleVersion !== aiLifecycleVersion) return;
-        console.error('Speech recognition error', event.error);
-        const messages: Record<string, string> = {
-          'not-allowed': 'Permiso de micrófono denegado. Activalo en Configuración del navegador.',
-          'no-speech': 'No detecté voz. Probá de nuevo.',
-          'audio-capture': 'No encontré micrófono disponible.',
-          'network': 'Error de red. Verificá tu conexión.',
-          'service-not-allowed': 'Servicio de reconocimiento no disponible en este dispositivo.',
-          'aborted': 'Reconocimiento cancelado.',
-        };
-        const msg = messages[event.error] || `Error: ${event.error || 'desconocido'}`;
-        if (aiInput) {
-          const originalPlaceholder = aiInput.placeholder;
-          clearPlaceholderTimer();
-          aiInput.placeholder = msg;
-          placeholderTimer = setTimeout(() => {
-            placeholderTimer = null;
-            if (lifecycleVersion === aiLifecycleVersion && aiInput) aiInput.placeholder = originalPlaceholder;
-          }, 4000);
-        }
-        if (recognition && isListening) {
-          try { recognition.stop(); } catch {}
-        }
-      };
-
-      if (micBtn) {
-        safeAddListener(micBtn, 'click', (e) => {
-          const ev = e as MouseEvent;
-          ev.preventDefault();
-          ev.stopPropagation();
-          if (!recognition || lifecycleVersion !== aiLifecycleVersion) return;
-          if (isListening) {
-          try { recognition.stop(); } catch {}
-        } else {
-          try {
-            recognition.start();
-          } catch (err) {
-            console.error('Failed to start recognition:', err);
-            if (aiInput) {
-              const original = aiInput.placeholder;
-              clearPlaceholderTimer();
-              aiInput.placeholder = 'No pude iniciar el micrófono. Reintentá.';
-              startErrorTimer = setTimeout(() => {
-                startErrorTimer = null;
-                if (lifecycleVersion === aiLifecycleVersion && aiInput) aiInput.placeholder = original;
-              }, 3000);
-            }
-          }
-        }
-      });
-    }
-  }
-  } else {
-    if (micBtn) {
-      micBtn.style.display = 'none';
-    }
+  // Desactivar entrada de micrófono para operar únicamente en modo texto
+  if (micBtn) {
+    micBtn.style.display = 'none';
   }
 }
 
