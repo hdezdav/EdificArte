@@ -256,6 +256,7 @@ const mapboxToken =
             </a>
           </div>
         </div>
+
         <!-- VR Video Experience Container: shown when isVRAvailable or videoUrl exists -->
         <div
           id="detail-vr-container"
@@ -285,6 +286,76 @@ const mapboxToken =
               class="h-full w-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowfullscreen></iframe>
+          </div>
+        </div>
+
+        <!-- Audio Player Block (full width, placed right above Navigate & Share buttons) -->
+        <div
+          id="detail-audio-container"
+          class="mb-3.5 hidden w-full overflow-hidden rounded-2xl border border-accent-500/20 bg-slate-50/90 p-3.5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/60"
+        >
+          <button
+            id="btn-play-audio"
+            type="button"
+            class="flex w-full items-center justify-center gap-2 rounded-xl bg-accent-600 px-4 py-2.5 font-semibold text-white shadow-md shadow-accent-600/20 transition-all hover:bg-accent-700 active:scale-[0.97]"
+          >
+            <span
+              class="material-symbols-outlined text-[18px]"
+              style="font-variation-settings:'FILL' 1">play_arrow</span
+            >
+            <span class="text-[12px]"
+              >Escuchar Audioguía (<span id="detail-duration">1:50</span>)</span
+            >
+          </button>
+
+          <div id="audio-player" class="hidden space-y-2.5 pt-2.5">
+            <div class="flex items-center justify-between">
+              <span
+                class="flex items-center gap-1.5 text-[11px] font-bold text-accent-600 dark:text-accent-400"
+              >
+                <span class="relative flex h-2 w-2">
+                  <span
+                    class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-500 opacity-60"
+                  ></span>
+                  <span
+                    class="relative inline-flex h-2 w-2 rounded-full bg-accent-500"
+                  ></span>
+                </span>
+                <span id="audio-status-label">Escuchando...</span>
+              </span>
+              <span
+                id="player-time"
+                class="font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400"
+                >0:00 / 1:50</span
+              >
+            </div>
+            <div
+              class="h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+              id="progress-bar-container"
+            >
+              <div
+                id="progress-bar-fill"
+                class="h-full w-0 rounded-full bg-accent-600 transition-all duration-200 dark:bg-accent-400"
+              ></div>
+            </div>
+            <div class="flex justify-end gap-2 pt-0.5">
+              <button
+                id="btn-player-toggle"
+                type="button"
+                class="inline-flex items-center gap-1 rounded-lg bg-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <span id="player-toggle-icon" class="material-symbols-outlined text-[14px]">pause</span>
+                <span>Pausar</span>
+              </button>
+              <button
+                id="btn-player-stop"
+                type="button"
+                class="inline-flex items-center gap-1 rounded-lg bg-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <span class="material-symbols-outlined text-[14px]">stop</span>
+                <span>Detener</span>
+              </button>
+            </div>
           </div>
         </div>
 

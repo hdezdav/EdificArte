@@ -245,4 +245,29 @@ export const MONUMENTS: Monument[] = [
     videoUrl: 'https://www.youtube.com/embed/Wq9BpTOjE1E',
     isVRAvailable: true,
   },
+  {
+    id: 'hotel-virreyes',
+    name: 'Hotel Virreyes',
+    category: 'Hotel Boutique · Centro Histórico',
+    dist: '1.2 km',
+    lat: 19.427015,
+    lng: -99.141775,
+    emoji: '🏨',
+    desc: 'Boutique hotel located at Avenida José María Izazaga 8, Mexico City. A contemporary design sanctuary honoring Mexican history and culture, featuring thematic rooms inspired by the country\'s great artists and architects.',
+    audioDuration: '1:50',
+    audioUrl: '/audio/hotel.mp3',
+    type: 'museo',
+    country: 'MX',
+    city: 'Mexico City',
+    currency: 'MXN',
+    translations: {
+      es: {
+        name: 'Hotel Virreyes',
+        desc: 'Hotel boutique ubicado en Avenida José María Izazaga 8, alcaldía Cuauhtémoc, Ciudad de México. Un refugio de diseño contemporáneo que rinde homenaje a la historia y la cultura mexicana, con habitaciones temáticas inspiradas en los grandes artistas y arquitectos del país.',
+        category: 'Hotel Boutique · Centro Histórico',
+      },
+    },
+    image:
+      'https://www.mexicodesconocido.com.mx/wp-content/uploads/2020/11/46171515_319810011943872_8112943512745410560_n.jpg',
+  },
 ];

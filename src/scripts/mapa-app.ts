@@ -930,6 +930,20 @@ function selectPlace(place: Place) {
     }
   }
 
+  // Audio Guide Player
+  const audioContainer = document.getElementById('detail-audio-container');
+  const detailDuration = document.getElementById('detail-duration');
+  stopAudio();
+  if (audioContainer) {
+    if (monumentMatch?.audioDuration || (monumentMatch as any)?.audioUrl) {
+      if (detailDuration)
+        detailDuration.textContent = monumentMatch.audioDuration || '1:50';
+      audioContainer.classList.remove('hidden');
+    } else {
+      audioContainer.classList.add('hidden');
+    }
+  }
+
   // Selection excludes the place from the cluster index — re-render so the
   // selected pin always shows individually with its .selected state.
   refreshClusteredPins();
@@ -2913,6 +2927,7 @@ function cleanUpMap() {
 // ---------------------------------------------------------------------------
 export function mountMap(): void {
   bindFilterChips();
+  bindAudioPlayerControls();
   if ($('map')) initMap();
 }
 
@@ -2933,3 +2948,283 @@ window.addEventListener('pageshow', (event) => {
 });
 
 window.addEventListener('beforeunload', cleanUpMap, { once: true });
+
+// ---------------------------------------------------------------------------
+// Audio Player & Badge Unlock Integration
+// ---------------------------------------------------------------------------
+const MONUMENT_BADGE_MAP: Record<string, number> = {
+  'bellas-artes': 1,
+  'catedral': 2,
+  'hotel-virreyes': 3,
+  'templo-mayor': 4,
+};
+
+const BADGE_NAMES: Record<number, string> = {
+  1: 'Explorador Romano (Palacio de Bellas Artes)',
+  2: 'Alma Gótica (Catedral Metropolitana)',
+  3: 'Legado Virreinal (Hotel Virreyes)',
+  4: 'Cazador de Templos (Templo Mayor)',
+};
+
+const BADGE_IMAGES: Record<number, string> = {
+  1: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=150&h=150&q=80',
+  2: 'https://images.unsplash.com/photo-1543872084-c7bd3822856f?auto=format&fit=crop&w=150&h=150&q=80',
+  3: 'https://coming-aqua-flyingfish.myfilebase.com/ipfs/QmSb45pdEwGTuJFivhHuaRwZZFX83nrx4Gki1o5cCXqDo1',
+  4: 'https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&w=150&h=150&q=80',
+};
+
+const audioEl = new Audio();
+audioEl.preload = 'none';
+let audioTimer: ReturnType<typeof setInterval> | null = null;
+let audioSec = 0;
+let audioDur = 0;
+let isAudioPlaying = false;
+
+function parseAudioDur(durationStr: string): number {
+  const parts = durationStr.split(':').map((p) => parseInt(p, 10));
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return 120;
+}
+
+function fmtAudioTime(seconds: number): string {
+  const total = Math.floor(seconds);
+  const mm = Math.floor(total / 60);
+  const ss = total % 60;
+  return `${mm}:${ss.toString().padStart(2, '0')}`;
+}
+
+function showBadgeNotification(badgeId: number) {
+  const name = BADGE_NAMES[badgeId] || 'Nueva Insignia';
+  const img = BADGE_IMAGES[badgeId] || '';
+
+  const toast = document.createElement('div');
+  toast.className =
+    'fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 rounded-2xl border border-white/20 bg-white/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-md transition-all duration-500 scale-90 opacity-0 dark:border-slate-800/50 dark:bg-slate-900/95 text-slate-800 dark:text-white';
+  toast.innerHTML = `
+    <div class="h-10 w-10 overflow-hidden rounded-full border border-slate-200/80 dark:border-slate-800">
+      <img src="${img}" alt="${name}" class="h-full w-full object-cover" />
+    </div>
+    <div class="text-left">
+      <p class="text-[9px] font-bold uppercase tracking-wider text-accent-500 dark:text-accent-400">¡Logro Desbloqueado!</p>
+      <p class="text-[12px] font-semibold">${name}</p>
+    </div>
+  `;
+
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.classList.remove('scale-90', 'opacity-0');
+    toast.classList.add('scale-100', 'opacity-100');
+  });
+
+  setTimeout(() => {
+    toast.classList.remove('scale-100', 'opacity-100');
+    toast.classList.add('scale-90', 'opacity-0');
+    setTimeout(() => {
+      toast.remove();
+    }, 500);
+  }, 4000);
+}
+
+function updateAudioUI() {
+  const m = selectedPlace
+    ? MONUMENTS.find(
+        (x) =>
+          x.id === selectedPlace?.id ||
+          x.name.toLowerCase() === selectedPlace?.name.toLowerCase()
+      )
+    : null;
+  const progressFill = document.getElementById('progress-bar-fill');
+  const timeLabel = document.getElementById('player-time');
+  const maxDurStr = m?.audioDuration || '1:50';
+  if (progressFill && audioDur > 0) {
+    progressFill.style.width = `${(audioSec / audioDur) * 100}%`;
+  }
+  if (timeLabel) {
+    timeLabel.textContent = `${fmtAudioTime(audioSec)} / ${maxDurStr}`;
+  }
+}
+
+function startAudio() {
+  if (!selectedPlace) return;
+  const m = MONUMENTS.find(
+    (x) =>
+      x.id === selectedPlace?.id ||
+      x.name.toLowerCase() === selectedPlace?.name.toLowerCase()
+  );
+  if (!m) return;
+
+  const btnPlay = document.getElementById('btn-play-audio');
+  const playerUI = document.getElementById('audio-player');
+  const toggleIcon = document.getElementById('player-toggle-icon');
+
+  audioDur = parseAudioDur(m.audioDuration || '1:50');
+  btnPlay?.classList.add('hidden');
+  playerUI?.classList.remove('hidden');
+  isAudioPlaying = true;
+  if (toggleIcon) toggleIcon.textContent = 'pause';
+
+  const audioUrl = m.audioUrl || (m as any).audio_url;
+  if (audioUrl) {
+    audioEl.src = audioUrl;
+    audioEl.currentTime = 0;
+    const playPromise = audioEl.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch((err) => {
+        console.warn('[startAudio] audio.play() failed:', err);
+      });
+    }
+  } else {
+    if (audioTimer) clearInterval(audioTimer);
+    audioTimer = setInterval(() => {
+      if (audioSec < audioDur) {
+        audioSec++;
+        updateAudioUI();
+      } else {
+        stopAudio();
+      }
+    }, 1000);
+  }
+
+  const badgeId = MONUMENT_BADGE_MAP[m.id];
+  if (badgeId) {
+    fetch('/api/unlock-badge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        badgeId,
+        monumentName: BADGE_NAMES[badgeId] || m.name,
+        monumentImage: BADGE_IMAGES[badgeId] || m.image,
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success) {
+          showBadgeNotification(badgeId);
+        }
+      })
+      .catch(() => {});
+  }
+}
+
+function toggleAudio() {
+  const toggleIcon = document.getElementById('player-toggle-icon');
+  if (isAudioPlaying) {
+    if (audioTimer) clearInterval(audioTimer);
+    audioTimer = null;
+    isAudioPlaying = false;
+    if (toggleIcon) toggleIcon.textContent = 'play_arrow';
+    audioEl.pause();
+  } else {
+    isAudioPlaying = true;
+    if (toggleIcon) toggleIcon.textContent = 'pause';
+    const m = selectedPlace
+      ? MONUMENTS.find(
+          (x) =>
+            x.id === selectedPlace?.id ||
+            x.name.toLowerCase() === selectedPlace?.name.toLowerCase()
+        )
+      : null;
+    if (!m) return;
+    audioDur = parseAudioDur(m.audioDuration || '1:50');
+    const audioUrl = m.audioUrl || (m as any).audio_url;
+
+    if (audioUrl && audioEl.src) {
+      const playPromise = audioEl.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch((err) => {
+          console.warn('[toggleAudio] audio.play() failed:', err);
+        });
+      }
+    } else {
+      audioTimer = setInterval(() => {
+        if (audioSec < audioDur) {
+          audioSec++;
+          updateAudioUI();
+        } else {
+          stopAudio();
+        }
+      }, 1000);
+    }
+  }
+}
+
+function stopAudio() {
+  if (audioTimer) clearInterval(audioTimer);
+  audioTimer = null;
+  audioSec = 0;
+  isAudioPlaying = false;
+  const progressFill = document.getElementById('progress-bar-fill');
+  const btnPlay = document.getElementById('btn-play-audio');
+  const playerUI = document.getElementById('audio-player');
+
+  if (progressFill) progressFill.style.width = '0%';
+  btnPlay?.classList.remove('hidden');
+  playerUI?.classList.add('hidden');
+  audioEl.pause();
+}
+
+audioEl.addEventListener('timeupdate', () => {
+  if (!isAudioPlaying) return;
+  const m = selectedPlace
+    ? MONUMENTS.find(
+        (x) =>
+          x.id === selectedPlace?.id ||
+          x.name.toLowerCase() === selectedPlace?.name.toLowerCase()
+      )
+    : null;
+  if (!m) return;
+  const realDur = audioEl.duration;
+  if (isFinite(realDur) && realDur > 0) {
+    audioDur = realDur;
+  }
+  audioSec = audioEl.currentTime;
+  updateAudioUI();
+});
+
+audioEl.addEventListener('ended', () => {
+  stopAudio();
+});
+
+function bindAudioPlayerControls(): void {
+  const btnPlay = document.getElementById('btn-play-audio');
+  const toggleBtn = document.getElementById('btn-player-toggle');
+  const stopBtn = document.getElementById('btn-player-stop');
+  const progressContainer = document.getElementById('progress-bar-container');
+
+  btnPlay?.addEventListener('click', startAudio);
+  toggleBtn?.addEventListener('click', toggleAudio);
+  stopBtn?.addEventListener('click', stopAudio);
+
+  progressContainer?.addEventListener('click', (e) => {
+    const rect = progressContainer.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const pct = Math.max(0, Math.min(1, clickX / rect.width));
+    if (audioDur > 0) {
+      audioSec = pct * audioDur;
+      if (audioEl.src && isFinite(audioEl.duration) && audioEl.duration > 0) {
+        audioEl.currentTime = audioSec;
+      }
+      updateAudioUI();
+    }
+  });
+}
+
+window.addEventListener('ai-play-audio', (e: Event) => {
+  const customEv = e as CustomEvent<{ monumentId?: string }>;
+  const monId = customEv.detail?.monumentId;
+  if (monId) {
+    const mon = MONUMENTS.find((m) => m.id === monId);
+    if (mon) {
+      selectPlace({
+        id: mon.id,
+        name: mon.name,
+        category: mon.category,
+        address: mon.city,
+        lat: mon.lat,
+        lng: mon.lng,
+        emoji: mon.emoji,
+      });
+      startAudio();
+    }
+  }
+});

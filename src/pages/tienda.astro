@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import AiAgent from '../components/AiAgent.astro';
 import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
 import { MXN_PER_USDC } from '../lib/flows/money';
+import defaultProductsData from '../data/tianquiztlis_products.json';
 
 interface Product {
   name: string;
@@ -61,6 +62,24 @@ try {
   }));
 } catch (err) {
   console.warn('[tienda.astro] DB products query failed, using empty array fallback:', err);
+}
+
+if (items.length === 0 && Array.isArray(defaultProductsData)) {
+  items = (defaultProductsData as Array<{
+    name?: string; description?: string; sku?: string; price?: number;
+    currency?: string; category?: string; origin?: string; images?: string[]; file?: string;
+  }>).map((p) => ({
+    name: p.name || '',
+    description: p.description || '',
+    sku: p.sku || '',
+    price: p.price || 0,
+    currency: p.currency || 'MXN',
+    category: p.category || '',
+    origin: p.origin || '',
+    countryCode: normalizeCountryCode(null, p.origin),
+    images: p.images || [],
+    file: p.file || '',
+  }));
 }
 ---
 
@@ -756,6 +775,7 @@ try {
       catalogEl.querySelectorAll('.btn-show-all-products').forEach((btn) => {
         btn.addEventListener('click', () => {
           showAllProductsFallback = true;
+          setStoreLocationStatus(tr('tienda.location.unresolved'), 'storefront', 'neutral');
           renderCatalog();
         });
       });
