@@ -13,7 +13,9 @@ const mapboxToken =
 
 <Layout title="EdificARTE - Demo Mode" fullScreen={true} locale={locale}>
   <!-- Fake GPS: Centro Cultural El Rule coordinates -->
-  <script is:inline>
+  <script is:inline define:vars={{ mapboxToken }}>
+    window.__EDIFICARTE_TOKEN__ = mapboxToken;
+    window.__TURIMAP_TOKEN__ = mapboxToken;
     (function () {
       var pos = {
         coords: { latitude: 19.4340, longitude: -99.1412, accuracy: 5, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
@@ -265,28 +267,29 @@ const mapboxToken =
   const steps: DemoStep[] = [
     {
       emoji: '🗺️',
-      title: 'Explora el Mapa Interactivo',
+      title: 'Explora el Patrimonio Cultural',
       description:
-        'Visualiza monumentos de CDMX con pines de colores. Puedes filtrar por tipo, hacer zoom, y descubrir patrimonio en tiempo real.',
+        'Visualiza sitios históricos y culturales de México con pines 3D interactivos. Puedes filtrar por categoría, rotar el mapa y descubrir el patrimonio en tiempo real.',
       action: () => {
         setTimeout(() => {
           const map = (window as any).__edificarteMap;
           if (map) {
             map.flyTo({
-              center: [-99.1679, 19.4262],
-              zoom: 17,
-              pitch: 0,
-              duration: 1800,
+              center: [-99.1412, 19.4340],
+              zoom: 15,
+              pitch: 45,
+              bearing: 0,
+              duration: 2200,
             });
           }
-        }, 300);
+        }, 200);
       },
     },
     {
-      emoji: '🥇',
-      title: 'Coleccionable Desbloqueado',
+      emoji: '🎧',
+      title: 'Exposición Metalingua en El Rule',
       description:
-        'Al visitar Centro Cultural El Rule, desbloqueas medallas NFT. Cada lugar tiene coleccionables únicos que forman tu galería personal.',
+        'El Centro Cultural El Rule alberga "Nombrar el Orgullo Neo" con más de 200 audios y transcripciones en lenguas originarias de México.',
       action: () => {
         setTimeout(() => {
           const map = (window as any).__edificarteMap;
@@ -294,24 +297,54 @@ const mapboxToken =
           const elRule = monuments.find((m: any) => m.id === 'el-rule');
 
           if (map && elRule) {
-            // Zoom to Hotel Virreyes (the real NFT monument)
             map.flyTo({
               center: [elRule.lng, elRule.lat],
-              zoom: 19,
+              zoom: 18.5,
               pitch: 60,
+              bearing: 45,
               duration: 2000,
             });
 
-            // Show medal toast after zoom
+            setTimeout(() => {
+              const event = new CustomEvent('open-monument-detail', {
+                detail: { monument: elRule }
+              });
+              window.dispatchEvent(event);
+              if ((window as any).handlePinClick) {
+                (window as any).handlePinClick(elRule);
+              }
+            }, 2100);
+          }
+        }, 200);
+      },
+    },
+    {
+      emoji: '🥇',
+      title: 'Coleccionable NFT Desbloqueado',
+      description:
+        'Al explorar el Centro Cultural El Rule, recibes una medalla digital representativa que premia el descubrimiento cultural.',
+      action: () => {
+        setTimeout(() => {
+          const map = (window as any).__edificarteMap;
+          const monuments = (window as any).__edificarteMonuments || [];
+          const elRule = monuments.find((m: any) => m.id === 'el-rule');
+
+          if (map && elRule) {
+            map.easeTo({
+              bearing: 135,
+              pitch: 65,
+              duration: 2500,
+            });
+
             setTimeout(() => {
               const toast = document.createElement('div');
               toast.className =
-                'fixed left-1/2 top-1/2 z-[999999] flex -translate-x-1/2 -translate-y-1/2 transform flex-col items-center gap-3 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-600 px-8 py-6 shadow-2xl transition-all duration-500 scale-90 opacity-0';
+                'fixed left-1/2 top-1/3 z-[999999] flex -translate-x-1/2 -translate-y-1/2 transform flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 px-8 py-6 shadow-2xl backdrop-blur-md border border-amber-300/40 transition-all duration-500 scale-90 opacity-0';
               toast.innerHTML = `
-                <div class="text-6xl animate-bounce" style="animation-duration: 1s;">🥇</div>
+                <div class="text-6xl animate-bounce" style="animation-duration: 1.2s;">🥇</div>
                 <div class="text-center">
-                  <div class="text-xl font-bold text-white">¡Medalla Desbloqueada!</div>
-                  <div class="text-sm text-amber-100">Centro Cultural El Rule</div>
+                  <div class="text-xl font-extrabold text-white drop-shadow">¡Medalla NFT Desbloqueada!</div>
+                  <div class="text-xs font-medium text-amber-100 mt-0.5">Centro Cultural El Rule · Metalingua</div>
                 </div>
               `;
               document.body.appendChild(toast);
@@ -323,50 +356,25 @@ const mapboxToken =
                 toast.classList.remove('scale-100', 'opacity-100');
                 toast.classList.add('scale-90', 'opacity-0');
                 setTimeout(() => toast.remove(), 500);
-              }, 3000);
-            }, 2200);
+              }, 3200);
+            }, 1200);
           }
-        }, 300);
-      },
-    },
-    {
-      emoji: '🎧',
-      title: 'Metalingua — Arte Multilingüe',
-      description:
-        'El Centro Cultural El Rule alberga la exposición "Nombrar el Orgullo Neo" con 202 obras sonoras en lenguas originarias de México.',
-      action: () => {
-        setTimeout(() => {
-          const monuments = (window as any).__edificarteMonuments || [];
-          const elRule = monuments.find((m: any) => m.id === 'el-rule');
-
-          if (elRule) {
-            // Open El Rule monument card which has Metalingua gallery
-            const event = new CustomEvent('open-monument-detail', {
-              detail: { monument: elRule }
-            });
-            window.dispatchEvent(event);
-
-            // Alternatively, trigger the pin click directly if exposed
-            if ((window as any).handlePinClick) {
-              (window as any).handlePinClick(elRule);
-            }
-          }
-        }, 400);
+        }, 200);
       },
     },
     {
       emoji: '🤖',
-      title: 'Asistente IA (Edi)',
+      title: 'Asistente IA Cultural (Edi)',
       description:
-        'Pregunta lo que quieras: "Quiero conocer Medellín" o "Muéstrame museos cercanos". Edi analiza los pines visibles y crea itinerarios personalizados.',
+        'Pregúntale lo que quieras: "Recomiéndame una ruta cultural" o "Háblame de Bellas Artes". Edi conoce todo el patrimonio del mapa.',
       spotlightSelector: '#ai-fab',
-      annotation: 'Haz clic aquí para hablar con Edi',
+      annotation: 'Haz clic aquí para chatear con Edi',
     },
     {
       emoji: '🚀',
-      title: 'Listo para Explorar',
+      title: 'Navegación Demo Activa',
       description:
-        'EdificARTE funciona globalmente. Tu viaje comienza ahora—toca Explorar para descubrir patrimonio cerca de ti o en cualquier ciudad del mundo.',
+        'Estás en el entorno de demostración interactivo de EdificARTE. Toca cualquier pin o botón para explorar libremente.',
     },
   ];
 
@@ -408,7 +416,7 @@ const mapboxToken =
 
     // Update button text
     if (currentStep === steps.length - 1) {
-      btnNext.textContent = 'Comenzar';
+      btnNext.textContent = 'Explorar Demo';
     } else {
       btnNext.textContent = 'Siguiente';
     }
@@ -425,12 +433,10 @@ const mapboxToken =
         demoSpotlight.style.left = `${rect.left - 8}px`;
         demoSpotlight.style.top = `${rect.top - 8}px`;
 
-        // Show annotation if present
         if (step.annotation && demoAnnotation && demoAnnotationText) {
           demoAnnotationText.textContent = step.annotation;
           demoAnnotation.style.display = 'block';
 
-          // Position annotation below spotlight
           const annotTop = rect.bottom + 16;
           const annotLeft = rect.left + rect.width / 2;
           demoAnnotation.style.left = `${annotLeft}px`;
@@ -446,27 +452,10 @@ const mapboxToken =
       if (demoAnnotation) demoAnnotation.style.display = 'none';
     }
 
-    // Execute step action
     step.action?.();
   }
 
-  function nextStep() {
-    if (currentStep < steps.length - 1) {
-      currentStep++;
-      updateDemo();
-    } else {
-      // Demo complete - hide overlay and let user interact
-      const demoControls = document.getElementById('demo-controls');
-      const demoSpotlight = document.getElementById('demo-spotlight');
-      const demoAnnotation = document.getElementById('demo-annotation');
-
-      if (demoControls) demoControls.style.display = 'none';
-      if (demoSpotlight) demoSpotlight.style.display = 'none';
-      if (demoAnnotation) demoAnnotation.style.display = 'none';
-    }
-  }
-
-  function skipDemo() {
+  function finishOrSkipDemo() {
     const demoControls = document.getElementById('demo-controls');
     const demoSpotlight = document.getElementById('demo-spotlight');
     const demoAnnotation = document.getElementById('demo-annotation');
@@ -476,26 +465,30 @@ const mapboxToken =
     if (demoAnnotation) demoAnnotation.style.display = 'none';
   }
 
-  document.getElementById('btn-demo-next')?.addEventListener('click', nextStep);
-  document.getElementById('btn-demo-skip')?.addEventListener('click', skipDemo);
+  function nextStep() {
+    if (currentStep < steps.length - 1) {
+      currentStep++;
+      updateDemo();
+    } else {
+      finishOrSkipDemo();
+    }
+  }
 
-  // Initialize after a short delay to let the map load
+  document.getElementById('btn-demo-next')?.addEventListener('click', nextStep);
+  document.getElementById('btn-demo-skip')?.addEventListener('click', finishOrSkipDemo);
+
   setTimeout(() => {
     updateDemo();
   }, 500);
 
-  // Allow advancing with arrow keys
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ') {
       e.preventDefault();
       nextStep();
     } else if (e.key === 'Escape') {
-      skipDemo();
+      finishOrSkipDemo();
     }
   });
-
-  // Metalingua panel logic - REMOVED, using real monument card from explorar.astro
-
 </script>
 
 <style>

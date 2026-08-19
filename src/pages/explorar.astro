@@ -280,7 +280,7 @@ const sitioRemotoExperiencias: Experience[] = MONUMENTS.filter((m) => m.type ===
     category: 'sitio-remoto',
     tagColor: 'accent',
     url: '#',
-    cta: 'Ver experiencia VR',
+    cta: 'Ver VR',
     rating: 4.95,
     reviewCount: 287,
     price: 'Gratis',
@@ -834,42 +834,42 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
           </div>
 
           <!-- Audio Player Card for Selected Work -->
-          <div id="metalingua-player-card" class="hidden p-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-lg space-y-3">
-            <div class="flex items-start justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2.5">
+          <div id="metalingua-player-card" class="hidden p-4 rounded-2xl bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/80 shadow-md space-y-3">
+            <div class="flex items-start justify-between gap-2 border-b border-slate-200 dark:border-slate-700/80 pb-2.5">
               <div class="min-w-0 flex-1">
-                <span id="player-language-tag" class="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-accent-500/20 text-accent-700 dark:text-accent-400 border border-accent-500/30">
+                <span id="player-language-tag" class="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-brand-100 text-brand-800 dark:bg-brand-950/60 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
                   Lengua
                 </span>
                 <h5 id="player-work-title" class="font-bold text-base text-slate-900 dark:text-white mt-1 leading-tight">
                   Título de la obra
                 </h5>
-                <p id="player-work-artist" class="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                <p id="player-work-artist" class="text-[11px] font-semibold text-brand-700 dark:text-brand-400 mt-0.5">
                   Artista
                 </p>
               </div>
-              <button id="player-close-btn" type="button" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white text-xs p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+              <button id="player-close-btn" type="button" class="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white text-xs p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-all">
                 <span class="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
 
             <!-- Audio HTML5 Element -->
-            <audio id="metalingua-audio-element" controls class="w-full h-10 rounded-xl outline-none accent-accent-600">
+            <audio id="metalingua-audio-element" controls class="w-full h-10 rounded-xl outline-none accent-brand-600">
               <source id="metalingua-audio-source" src="" type="audio/mpeg" />
               Tu navegador no soporta el elemento de audio.
             </audio>
 
             <!-- Transcription & Translation Box -->
-            <div id="player-transcription-box" class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-              <div class="flex items-center gap-1.5 text-[10px] font-bold text-accent-700 dark:text-accent-400 uppercase tracking-wider">
-                <span class="material-symbols-outlined text-[14px]">description</span>
+            <div id="player-transcription-box" class="p-3.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-2 text-xs">
+              <div class="flex items-center gap-1.5 text-[10px] font-extrabold text-brand-700 dark:text-brand-400 uppercase tracking-wider">
+                <span class="material-symbols-outlined text-[15px]">description</span>
                 Transcripción & Traducción
               </div>
-              <div id="player-transcription-content" class="space-y-1.5 text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
+              <div id="player-transcription-content" class="space-y-1.5 text-[11px] leading-relaxed text-slate-800 dark:text-slate-200">
                 <!-- Dynamically filled -->
               </div>
             </div>
 
-            <p id="player-work-translators" class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+            <p id="player-work-translators" class="text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-tight">
               Traductores / Hablantes
             </p>
           </div>
@@ -1467,11 +1467,11 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
             let distBadge = card.querySelector<HTMLElement>('.card-distance-badge');
             if (!distBadge) {
               distBadge = document.createElement('span');
-              distBadge.className = 'card-distance-badge ml-auto text-[10px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/40 px-2 py-0.5 rounded-md border border-brand-200/50';
-              const footer = card.querySelector('.mt-auto');
-              if (footer) footer.insertBefore(distBadge, footer.firstChild);
+              distBadge.className = 'card-distance-badge absolute bottom-2.5 left-3 z-10 inline-flex items-center gap-1 rounded-full bg-white/95 dark:bg-slate-900/90 text-brand-700 dark:text-brand-300 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-extrabold shadow-sm border border-brand-200/80 dark:border-brand-800 transition-all';
+              const imgBox = card.querySelector('.relative.h-44');
+              if (imgBox) imgBox.appendChild(distBadge);
             }
-            distBadge.textContent = tr('explorar.cards.distance_away', { dist: distStr });
+            distBadge.innerHTML = `<span class="material-symbols-outlined text-[11px] text-brand-600 dark:text-brand-400">near_me</span>${distStr}`;
           }
           container.appendChild(card);
         });
@@ -1983,10 +1983,10 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
     const transContentEl = document.getElementById('player-transcription-content');
     if (transContentEl) {
       transContentEl.innerHTML = `
-        <p class="font-semibold text-white">📝 Frase originaria: <span class="font-normal italic text-brand-200">${origText.replace(/.*?🔀:\s*/, '')}</span></p>
-        ${translationSpan ? `<p class="text-slate-300">🇲🇽 Traducción al español: <span class="font-medium text-white">${translationSpan.replace(/.*?🏷🖼️:\s*/, '')}</span></p>` : ''}
-        ${targetTrans ? `<p class="text-slate-300">💬 Variante: <span class="font-medium text-slate-100">${targetTrans.replace(/.*?🔀:\s*/, '')}</span></p>` : ''}
-        ${locationLine ? `<p class="text-[10px] text-slate-400 mt-0.5">📍 Origen: ${locationLine.replace(/.*?📍:\s*/, '')}</p>` : ''}
+        <p class="font-bold text-slate-900 dark:text-white">📝 Frase originaria: <span class="font-bold italic text-brand-700 dark:text-brand-300">${origText.replace(/.*?🔀:\s*/, '')}</span></p>
+        ${translationSpan ? `<p class="text-slate-700 dark:text-slate-300 font-medium">🇲🇽 Traducción al español: <span class="font-bold text-slate-900 dark:text-white">${translationSpan.replace(/.*?🏷🖼️:\s*/, '')}</span></p>` : ''}
+        ${targetTrans ? `<p class="text-slate-700 dark:text-slate-300 font-medium">💬 Variante: <span class="font-semibold text-slate-900 dark:text-slate-100">${targetTrans.replace(/.*?🔀:\s*/, '')}</span></p>` : ''}
+        ${locationLine ? `<p class="text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">📍 Origen: ${locationLine.replace(/.*?📍:\s*/, '')}</p>` : ''}
       `;
     }
 
