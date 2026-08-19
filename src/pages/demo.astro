@@ -12,7 +12,7 @@ const mapboxToken =
 ---
 
 <Layout title="EdificARTE - Demo Mode" fullScreen={true} locale={locale}>
-  <!-- Fake GPS: Hotel Virreyes coordinates - MUST run FIRST -->
+  <!-- Fake GPS: Centro Cultural El Rule coordinates - MUST run FIRST -->
   <script is:inline define:vars={{ mapboxToken }}>
     window.__EDIFICARTE_TOKEN__ = mapboxToken;
     window.__TURIMAP_TOKEN__ = mapboxToken;
@@ -21,8 +21,8 @@ const mapboxToken =
 
     // Force fake GPS IMMEDIATELY - block any real geolocation
     (function () {
-      var DEMO_LAT = 19.4262;
-      var DEMO_LNG = -99.1679;
+      var DEMO_LAT = 19.4340;
+      var DEMO_LNG = -99.1415;
 
       var pos = {
         coords: {
@@ -285,7 +285,7 @@ const mapboxToken =
 
   // CRITICAL: Wait for fake GPS to be fully active before mounting map
   function waitForFakeGPS() {
-    if (window.__DEMO_POSITION__ && navigator.geolocation) {
+    if ((window as any).__DEMO_POSITION__ && navigator.geolocation) {
       console.log('[DEMO] Fake GPS confirmed, mounting map');
       mountMap();
     } else {

@@ -1468,8 +1468,8 @@ function startWatching() {
   const isDemoMode = (window as any).__DEMO_MODE__;
 
   if (isDemoMode) {
-    console.log('[DEMO] startWatching: using demo mode coordinates at Hotel Virreyes');
-    // Demo mode: fake location at Hotel Virreyes
+    console.log('[DEMO] startWatching: using demo mode coordinates at Centro Cultural El Rule');
+    // Demo mode: fake location at Centro Cultural El Rule
     userLat = DEMO_CENTER[1];
     userLng = DEMO_CENTER[0];
 
@@ -1500,7 +1500,7 @@ function requestLocationPermission() {
   const isDemoMode = (window as any).__DEMO_MODE__;
 
   if (isDemoMode) {
-    // Demo mode: fake location at Hotel Virreyes
+    // Demo mode: fake location at Centro Cultural El Rule
     const fakePos = {
       coords: {
         latitude: DEMO_CENTER[1],
@@ -1542,7 +1542,7 @@ function requestLocationPermission() {
 // Lifecycle: Setup & Tear Down Map (Astro View Transitions support)
 // ---------------------------------------------------------------------------
 const DEFAULT_CENTER: [number, number] = [-99.1332, 19.4326]; // CDMX fallback
-const DEMO_CENTER: [number, number] = [-99.1679, 19.4262]; // Hotel Virreyes for demo
+const DEMO_CENTER: [number, number] = [-99.1415, 19.4340]; // Centro Cultural El Rule for demo
 const isInDemoMode = typeof window !== 'undefined' && (window.location.pathname.includes('/demo') || (window as unknown as { __DEMO_MODE__?: boolean }).__DEMO_MODE__ === true);
 let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
