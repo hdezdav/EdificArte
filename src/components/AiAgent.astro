@@ -5,76 +5,71 @@
   <!-- AI Chat Popover -->
   <div
     id="ai-agent-popover"
-    class="hidden fixed top-20 left-3 right-3 sm:left-auto sm:right-4 w-auto sm:w-[380px] h-[min(540px,70dvh)] sm:h-[480px] rounded-3xl border border-slate-400/20 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 shadow-2xl z-[9999] [backdrop-filter:blur(24px)] text-slate-900 dark:text-slate-100 [&:not(.hidden)]:flex flex-col overflow-hidden overscroll-contain"
+    class="hidden fixed top-20 left-3 right-3 sm:left-auto sm:right-4 w-auto sm:w-[400px] h-[min(580px,72dvh)] sm:h-[520px] rounded-3xl border border-slate-300/40 dark:border-white/15 bg-gradient-to-b from-white/98 to-slate-50/98 dark:from-slate-900/98 dark:to-slate-950/98 shadow-2xl shadow-slate-900/10 dark:shadow-black/40 z-[9999] [backdrop-filter:blur(32px)] text-slate-900 dark:text-slate-100 [&:not(.hidden)]:flex flex-col overflow-hidden overscroll-contain"
   >
       <!-- Header -->
-      <div class="relative flex items-center justify-between border-b border-slate-900/[0.06] dark:border-white/[0.08] px-4 py-3">
-        <div class="flex items-center gap-2.5">
-          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-[#3f043a] text-white shadow-sm shadow-[#3f043a]/30">
-            <span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1">auto_awesome</span>
-          </span>
+      <div class="relative flex items-center justify-between border-b border-slate-200/70 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 px-4 py-3.5 backdrop-blur-sm">
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-accent-700 text-white shadow-lg shadow-accent-500/30 dark:shadow-accent-500/20 ring-2 ring-white/20 dark:ring-white/10">
+              <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">auto_awesome</span>
+            </span>
+            <span class="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 animate-pulse"></span>
+          </div>
           <div class="text-left">
-            <h4 class="text-sm font-semibold leading-none tracking-tight text-slate-800 dark:text-slate-100">EdificARTE AI</h4>
-            <span class="mt-1 flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span data-i18n="ai.online">Online</span>
+            <h4 class="text-sm font-bold leading-none tracking-tight text-slate-900 dark:text-white">Edi</h4>
+            <span class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span class="h-1 w-1 rounded-full bg-emerald-500"></span>
+              <span data-i18n="ai.online">Guía cultural</span>
             </span>
           </div>
         </div>
-        <button id="ai-agent-close" class="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-slate-200" aria-label="Close chat">
+        <button id="ai-agent-close" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-slate-900/[0.04] hover:text-slate-600 active:scale-95 dark:text-slate-500 dark:hover:bg-white/[0.08] dark:hover:text-slate-300" aria-label="Close chat">
           <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
       <!-- Messages Area -->
-      <div id="ai-agent-messages" class="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin text-left">
+      <div id="ai-agent-messages" class="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin text-left">
         <!-- Initial Message -->
-        <div class="flex items-start gap-2.5 max-w-[88%]">
-          <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200/70 bg-white/70 text-slate-500 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-            <span class="material-symbols-outlined text-[14px]" style="font-variation-settings:'FILL' 1">auto_awesome</span>
+        <div class="flex items-start gap-2.5 max-w-[90%] animate-fade-in">
+          <span class="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl border border-accent-200/60 bg-gradient-to-br from-accent-50 to-accent-100/80 text-accent-600 shadow-sm dark:border-accent-900/40 dark:from-accent-950/40 dark:to-accent-900/30 dark:text-accent-300">
+            <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">auto_awesome</span>
           </span>
-          <div class="relative group break-words rounded-2xl rounded-tl-md border border-slate-200/60 bg-white/70 px-3.5 py-2.5 text-[13px] leading-relaxed text-slate-800 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-100">
-            <div class="pr-6" data-i18n-html="ai.greeting">
-              ¡Hola! Soy tu guía de <strong class="text-[#3f043a] dark:text-[#e085b3]">EdificARTE</strong>. 🗺️<br/><br/>
-              Puedo recomendarte lugares para visitar, contarte la historia de monumentos o ayudarte a planificar una ruta. ¿Qué te gustaría explorar hoy?
+          <div class="relative group break-words rounded-2xl rounded-tl-md border border-slate-200/80 bg-white shadow-sm dark:border-white/[0.12] dark:bg-slate-800/60 px-4 py-3 text-[13.5px] leading-relaxed text-slate-800 dark:text-slate-100">
+            <div class="pr-7" data-i18n-html="ai.greeting">
+              ¡Hola! Soy <strong class="font-bold text-accent-600 dark:text-accent-400">Edi</strong>, tu guía cultural. 🗺️<br/><br/>
+              Puedo recomendarte rutas, contarte historias de monumentos o ayudarte a planificar tu visita. ¿Qué quieres explorar?
             </div>
             <button
-              class="ai-speak-btn absolute top-2.5 right-2.5 p-0.5 text-slate-400 transition-colors hover:text-accent-600 dark:text-slate-500 dark:hover:text-accent-400"
+              class="ai-speak-btn absolute top-3 right-3 p-1 rounded-lg text-slate-400 transition-all hover:bg-slate-100 hover:text-accent-600 active:scale-95 dark:text-slate-500 dark:hover:bg-slate-700/60 dark:hover:text-accent-400"
               aria-label="Listen to response"
-              title="Listen"
+              title="Escuchar"
             >
-              <span class="material-symbols-outlined text-[14px]">volume_up</span>
+              <span class="material-symbols-outlined text-[15px]">volume_up</span>
             </button>
           </div>
         </div>
       </div>
 
       <!-- Input Area -->
-      <div class="border-t border-slate-900/[0.06] dark:border-white/[0.08]">
-        <form id="ai-agent-form" class="flex items-center gap-2 p-3">
-          <button
-            type="button"
-            id="ai-mic-btn"
-            class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-slate-200/70 bg-white/60 text-slate-400 backdrop-blur-sm transition-all hover:text-accent-600 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:hover:text-accent-400"
-            aria-label="Voice input"
-            title="Voice input"
-          >
-            <span class="material-symbols-outlined text-[16px]">mic</span>
-          </button>
+      <div class="border-t border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 backdrop-blur-sm">
+        <form id="ai-agent-form" class="flex items-center gap-2.5 p-3.5">
           <input
             type="text"
             id="ai-agent-input"
             data-i18n-attr="placeholder|ai.placeholder"
             data-i18n-placeholder="ai.placeholder"
-            placeholder="Ask about any place..."
+            placeholder="Pregúntame lo que quieras..."
             autocomplete="off"
-            class="flex-1 min-w-0 rounded-xl border border-slate-200/70 bg-white/60 px-3.5 py-2.5 text-[16px] sm:text-[13px] text-slate-800 placeholder-slate-400 outline-none backdrop-blur-sm transition-all focus:border-accent-500/50 focus:bg-white/80 focus:ring-2 focus:ring-accent-500/20 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10"
+            class="flex-1 min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[15px] sm:text-[14px] text-slate-900 placeholder-slate-400 outline-none transition-all focus:border-accent-400 focus:ring-4 focus:ring-accent-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-accent-500 dark:focus:ring-accent-500/20"
           />
           <button
             type="submit"
-            class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#3f043a] text-white shadow-sm shadow-[#3f043a]/30 transition-all hover:bg-[#3f043a]/90 active:scale-95"
+            class="group flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-500 to-accent-600 text-white shadow-lg shadow-accent-500/25 transition-all hover:shadow-xl hover:shadow-accent-500/30 hover:scale-105 active:scale-95 dark:shadow-accent-500/20 dark:hover:shadow-accent-500/30"
             aria-label="Send message"
           >
-            <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+            <span class="material-symbols-outlined text-[18px] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" style="font-variation-settings:'FILL' 1">arrow_upward</span>
           </button>
         </form>
       </div>
@@ -87,32 +82,46 @@
   >
     <div
       id="flight-plane"
-      class="absolute bottom-[20%] left-[-140px] flex items-center gap-2.5 rounded-full border border-purple-400/40 bg-slate-900/95 px-5 py-2.5 text-white shadow-[0_10px_30px_rgba(63,4,58,0.5)] backdrop-blur-md"
+      class="absolute bottom-[20%] left-[-160px] flex items-center gap-3 rounded-full border border-accent-400/50 bg-gradient-to-r from-accent-600/95 to-accent-700/95 px-6 py-3 text-white shadow-2xl shadow-accent-500/40 backdrop-blur-md ring-1 ring-white/20"
     >
-      <span class="animate-bounce text-2xl">✈️</span>
-      <span class="text-xs font-black tracking-wide text-purple-200 uppercase">
-        ¡Planeando tu viaje a la CDMX!
+      <span class="text-3xl animate-bounce">✈️</span>
+      <span class="text-sm font-extrabold tracking-wide uppercase">
+        ¡Planeando tu viaje!
       </span>
     </div>
   </div>
 </div>
 
 <style>
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+    scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
   }
-  .scrollbar-thin::-webkit-scrollbar { width: 3px; }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.35);
-    border-radius: 2px;
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
   }
   :global(.dark) .scrollbar-thin {
-    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
   }
   :global(.dark) .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
+  }
+  :global(.dark) .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
 
   /* Mobile bottom-sheet: safe-area aware offset + slide-up entrance.
@@ -122,48 +131,60 @@
       bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
     }
     #ai-agent-popover:not(.hidden) {
-      animation: ai-sheet-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+      animation: ai-sheet-in 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
   }
   @media (min-width: 640px) {
     #ai-agent-popover:not(.hidden) {
-      animation: ai-pop-in 0.22s ease-out both;
+      animation: ai-pop-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     }
   }
   @keyframes ai-sheet-in {
-    from { transform: translateY(24px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+      transform: translateY(32px) scale(0.96);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
   }
   @keyframes ai-pop-in {
-    from { transform: translateY(8px) scale(0.97); opacity: 0; }
-    to { transform: translateY(0) scale(1); opacity: 1; }
+    from {
+      transform: translateY(12px) scale(0.92);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
   }
 
   @keyframes flight-across {
     0% {
-      transform: translate(0, 0) rotate(15deg) scale(0.7);
+      transform: translate(0, 0) rotate(18deg) scale(0.65);
       opacity: 0;
     }
-    15% {
+    12% {
       opacity: 1;
-      transform: translate(25vw, -12vh) rotate(10deg) scale(1.1);
+      transform: translate(20vw, -10vh) rotate(12deg) scale(1);
     }
     50% {
       opacity: 1;
-      transform: translate(55vw, -30vh) rotate(5deg) scale(1.25);
+      transform: translate(55vw, -32vh) rotate(4deg) scale(1.2);
     }
-    85% {
+    88% {
       opacity: 1;
-      transform: translate(85vw, -45vh) rotate(-5deg) scale(1.1);
+      transform: translate(90vw, -50vh) rotate(-8deg) scale(1);
     }
     100% {
-      transform: translate(115vw, -60vh) rotate(-15deg) scale(0.7);
+      transform: translate(120vw, -65vh) rotate(-18deg) scale(0.65);
       opacity: 0;
     }
   }
 
   :global(.animate-flight) {
-    animation: flight-across 3.5s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+    animation: flight-across 3.8s cubic-bezier(0.33, 0.85, 0.56, 1) forwards !important;
   }
 </style>
 

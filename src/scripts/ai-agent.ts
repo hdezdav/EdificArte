@@ -143,8 +143,8 @@ function appendUserMessage(text: string) {
   const messagesContainer = document.getElementById('ai-agent-messages');
   if (!messagesContainer) return;
   const msgHtml = `
-    <div class="flex justify-end w-full">
-      <div class="max-w-[80%] break-words rounded-2xl rounded-tr-md bg-accent-600 px-3.5 py-2 text-[13px] leading-relaxed text-white shadow-sm shadow-accent-600/25">
+    <div class="flex justify-end w-full animate-fade-in">
+      <div class="max-w-[85%] break-words rounded-2xl rounded-tr-md bg-gradient-to-br from-accent-500 to-accent-600 px-4 py-2.5 text-[13.5px] leading-relaxed text-white shadow-lg shadow-accent-500/20">
         ${escapeHtml(text)}
       </div>
     </div>
@@ -158,23 +158,18 @@ function appendAssistantLoader(): string {
   if (!messagesContainer) return '';
   const id = 'loader-' + Date.now();
   const msgHtml = `
-    <div id="${id}" class="flex items-start gap-2 max-w-[85%]">
-      <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200/70 bg-white/70 text-slate-500 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-        <span class="material-symbols-outlined text-[14px]" style="font-variation-settings:'FILL' 1">auto_awesome</span>
+    <div id="${id}" class="flex items-start gap-2.5 max-w-[90%] animate-fade-in">
+      <span class="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl border border-accent-200/60 bg-gradient-to-br from-accent-50 to-accent-100/80 text-accent-600 shadow-sm dark:border-accent-900/40 dark:from-accent-950/40 dark:to-accent-900/30 dark:text-accent-300">
+        <span class="material-symbols-outlined text-[15px] animate-pulse" style="font-variation-settings:'FILL' 1">auto_awesome</span>
       </span>
-      <div class="ai-bubble-content flex items-center min-h-[32px] rounded-2xl rounded-tl-md border border-slate-200/60 bg-white/70 px-3.5 py-2 text-[13px] leading-relaxed text-slate-800 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-100">
-        <div class="loader-wrapper !h-6 !scale-75 origin-left">
-          <span class="loader-letter" style="--i: 0">P</span>
-          <span class="loader-letter" style="--i: 1">e</span>
-          <span class="loader-letter" style="--i: 2">n</span>
-          <span class="loader-letter" style="--i: 3">s</span>
-          <span class="loader-letter" style="--i: 4">a</span>
-          <span class="loader-letter" style="--i: 5">n</span>
-          <span class="loader-letter" style="--i: 6">d</span>
-          <span class="loader-letter" style="--i: 7">o</span>
-          <span class="loader-letter" style="--i: 8">.</span>
-          <span class="loader-letter" style="--i: 9">.</span>
-          <div class="loader !w-6 !h-6"></div>
+      <div class="ai-bubble-content flex items-center min-h-[44px] rounded-2xl rounded-tl-md border border-slate-200/80 bg-white shadow-sm dark:border-white/[0.12] dark:bg-slate-800/60 px-4 py-3 text-[13.5px] leading-relaxed text-slate-800 dark:text-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="flex gap-1">
+            <span class="w-2 h-2 rounded-full bg-accent-500 dark:bg-accent-400 animate-bounce" style="animation-delay: 0ms"></span>
+            <span class="w-2 h-2 rounded-full bg-accent-500 dark:bg-accent-400 animate-bounce" style="animation-delay: 150ms"></span>
+            <span class="w-2 h-2 rounded-full bg-accent-500 dark:bg-accent-400 animate-bounce" style="animation-delay: 300ms"></span>
+          </div>
+          <span class="text-xs text-slate-500 dark:text-slate-400 ml-1">Pensando...</span>
         </div>
       </div>
     </div>
@@ -195,25 +190,25 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
     const isMapPage = window.location.pathname.startsWith('/mapa');
     const routeStr = route.join(',');
 
-    actionsHtml += '<div class="flex flex-wrap gap-2 mt-3">';
+    actionsHtml += '<div class="flex flex-wrap gap-2 mt-3.5">';
 
     if (action === 'reserve' && route.length === 1) {
       actionsHtml += `
         <button
-          class="ai-reserve-trigger flex items-center justify-center gap-1.5 rounded-xl bg-accent-600 hover:bg-accent-500 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm shadow-accent-600/25 transition-all active:scale-[0.97]"
+          class="ai-reserve-trigger flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 text-white font-bold px-3.5 py-2 text-[11.5px] shadow-lg shadow-accent-500/25 transition-all active:scale-[0.96] hover:shadow-xl hover:shadow-accent-500/30"
           data-monument="${route[0]}"
         >
-          <span class="material-symbols-outlined text-[14px]">calendar_month</span>
-          Reservar Recorrido
+          <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">calendar_month</span>
+          Reservar Tour
         </button>
       `;
     } else if (isMapPage) {
       actionsHtml += `
         <button
-          class="ai-route-trigger flex items-center justify-center gap-1.5 rounded-xl bg-accent-600 hover:bg-accent-500 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm shadow-accent-600/25 transition-all active:scale-[0.97]"
+          class="ai-route-trigger flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 text-white font-bold px-3.5 py-2 text-[11.5px] shadow-lg shadow-accent-500/25 transition-all active:scale-[0.96] hover:shadow-xl hover:shadow-accent-500/30"
           data-route="${routeStr}"
         >
-          <span class="material-symbols-outlined text-[14px]">map</span>
+          <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">map</span>
           Trazar ruta
         </button>
       `;
@@ -221,11 +216,11 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
       if (route.length === 1) {
         actionsHtml += `
           <button
-            class="ai-audio-trigger flex items-center justify-center gap-1.5 rounded-xl border border-slate-300/60 bg-transparent hover:border-accent-500/40 hover:text-accent-600 text-slate-600 dark:border-white/15 dark:text-slate-300 dark:hover:border-accent-400/40 dark:hover:text-accent-400 font-semibold px-3 py-1.5 text-[11px] transition-all active:scale-[0.97]"
+            class="ai-audio-trigger flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-300 bg-white hover:border-accent-500 hover:bg-accent-50 text-slate-700 hover:text-accent-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-accent-400 dark:hover:bg-accent-950/30 dark:hover:text-accent-400 font-bold px-3.5 py-2 text-[11.5px] transition-all active:scale-[0.96]"
             data-monument="${route[0]}"
           >
-            <span class="material-symbols-outlined text-[14px]">headphones</span>
-            Escuchar audioguía
+            <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">headphones</span>
+            Audioguía
           </button>
         `;
       }
@@ -233,10 +228,10 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
       actionsHtml += `
         <a
           href="/mapa?route=${routeStr}"
-          class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent-600 hover:bg-accent-500 text-white font-semibold px-3 py-1.5 text-[11px] shadow-sm shadow-accent-600/25 transition-all active:scale-[0.97]"
+          class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 text-white font-bold px-3.5 py-2 text-[11.5px] shadow-lg shadow-accent-500/25 transition-all active:scale-[0.96] hover:shadow-xl hover:shadow-accent-500/30"
         >
-          <span class="material-symbols-outlined text-[14px]">explore</span>
-          Ver ruta en el mapa
+          <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">explore</span>
+          Ver en el mapa
         </a>
       `;
 
@@ -244,10 +239,10 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
         actionsHtml += `
           <a
             href="/mapa?route=${route[0]}&play=true"
-            class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300/60 bg-transparent hover:border-accent-500/40 hover:text-accent-600 text-slate-600 dark:border-white/15 dark:text-slate-300 dark:hover:border-accent-400/40 dark:hover:text-accent-400 font-semibold px-3 py-1.5 text-[11px] transition-all active:scale-[0.97]"
+            class="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-300 bg-white hover:border-accent-500 hover:bg-accent-50 text-slate-700 hover:text-accent-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-accent-400 dark:hover:bg-accent-950/30 dark:hover:text-accent-400 font-bold px-3.5 py-2 text-[11.5px] transition-all active:scale-[0.96]"
           >
-            <span class="material-symbols-outlined text-[14px]">headphones</span>
-            Escuchar audioguía
+            <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">headphones</span>
+            Audioguía
           </a>
         `;
       }
@@ -258,17 +253,17 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
 
   const bubbleEl = el.querySelector('.ai-bubble-content');
   if (bubbleEl) {
-    bubbleEl.classList.remove('flex', 'items-center', 'min-h-[32px]');
-    bubbleEl.classList.add('block', 'break-words', 'relative', 'pr-8');
+    bubbleEl.classList.remove('flex', 'items-center', 'min-h-[44px]');
+    bubbleEl.classList.add('block', 'break-words', 'relative', 'pr-9');
     bubbleEl.innerHTML = `
       <div class="pr-2">
         ${formattedText}
       </div>
       <button
-        class="ai-speak-btn absolute top-2 right-2 p-0.5 text-slate-400 transition-colors hover:text-accent-600 dark:text-slate-500 dark:hover:text-accent-400"
+        class="ai-speak-btn absolute top-3 right-3 p-1 rounded-lg text-slate-400 transition-all hover:bg-slate-100 hover:text-accent-600 active:scale-95 dark:text-slate-500 dark:hover:bg-slate-700/60 dark:hover:text-accent-400"
         title="Escuchar respuesta"
       >
-        <span class="material-symbols-outlined text-[16px]">volume_up</span>
+        <span class="material-symbols-outlined text-[15px]">volume_up</span>
       </button>
       ${actionsHtml}
     `;
@@ -383,7 +378,7 @@ function initAiAgent() {
 
   const welcomeSpeakBtn = document.querySelector('#ai-agent-messages .ai-speak-btn') as HTMLButtonElement;
   if (welcomeSpeakBtn) {
-    const welcomeText = '¡Hola! Soy tu asistente de EdificARTE. ¿Quieres que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Pregúntame lo que quieras!';
+    const welcomeText = '¡Hola! Soy Edi, tu guía cultural. Puedo recomendarte rutas, contarte historias de monumentos o ayudarte a planificar tu visita. ¿Qué quieres explorar?';
     safeAddListener(welcomeSpeakBtn, 'click', () => {
       speakText(welcomeText, welcomeSpeakBtn);
     });
@@ -478,7 +473,7 @@ function initAiAgent() {
     } catch (err) {
       if (controller.signal.aborted || lifecycleVersion !== aiLifecycleVersion) return;
       console.error(err);
-      updateAssistantMessage(loaderId, '¡Hola! Perdón, pero se perdió la conexión con el servidor. ¿Podrías intentar de nuevo en un momento?');
+      updateAssistantMessage(loaderId, '¡Ups! Algo falló con la conexión. ¿Puedes intentar de nuevo en un momento?');
     } finally {
       if (chatRequestController === controller) chatRequestController = null;
     }
@@ -486,6 +481,7 @@ function initAiAgent() {
 }
 
   // Desactivar entrada de micrófono para operar únicamente en modo texto
+  const micBtn = document.getElementById('ai-mic-btn') as HTMLButtonElement;
   if (micBtn) {
     micBtn.style.display = 'none';
   }
