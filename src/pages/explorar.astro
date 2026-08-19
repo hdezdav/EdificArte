@@ -245,35 +245,37 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
 // Generar experiencias para monumentos remotos (sitio-remoto), por ejemplo Pirámides del Sol.
 // Estos monumentos NO aparecen en el mapa (filtrados en mapa-app.ts) pero sí en Explorar.
 const sitioRemotoExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'sitio-remoto').map((m) => {
+  const esName = m.translations?.es?.name || m.name;
+  const esDesc = m.translations?.es?.desc || m.desc;
   const translations = {
     es: {
-      name: m.name,
-      desc: m.desc,
+      name: esName,
+      desc: esDesc,
       category: m.category,
-      cta: 'Ver experiencia',
-      guide: `¡Bienvenido a ${m.name}! Esta experiencia remota forma parte del patrimonio cultural histórico. A través de esta guía podés conocer la historia, el contexto y los detalles más importantes del sitio, complementado con una experiencia inmersiva en realidad virtual (VR) que te permite recorrerlo sin salir de tu casa.`,
+      cta: 'Ver VR',
+      guide: `¡Bienvenido a ${esName}! Esta experiencia remota forma parte del patrimonio cultural histórico. A través de esta guía podés conocer la historia, el contexto y los detalles más importantes del sitio, complementado con una experiencia inmersiva en realidad virtual (VR) que te permite recorrerlo sin salir de tu casa.`,
     },
     en: {
-      name: m.name,
-      desc: m.desc,
+      name: m.translations?.en?.name || m.name,
+      desc: m.translations?.en?.desc || m.desc,
       category: m.category,
-      cta: 'View experience',
-      guide: `Welcome to ${m.name}! This remote experience is part of the world's cultural heritage. Through this guide you can learn the history, context, and most important details of the site, complemented by an immersive virtual reality (VR) experience that lets you tour it from anywhere.`,
+      cta: 'View VR',
+      guide: `Welcome to ${esName}! This remote experience is part of the world's cultural heritage. Through this guide you can learn the history, context, and most important details of the site, complemented by an immersive virtual reality (VR) experience that lets you tour it from anywhere.`,
     },
     señas: {
-      name: `${m.name} (LSM)`,
+      name: `${esName} (LSM)`,
       desc: 'Guía accesible en Lengua de Señas Mexicana (LSM) con subtítulos y descripción visual del sitio.',
       category: 'Accesibilidad / LSM',
       cta: 'Ver LSM',
-      guide: `Esta es la guía accesible en Lengua de Señas Mexicana (LSM) para ${m.name}. Explicamos la historia, el contexto arqueológico y los detalles más representativos del sitio para garantizar el acceso pleno a la cultura para la comunidad con discapacidad auditiva.`,
+      guide: `Esta es la guía accesible en Lengua de Señas Mexicana (LSM) para ${esName}. Explicamos la historia, el contexto arqueológico y los detalles más representativos del sitio para garantizar el acceso pleno a la cultura para la comunidad con discapacidad auditiva.`,
       videoUrl: 'https://www.youtube.com/embed/WEvDk9y1e_E?si=m8XYBMkzBom_wtPl',
     },
   };
 
   return {
     id: m.id,
-    title: m.name,
-    description: m.desc,
+    title: esName,
+    description: esDesc,
     image: m.image,
     lat: m.lat,
     lng: m.lng,

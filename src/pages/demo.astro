@@ -12,42 +12,73 @@ const mapboxToken =
 ---
 
 <Layout title="EdificARTE - Demo Mode" fullScreen={true} locale={locale}>
-  <!-- Fake GPS: Centro Cultural El Rule coordinates -->
+  <!-- Fake GPS: Hotel Virreyes coordinates - MUST run FIRST -->
   <script is:inline define:vars={{ mapboxToken }}>
     window.__EDIFICARTE_TOKEN__ = mapboxToken;
     window.__TURIMAP_TOKEN__ = mapboxToken;
+    window.__DEMO_MODE__ = true;
+    window.__DEMO_FAST_LOAD__ = true;
+
+    // Force fake GPS IMMEDIATELY - block any real geolocation
     (function () {
+      var DEMO_LAT = 19.4262;
+      var DEMO_LNG = -99.1679;
+
       var pos = {
-        coords: { latitude: 19.4340, longitude: -99.1412, accuracy: 5, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+        coords: {
+          latitude: DEMO_LAT,
+          longitude: DEMO_LNG,
+          accuracy: 5,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null
+        },
         timestamp: Date.now()
       };
-      Object.defineProperty(navigator, 'geolocation', {
-        get: function () {
-          return {
-            watchPosition: function (success) { setTimeout(function () { success(pos); }, 100); return 1; },
-            getCurrentPosition: function (success) { setTimeout(function () { success(pos); }, 100); },
-            clearWatch: function () {}
-          };
+
+      // Store demo position globally
+      window.__DEMO_POSITION__ = pos;
+
+      // Override navigator.geolocation immediately and permanently
+      var fakeGeo = {
+        watchPosition: function (success, error, options) {
+          console.log('[DEMO] Fake GPS watchPosition called');
+          setTimeout(function() { success(pos); }, 0);
+          return 1;
         },
-        configurable: true
+        getCurrentPosition: function (success, error, options) {
+          console.log('[DEMO] Fake GPS getCurrentPosition called');
+          setTimeout(function() { success(pos); }, 0);
+        },
+        clearWatch: function () {
+          console.log('[DEMO] Fake GPS clearWatch called');
+        }
+      };
+
+      // Force override with non-configurable property
+      Object.defineProperty(navigator, 'geolocation', {
+        get: function () { return fakeGeo; },
+        configurable: false,
+        enumerable: true
       });
-      window.__DEMO_MODE__ = true;
-      window.__DEMO_FAST_LOAD__ = true;
+
+      console.log('[DEMO] Fake GPS activated at', DEMO_LAT, DEMO_LNG);
     })();
   </script>
 
   <!-- Demo Overlay Controls -->
   <div
     id="demo-controls"
-    class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-500"
+    class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[3px] transition-opacity duration-500"
   >
     <!-- Demo Card -->
     <div
       id="demo-card"
-      class="liquid-glass pointer-events-auto relative mx-4 max-w-md rounded-3xl p-6 shadow-2xl"
+      class="liquid-glass pointer-events-auto relative mx-4 w-full max-w-md rounded-3xl p-5 shadow-2xl sm:p-6"
     >
       <!-- Progress Indicator -->
-      <div class="mb-4 flex gap-1.5">
+      <div class="mb-3 flex gap-1.5 sm:mb-4">
         <div class="progress-dot h-2 flex-1 rounded-full bg-accent-600 transition-all duration-300"></div>
         <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
         <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
@@ -59,40 +90,39 @@ const mapboxToken =
       <div id="demo-content">
         <div class="mb-2 flex items-center gap-2">
           <span
-            class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-600 text-xl transition-transform duration-300"
+            class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-600 text-xl transition-transform duration-300 sm:h-10 sm:w-10"
             id="demo-emoji"
           >
             🌍
           </span>
           <h2
-            class="text-xl font-bold text-slate-800 dark:text-white"
+            class="text-lg font-bold text-slate-800 dark:text-white sm:text-xl"
             id="demo-title"
           >
-            Welcome to EdificARTE
+            Bienvenido a EdificARTE
           </h2>
         </div>
         <p
-          class="mb-6 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"
+          class="mb-5 text-[12px] leading-relaxed text-slate-600 dark:text-slate-300 sm:mb-6 sm:text-[13px]"
           id="demo-description"
         >
-          Discover cultural heritage around the world with AI-powered guides,
-          AR experiences, and immersive audio tours.
+          Descubre el patrimonio cultural con guías de IA, experiencias inmersivas y recorridos de audio multilingües.
         </p>
       </div>
 
       <!-- Actions -->
-      <div class="flex gap-3">
+      <div class="flex gap-2.5 sm:gap-3">
         <button
           id="btn-demo-skip"
-          class="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-[12px] font-semibold text-slate-600 transition-all hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-semibold text-slate-600 transition-all hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:px-4 sm:py-2.5 sm:text-[12px]"
         >
-          Skip
+          Omitir
         </button>
         <button
           id="btn-demo-next"
-          class="flex-1 rounded-xl bg-accent-600 px-4 py-2.5 text-[12px] font-semibold text-white shadow-lg shadow-accent-600/20 transition-all hover:bg-accent-700 active:scale-95"
+          class="flex-1 rounded-xl bg-accent-600 px-3 py-2 text-[11px] font-semibold text-white shadow-lg shadow-accent-600/20 transition-all hover:bg-accent-700 active:scale-95 sm:px-4 sm:py-2.5 sm:text-[12px]"
         >
-          Next
+          Siguiente
         </button>
       </div>
     </div>
@@ -107,9 +137,9 @@ const mapboxToken =
   <!-- Demo Annotations (floating hints) -->
   <div
     id="demo-annotation"
-    class="liquid-glass pointer-events-none fixed z-40 hidden max-w-xs rounded-2xl px-4 py-3 shadow-xl transition-all duration-500"
+    class="liquid-glass pointer-events-none fixed z-40 hidden max-w-[85vw] rounded-2xl px-3.5 py-2.5 shadow-xl transition-all duration-500 sm:max-w-xs sm:px-4 sm:py-3"
   >
-    <p class="text-[11px] font-semibold text-slate-700 dark:text-slate-200" id="demo-annotation-text"></p>
+    <p class="text-[10px] font-semibold text-slate-700 dark:text-slate-200 sm:text-[11px]" id="demo-annotation-text"></p>
   </div>
 
   <!-- Embedded Map Page -->
@@ -138,35 +168,35 @@ const mapboxToken =
           data-i18n="mapa.filters.all"
           class="filter-chip active flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
         >
-          All
+          Todos
         </button>
         <button
           data-filter="museum"
           data-i18n="mapa.filters.museums"
           class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
         >
-          🏛️ Museums
+          🏛️ Museos
         </button>
         <button
           data-filter="temple"
           data-i18n="mapa.filters.temples"
           class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
         >
-          ⛪ Temples
+          ⛪ Templos
         </button>
         <button
           data-filter="park"
           data-i18n="mapa.filters.parks"
           class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
         >
-          🌳 Parks
+          🌳 Parques
         </button>
         <button
           data-filter="historic"
           data-i18n="mapa.filters.historic"
           class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
         >
-          🏰 Historic
+          🏰 Histórico
         </button>
       </div>
     </div>
@@ -180,7 +210,7 @@ const mapboxToken =
       <button
         id="btn-locate"
         class="liquid-glass flex h-11 w-11 items-center justify-center rounded-full text-slate-700 shadow-lg transition-all active:scale-90 dark:text-slate-200"
-        aria-label="Center location"
+        aria-label="Centrar ubicación"
       >
         <span class="material-symbols-outlined text-[20px]" id="locate-icon"
           >my_location</span
@@ -213,7 +243,7 @@ const mapboxToken =
               class="material-symbols-outlined text-[18px] text-accent-600 dark:text-accent-400"
               >explore</span
             >
-            <span data-i18n="mapa.sheet.title">Nearby Places</span>
+            <span data-i18n="mapa.sheet.title">Lugares Cercanos</span>
           </h2>
           <span
             id="sheet-chevron"
@@ -236,7 +266,7 @@ const mapboxToken =
               class="py-6 text-center text-[12px] text-slate-400 dark:text-slate-500"
               data-i18n="mapa.sheet.empty_cta"
             >
-              Enable location to discover nearby places
+              Cargando patrimonio cercano...
             </p>
           </div>
         </div>
@@ -251,7 +281,25 @@ const mapboxToken =
 
 <script>
   // Import map script to initialize the embedded map
-  import '../scripts/mapa-app.ts';
+  import { mountMap } from '../scripts/mapa-app.ts';
+
+  // CRITICAL: Wait for fake GPS to be fully active before mounting map
+  function waitForFakeGPS() {
+    if (window.__DEMO_POSITION__ && navigator.geolocation) {
+      console.log('[DEMO] Fake GPS confirmed, mounting map');
+      mountMap();
+    } else {
+      console.log('[DEMO] Waiting for fake GPS...');
+      setTimeout(waitForFakeGPS, 50);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', waitForFakeGPS);
+  } else {
+    waitForFakeGPS();
+  }
+  document.addEventListener('astro:page-load', waitForFakeGPS);
 </script>
 
 <script>
@@ -339,24 +387,31 @@ const mapboxToken =
             setTimeout(() => {
               const toast = document.createElement('div');
               toast.className =
-                'fixed left-1/2 top-1/3 z-[999999] flex -translate-x-1/2 -translate-y-1/2 transform flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 px-8 py-6 shadow-2xl backdrop-blur-md border border-amber-300/40 transition-all duration-500 scale-90 opacity-0';
+                'fixed top-5 left-1/2 -translate-x-1/2 z-[999999] flex items-center gap-2.5 rounded-full border border-white/50 bg-white/95 px-3.5 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-500 -translate-y-16 opacity-0 dark:border-slate-700/60 dark:bg-slate-900/95 text-slate-800 dark:text-white pointer-events-auto max-w-[92vw] sm:gap-3.5 sm:px-4 sm:py-2.5';
               toast.innerHTML = `
-                <div class="text-6xl animate-bounce" style="animation-duration: 1.2s;">🥇</div>
-                <div class="text-center">
-                  <div class="text-xl font-extrabold text-white drop-shadow">¡Medalla NFT Desbloqueada!</div>
-                  <div class="text-xs font-medium text-amber-100 mt-0.5">Centro Cultural El Rule · Metalingua</div>
+                <div class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 p-0.5 shadow-md sm:h-10 sm:w-10">
+                  <img src="https://coming-aqua-flyingfish.myfilebase.com/ipfs/QmSb45pdEwGTuJFivhHuaRwZZFX83nrx4Gki1o5cCXqDo1" alt="Medalla" class="h-full w-full rounded-full object-cover" />
+                  <span class="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm">✓</span>
+                </div>
+                <div class="text-left min-w-0 pr-1.5 sm:pr-2">
+                  <div class="flex items-center gap-1.5 leading-none mb-0.5">
+                    <span class="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 sm:text-[10px]">EdificARTE</span>
+                    <span class="text-[8px] text-slate-400 sm:text-[9px]">• ahora</span>
+                  </div>
+                  <p class="truncate text-[11px] font-bold text-slate-900 dark:text-white leading-tight sm:text-[12px]">Medalla: Centro Cultural El Rule</p>
+                  <p class="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 leading-tight sm:text-[10px]">¡Logro desbloqueado y añadido a tu perfil!</p>
                 </div>
               `;
               document.body.appendChild(toast);
               requestAnimationFrame(() => {
-                toast.classList.remove('scale-90', 'opacity-0');
-                toast.classList.add('scale-100', 'opacity-100');
+                toast.classList.remove('-translate-y-16', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
               });
               setTimeout(() => {
-                toast.classList.remove('scale-100', 'opacity-100');
-                toast.classList.add('scale-90', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-16', 'opacity-0');
                 setTimeout(() => toast.remove(), 500);
-              }, 3200);
+              }, 4000);
             }, 1200);
           }
         }, 200);
@@ -515,6 +570,105 @@ const mapboxToken =
     }
     50% {
       opacity: 0.5;
+    }
+  }
+
+  /* Map Markers & Pins */
+  :global(.edificarte-pin),
+  :global(.turimap-pin) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: pointer;
+    font-size: 18px;
+  }
+  .dark :global(.edificarte-pin),
+  .dark :global(.turimap-pin) {
+    background: rgba(15, 23, 42, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+  :global(.edificarte-pin:hover),
+  :global(.turimap-pin:hover) {
+    transform: scale(1.15);
+    border-color: rgba(37, 99, 235, 0.6);
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
+  }
+  :global(.edificarte-pin.selected),
+  :global(.turimap-pin.selected) {
+    border-color: rgba(37, 99, 235, 0.8);
+    box-shadow:
+      0 0 0 4px rgba(37, 99, 235, 0.2),
+      0 4px 20px rgba(37, 99, 235, 0.4);
+    transform: scale(1.25) translateY(-4px);
+    z-index: 1000 !important;
+    background: rgba(37, 99, 235, 0.3);
+  }
+
+  /* Cluster pins */
+  :global(.edificarte-pin-cluster),
+  :global(.turimap-pin-cluster) {
+    width: 46px;
+    height: 46px;
+    border-color: rgba(37, 99, 235, 0.55);
+    box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22);
+  }
+  .dark :global(.edificarte-pin-cluster),
+  .dark :global(.turimap-pin-cluster) {
+    border-color: rgba(96, 165, 250, 0.55);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  }
+  :global(.edificarte-pin-cluster-count),
+  :global(.turimap-pin-cluster-count) {
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: #1d4ed8;
+  }
+  .dark :global(.edificarte-pin-cluster-count),
+  .dark :global(.turimap-pin-cluster-count) {
+    color: #93c5fd;
+  }
+
+  /* GPS User Location Dot */
+  :global(.user-dot) {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    background: #2563eb;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.6);
+    z-index: 100 !important;
+    pointer-events: none;
+  }
+  :global(.user-dot::after) {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    background: rgba(37, 99, 235, 0.3);
+    animation: loc-pulse 2s ease-out infinite;
+  }
+  @keyframes loc-pulse {
+    0% {
+      transform: scale(0.5);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(2.8);
+      opacity: 0;
     }
   }
 </style>

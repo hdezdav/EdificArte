@@ -464,16 +464,17 @@ function getLocalPlaces(
   viewport: PaddedViewport
 ): Place[] {
   const locale = detectLocale();
-  const isDemoFastLoad = (window as any).__DEMO_FAST_LOAD__;
+  const isDemoMode = (window as any).__DEMO_MODE__;
 
   let monumentsToUse = MONUMENTS;
 
   // In demo mode, only load CDMX monuments for faster load
-  if (isDemoFastLoad) {
+  if (isDemoMode) {
     monumentsToUse = MONUMENTS.filter((m) => {
       // CDMX bounds: roughly 19.0-19.6 lat, -99.4 to -98.9 lng
       return m.lat >= 19.0 && m.lat <= 19.6 && m.lng >= -99.4 && m.lng <= -98.9;
     });
+    console.log('[getLocalPlaces] Demo mode: filtered to', monumentsToUse.length, 'CDMX monuments');
   }
 
   return monumentsToUse.filter((monument) =>
@@ -545,7 +546,7 @@ function formatDistance(km: number): string {
 function getCategoryInfo(cat: string): { emoji: string; label: string } {
   // Defensive: accept any raw vocabulary (Mapbox English, Spanish monument
   // types, human-readable labels) — normalize inside.
-  return getCanonicalCategoryInfo(normalizeCategory(cat));
+  return getCanonicalCategoryInfo(normalizeCategory(cat), detectLocale());
 }
 
 function isPlaceVisibleForFilter(place: Place): boolean {
@@ -1437,6 +1438,21 @@ const onPos = async (pos: GeolocationPosition) => {
     firstLocationFetched = true;
     if (activeMapLifecycle !== currentLifecycle) return;
   }
+
+  // Load places FIRST, then refresh pins
+  const context = getCurrentViewport();
+  if (context) {
+    const places = getLocalPlaces(lng, lat, context.viewport).slice(0, context.budget.renderLimit);
+    if (places.length > 0) {
+      nearbyPlaces = places;
+      console.log('[onPos] Loaded', places.length, 'places into nearbyPlaces');
+      renderList(getFilteredPlaces(places));
+      // NOW refresh pins after nearbyPlaces is populated
+      refreshClusteredPins();
+    }
+  } else {
+    console.warn('[onPos] getCurrentViewport returned null, map might not be ready yet');
+  }
 };
 
 const onErr = (err: GeolocationPositionError) => {
@@ -1452,20 +1468,18 @@ function startWatching() {
   const isDemoMode = (window as any).__DEMO_MODE__;
 
   if (isDemoMode) {
+    console.log('[DEMO] startWatching: using demo mode coordinates at Hotel Virreyes');
     // Demo mode: fake location at Hotel Virreyes
-    const fakePos = {
-      coords: {
-        latitude: 19.4340,
-        longitude: -99.1412,
-        accuracy: 10,
-        altitude: null,
-        altitudeAccuracy: null,
-        heading: null,
-        speed: null
-      },
-      timestamp: Date.now()
-    };
-    onPos(fakePos as GeolocationPosition);
+    userLat = DEMO_CENTER[1];
+    userLng = DEMO_CENTER[0];
+
+    // Set marker immediately
+    updateUserMarker(DEMO_CENTER[0], DEMO_CENTER[1]);
+    setGeo('ok', 'Demo Location Active');
+
+    // DON'T call onPos here - places are already loaded in initMap
+    // This avoids race condition where getCurrentViewport() returns null
+    console.log('[DEMO] Skipping onPos call - places already loaded in initMap');
     return;
   }
 
@@ -1489,8 +1503,8 @@ function requestLocationPermission() {
     // Demo mode: fake location at Hotel Virreyes
     const fakePos = {
       coords: {
-        latitude: 19.4340,
-        longitude: -99.1412,
+        latitude: DEMO_CENTER[1],
+        longitude: DEMO_CENTER[0],
         accuracy: 10,
         altitude: null,
         altitudeAccuracy: null,
@@ -1528,8 +1542,8 @@ function requestLocationPermission() {
 // Lifecycle: Setup & Tear Down Map (Astro View Transitions support)
 // ---------------------------------------------------------------------------
 const DEFAULT_CENTER: [number, number] = [-99.1332, 19.4326]; // CDMX fallback
-const DEMO_CENTER: [number, number] = [-99.1679, 19.4262]; // Centro Cultural El Rule for demo
-const isInDemoMode = typeof window !== 'undefined' && window.location.pathname === '/demo';
+const DEMO_CENTER: [number, number] = [-99.1679, 19.4262]; // Hotel Virreyes for demo
+const isInDemoMode = typeof window !== 'undefined' && (window.location.pathname.includes('/demo') || (window as unknown as { __DEMO_MODE__?: boolean }).__DEMO_MODE__ === true);
 let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
 let searchAbortController: AbortController | null = null;
@@ -2496,6 +2510,30 @@ function initMap() {
   const initialCenter: [number, number] = isInDemoMode ? DEMO_CENTER : DEFAULT_CENTER;
   const initialZoom = isInDemoMode ? 16 : 15;
 
+  if (isInDemoMode) {
+    console.log('[DEMO] Initializing demo mode at', DEMO_CENTER);
+    userLat = DEMO_CENTER[1];
+    userLng = DEMO_CENTER[0];
+
+    // Force demo viewport with nearby monuments
+    const demoViewport = createPaddedViewport({
+      west: DEMO_CENTER[0] - 0.08,
+      south: DEMO_CENTER[1] - 0.08,
+      east: DEMO_CENTER[0] + 0.08,
+      north: DEMO_CENTER[1] + 0.08,
+    });
+    const initialPlaces = getLocalPlaces(DEMO_CENTER[0], DEMO_CENTER[1], demoViewport).slice(0, 20);
+
+    if (initialPlaces.length > 0) {
+      console.log('[DEMO] Loaded', initialPlaces.length, 'initial places');
+      nearbyPlaces = initialPlaces;
+      renderList(getFilteredPlaces(initialPlaces));
+      // Build cluster index immediately for demo
+      clusterIndex = buildClusterIndex(getFilteredPlaces(initialPlaces));
+      clusterDataVersion++;
+    }
+  }
+
   // Create Mapbox instance
   map = new mapboxgl.Map({
     container: 'map',
@@ -2525,29 +2563,50 @@ function initMap() {
 
   scheduleDetailed3DUpgrade(lifecycle);
 
-  // Local data can be drawn as soon as the base map is ready; remote POIs
-  // are merged in later without making the user wait on a network request.
   map.once('load', () => {
     setupRecintosLayer(map);
+
+    if (isInDemoMode) {
+      console.log('[DEMO] Map loaded, ensuring demo places are loaded');
+      userLat = DEMO_CENTER[1];
+      userLng = DEMO_CENTER[0];
+      updateUserMarker(DEMO_CENTER[0], DEMO_CENTER[1]);
+
+      // In demo mode, ALWAYS load places if they're not loaded yet
+      if (nearbyPlaces.length === 0) {
+        const context = getCurrentViewport();
+        if (context) {
+          const localPlaces = getLocalPlaces(
+            DEMO_CENTER[0],
+            DEMO_CENTER[1],
+            context.viewport
+          ).slice(0, context.budget.renderLimit);
+
+          if (localPlaces.length > 0) {
+            nearbyPlaces = localPlaces;
+            console.log('[DEMO] Loaded', localPlaces.length, 'places on map load');
+            renderList(getFilteredPlaces(localPlaces));
+            refreshClusteredPins();
+          }
+        }
+      } else {
+        console.log('[DEMO] Places already loaded, rendering', nearbyPlaces.length, 'pins');
+        refreshClusteredPins();
+      }
+      return;
+    }
+
     if (activeMapLifecycle !== lifecycle || nearbyPlaces.length > 0) return;
     if (!shouldLoadPois(map.getZoom())) return;
     const context = getCurrentViewport();
     if (!context) return;
-    // Demo mode: only load CDMX monuments for faster performance
-    const localPlaces = isInDemoMode
-      ? getLocalPlaces(
-          context.center.lng,
-          context.center.lat,
-          context.viewport
-        ).filter(p => {
-          const monument = MONUMENTS.find(m => m.id === p.id);
-          return monument?.city === 'Ciudad de México' || monument?.city === 'CDMX';
-        }).slice(0, context.budget.renderLimit)
-      : getLocalPlaces(
-          context.center.lng,
-          context.center.lat,
-          context.viewport
-        ).slice(0, context.budget.renderLimit);
+
+    const localPlaces = getLocalPlaces(
+      context.center.lng,
+      context.center.lat,
+      context.viewport
+    ).slice(0, context.budget.renderLimit);
+
     if (!localPlaces.length) return;
     nearbyPlaces = localPlaces;
     renderList(getFilteredPlaces(localPlaces));
@@ -2556,6 +2615,13 @@ function initMap() {
 
   map.once('idle', () => {
     if (activeMapLifecycle === lifecycle) {
+      if (isInDemoMode) {
+        console.log('[DEMO] Map idle, ensuring pins are visible');
+        // In demo mode, force immediate pin render
+        if (nearbyPlaces.length > 0) {
+          refreshClusteredPins();
+        }
+      }
       void refreshNearbyPlacesForViewport(lifecycle, true);
     }
   });
@@ -3223,7 +3289,10 @@ function cleanUpMap() {
       map.remove();
     } catch {}
   }
-  userMarker = null;
+  if (userMarker) {
+    userMarker.remove();
+    userMarker = null;
+  }
   selectedPlace = null;
   isCollapsed = true;
   nearbyPlaces = [];
@@ -3239,6 +3308,19 @@ export function mountMap(): void {
   bindFilterChips();
   bindAudioPlayerControls();
   if ($('map')) initMap();
+}
+
+if (typeof window !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      if ($('map')) mountMap();
+    });
+  } else {
+    if ($('map')) mountMap();
+  }
+  document.addEventListener('astro:page-load', () => {
+    if ($('map')) mountMap();
+  });
 }
 
 document.addEventListener('astro:before-swap', () => {
@@ -3309,30 +3391,35 @@ function showBadgeNotification(badgeId: number) {
 
   const toast = document.createElement('div');
   toast.className =
-    'fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 rounded-2xl border border-white/20 bg-white/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-md transition-all duration-500 scale-90 opacity-0 dark:border-slate-800/50 dark:bg-slate-900/95 text-slate-800 dark:text-white';
+    'fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3.5 rounded-full border border-white/50 bg-white/90 px-4 py-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl transition-all duration-500 -translate-y-12 opacity-0 dark:border-slate-700/60 dark:bg-slate-900/90 text-slate-800 dark:text-white pointer-events-auto cursor-pointer max-w-[92vw]';
   toast.innerHTML = `
-    <div class="h-10 w-10 overflow-hidden rounded-full border border-slate-200/80 dark:border-slate-800">
-      <img src="${img}" alt="${name}" class="h-full w-full object-cover" />
+    <div class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 p-0.5 shadow-md">
+      <img src="${img}" alt="${name}" class="h-full w-full rounded-full object-cover" />
+      <span class="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm">✓</span>
     </div>
-    <div class="text-left">
-      <p class="text-[9px] font-bold uppercase tracking-wider text-accent-500 dark:text-accent-400">¡Logro Desbloqueado!</p>
-      <p class="text-[12px] font-semibold">${name}</p>
+    <div class="text-left min-w-0 pr-2">
+      <div class="flex items-center gap-1.5 leading-none mb-0.5">
+        <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">EdificARTE</span>
+        <span class="text-[9px] text-slate-400">• ahora</span>
+      </div>
+      <p class="truncate text-[12px] font-bold text-slate-900 dark:text-white leading-tight">${name}</p>
+      <p class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 leading-tight">¡Medalla ganada y añadida a tu perfil!</p>
     </div>
   `;
 
   document.body.appendChild(toast);
   requestAnimationFrame(() => {
-    toast.classList.remove('scale-90', 'opacity-0');
-    toast.classList.add('scale-100', 'opacity-100');
+    toast.classList.remove('-translate-y-12', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
   });
 
   setTimeout(() => {
-    toast.classList.remove('scale-100', 'opacity-100');
-    toast.classList.add('scale-90', 'opacity-0');
+    toast.classList.remove('translate-y-0', 'opacity-100');
+    toast.classList.add('-translate-y-12', 'opacity-0');
     setTimeout(() => {
       toast.remove();
     }, 500);
-  }, 4000);
+  }, 4500);
 }
 
 function updateAudioUI() {

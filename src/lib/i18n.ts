@@ -19,11 +19,11 @@ export const DEFAULT_LOCALE: Locale = 'es';
 
 export const LOCALE_STORAGE_KEY = 'edificarte_locale';
 
-/** Read locale from URL (?lang=en) or localStorage or fallback. Browser-only. */
+/** Read locale from URL (?lang=en) or localStorage or browser hint. Browser-only. */
 export function detectLocale(): Locale {
   if (typeof window === 'undefined') return DEFAULT_LOCALE;
 
-  // 1) explicit URL param wins (used by SSR redirect / shareable link).
+  // 1) Explicit URL param wins (used by SSR redirect / shareable link).
   try {
     const url = new URL(window.location.href);
     const q = url.searchParams.get('lang');

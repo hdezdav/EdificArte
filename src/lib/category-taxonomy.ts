@@ -22,9 +22,11 @@ export type CanonicalCategoryId =
   | 'attraction'
   | 'default';
 
+import type { Locale } from './i18n';
+
 export interface CanonicalCategory {
   emoji: string;
-  label: string;
+  label: Record<Locale, string>;
   synonyms: string[];
   fragments?: string[];
 }
@@ -33,13 +35,13 @@ export const CATEGORY_TAXONOMY: Record<CanonicalCategoryId, CanonicalCategory> =
   {
     museum: {
       emoji: '🏛️',
-      label: 'Museum',
+      label: { es: 'Museo', en: 'Museum' },
       synonyms: ['museum', 'museo', 'art_gallery', 'gallery', 'galeria'],
       fragments: ['museum', 'museo', 'gallery', 'galeria'],
     },
     temple: {
       emoji: '⛪',
-      label: 'Temple',
+      label: { es: 'Templo', en: 'Temple' },
       synonyms: [
         'temple',
         'place_of_worship',
@@ -69,13 +71,13 @@ export const CATEGORY_TAXONOMY: Record<CanonicalCategoryId, CanonicalCategory> =
     },
     park: {
       emoji: '🌳',
-      label: 'Park',
+      label: { es: 'Parque', en: 'Park' },
       synonyms: ['park', 'parque', 'garden', 'jardin', 'nature_reserve'],
       fragments: ['park', 'parque', 'garden', 'jardin'],
     },
     historic: {
       emoji: '🏰',
-      label: 'Historic Site',
+      label: { es: 'Sitio Histórico', en: 'Historic Site' },
       synonyms: [
         'historic',
         'castle',
@@ -113,13 +115,13 @@ export const CATEGORY_TAXONOMY: Record<CanonicalCategoryId, CanonicalCategory> =
     },
     viewpoint: {
       emoji: '🔭',
-      label: 'Viewpoint',
+      label: { es: 'Mirador', en: 'Viewpoint' },
       synonyms: ['viewpoint', 'mirador', 'overlook', 'scenic'],
       fragments: ['viewpoint', 'mirador', 'overlook', 'scenic'],
     },
     attraction: {
       emoji: '⭐',
-      label: 'Attraction',
+      label: { es: 'Atracción Cultural', en: 'Attraction' },
       synonyms: [
         'attraction',
         'tourist_attraction',
@@ -142,7 +144,7 @@ export const CATEGORY_TAXONOMY: Record<CanonicalCategoryId, CanonicalCategory> =
     },
     default: {
       emoji: '📍',
-      label: 'Place',
+      label: { es: 'Sitio Cultural', en: 'Cultural Site' },
       synonyms: [],
     },
   };
@@ -220,12 +222,16 @@ export function normalizeCategory(
   return 'default';
 }
 
-export function getCanonicalCategoryInfo(id: CanonicalCategoryId): {
+export function getCanonicalCategoryInfo(
+  id: CanonicalCategoryId,
+  locale: Locale = 'es'
+): {
   emoji: string;
   label: string;
 } {
   const info = CATEGORY_TAXONOMY[id] ?? CATEGORY_TAXONOMY.default;
-  return { emoji: info.emoji, label: info.label };
+  const label = typeof info.label === 'object' ? (info.label[locale] || info.label.es) : info.label;
+  return { emoji: info.emoji, label };
 }
 
 /**
