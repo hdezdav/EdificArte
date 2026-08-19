@@ -12,6 +12,28 @@ const mapboxToken =
 ---
 
 <Layout title="EdificARTE - Demo Mode" fullScreen={true} locale={locale}>
+  <!-- Fake GPS: Centro Cultural El Rule coordinates -->
+  <script is:inline>
+    (function () {
+      var pos = {
+        coords: { latitude: 19.4340, longitude: -99.1412, accuracy: 5, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+        timestamp: Date.now()
+      };
+      Object.defineProperty(navigator, 'geolocation', {
+        get: function () {
+          return {
+            watchPosition: function (success) { setTimeout(function () { success(pos); }, 100); return 1; },
+            getCurrentPosition: function (success) { setTimeout(function () { success(pos); }, 100); },
+            clearWatch: function () {}
+          };
+        },
+        configurable: true
+      });
+      window.__DEMO_MODE__ = true;
+      window.__DEMO_FAST_LOAD__ = true;
+    })();
+  </script>
+
   <!-- Demo Overlay Controls -->
   <div
     id="demo-controls"
@@ -25,7 +47,6 @@ const mapboxToken =
       <!-- Progress Indicator -->
       <div class="mb-4 flex gap-1.5">
         <div class="progress-dot h-2 flex-1 rounded-full bg-accent-600 transition-all duration-300"></div>
-        <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
         <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
         <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
         <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
@@ -243,42 +264,103 @@ const mapboxToken =
 
   const steps: DemoStep[] = [
     {
-      emoji: '🌍',
-      title: 'Bienvenido a EdificARTE',
-      description:
-        'Descubre patrimonio cultural en todo el mundo con guías impulsadas por IA, experiencias AR e tours de audio inmersivos.',
-    },
-    {
       emoji: '🗺️',
-      title: 'Mapa Interactivo Global',
+      title: 'Explora el Mapa Interactivo',
       description:
-        'Explora monumentos y sitios patrimoniales en todo el mundo. Toca cualquier pin para conocer su historia, ver imágenes y obtener direcciones.',
-      spotlightSelector: '#map',
-      annotation: 'Toca los pines para explorar monumentos',
+        'Visualiza monumentos de CDMX con pines de colores. Puedes filtrar por tipo, hacer zoom, y descubrir patrimonio en tiempo real.',
+      action: () => {
+        setTimeout(() => {
+          const map = (window as any).__edificarteMap;
+          if (map) {
+            map.flyTo({
+              center: [-99.1679, 19.4262],
+              zoom: 17,
+              pitch: 0,
+              duration: 1800,
+            });
+          }
+        }, 300);
+      },
     },
     {
-      emoji: '🔍',
-      title: 'Búsqueda y Filtros',
+      emoji: '🥇',
+      title: 'Coleccionable Desbloqueado',
       description:
-        'Busca ciudades, monumentos específicos o filtra por tipo: museos, templos, parques, sitios históricos y miradores.',
-      spotlightSelector: '#search-input',
-      annotation: 'Busca cualquier lugar o filtra por categoría',
+        'Al visitar Centro Cultural El Rule, desbloqueas medallas NFT. Cada lugar tiene coleccionables únicos que forman tu galería personal.',
+      action: () => {
+        setTimeout(() => {
+          const map = (window as any).__edificarteMap;
+          const monuments = (window as any).__edificarteMonuments || [];
+          const elRule = monuments.find((m: any) => m.id === 'el-rule');
+
+          if (map && elRule) {
+            // Zoom to Hotel Virreyes (the real NFT monument)
+            map.flyTo({
+              center: [elRule.lng, elRule.lat],
+              zoom: 19,
+              pitch: 60,
+              duration: 2000,
+            });
+
+            // Show medal toast after zoom
+            setTimeout(() => {
+              const toast = document.createElement('div');
+              toast.className =
+                'fixed left-1/2 top-1/2 z-[999999] flex -translate-x-1/2 -translate-y-1/2 transform flex-col items-center gap-3 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-600 px-8 py-6 shadow-2xl transition-all duration-500 scale-90 opacity-0';
+              toast.innerHTML = `
+                <div class="text-6xl animate-bounce" style="animation-duration: 1s;">🥇</div>
+                <div class="text-center">
+                  <div class="text-xl font-bold text-white">¡Medalla Desbloqueada!</div>
+                  <div class="text-sm text-amber-100">Centro Cultural El Rule</div>
+                </div>
+              `;
+              document.body.appendChild(toast);
+              requestAnimationFrame(() => {
+                toast.classList.remove('scale-90', 'opacity-0');
+                toast.classList.add('scale-100', 'opacity-100');
+              });
+              setTimeout(() => {
+                toast.classList.remove('scale-100', 'opacity-100');
+                toast.classList.add('scale-90', 'opacity-0');
+                setTimeout(() => toast.remove(), 500);
+              }, 3000);
+            }, 2200);
+          }
+        }, 300);
+      },
+    },
+    {
+      emoji: '🎧',
+      title: 'Metalingua — Arte Multilingüe',
+      description:
+        'El Centro Cultural El Rule alberga la exposición "Nombrar el Orgullo Neo" con 202 obras sonoras en lenguas originarias de México.',
+      action: () => {
+        setTimeout(() => {
+          const monuments = (window as any).__edificarteMonuments || [];
+          const elRule = monuments.find((m: any) => m.id === 'el-rule');
+
+          if (elRule) {
+            // Open El Rule monument card which has Metalingua gallery
+            const event = new CustomEvent('open-monument-detail', {
+              detail: { monument: elRule }
+            });
+            window.dispatchEvent(event);
+
+            // Alternatively, trigger the pin click directly if exposed
+            if ((window as any).handlePinClick) {
+              (window as any).handlePinClick(elRule);
+            }
+          }
+        }, 400);
+      },
     },
     {
       emoji: '🤖',
       title: 'Asistente IA (Edi)',
       description:
-        'Pregunta lo que quieras: "Quiero conocer Medellín" o "Muéstrame museos cercanos". Edi analiza los pines visibles y crea itinerarios personalizados con rutas.',
+        'Pregunta lo que quieras: "Quiero conocer Medellín" o "Muéstrame museos cercanos". Edi analiza los pines visibles y crea itinerarios personalizados.',
       spotlightSelector: '#ai-fab',
       annotation: 'Haz clic aquí para hablar con Edi',
-    },
-    {
-      emoji: '🎧',
-      title: 'Audioguías & NFT Badges',
-      description:
-        'Escucha tours de audio curados en monumentos selectos. Visítalos para desbloquear badges NFT conmemorativos en Polygon.',
-      spotlightSelector: '#bottom-sheet',
-      annotation: 'Selecciona un monumento para ver sus detalles',
     },
     {
       emoji: '🚀',
@@ -411,6 +493,9 @@ const mapboxToken =
       skipDemo();
     }
   });
+
+  // Metalingua panel logic - REMOVED, using real monument card from explorar.astro
+
 </script>
 
 <style>

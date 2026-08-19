@@ -464,7 +464,19 @@ function getLocalPlaces(
   viewport: PaddedViewport
 ): Place[] {
   const locale = detectLocale();
-  return MONUMENTS.filter((monument) =>
+  const isDemoFastLoad = (window as any).__DEMO_FAST_LOAD__;
+
+  let monumentsToUse = MONUMENTS;
+
+  // In demo mode, only load CDMX monuments for faster load
+  if (isDemoFastLoad) {
+    monumentsToUse = MONUMENTS.filter((m) => {
+      // CDMX bounds: roughly 19.0-19.6 lat, -99.4 to -98.9 lng
+      return m.lat >= 19.0 && m.lat <= 19.6 && m.lng >= -99.4 && m.lng <= -98.9;
+    });
+  }
+
+  return monumentsToUse.filter((monument) =>
     viewportContains(viewport, monument.lng, monument.lat)
   )
     .map((m) => {
@@ -1437,6 +1449,26 @@ const onErr = (err: GeolocationPositionError) => {
 };
 
 function startWatching() {
+  const isDemoMode = (window as any).__DEMO_MODE__;
+
+  if (isDemoMode) {
+    // Demo mode: fake location at Hotel Virreyes
+    const fakePos = {
+      coords: {
+        latitude: 19.4340,
+        longitude: -99.1412,
+        accuracy: 10,
+        altitude: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null
+      },
+      timestamp: Date.now()
+    };
+    onPos(fakePos as GeolocationPosition);
+    return;
+  }
+
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   if (!('geolocation' in navigator)) {
     setGeo('error', 'GPS not supported');
@@ -1451,6 +1483,27 @@ function startWatching() {
 }
 
 function requestLocationPermission() {
+  const isDemoMode = (window as any).__DEMO_MODE__;
+
+  if (isDemoMode) {
+    // Demo mode: fake location at Hotel Virreyes
+    const fakePos = {
+      coords: {
+        latitude: 19.4340,
+        longitude: -99.1412,
+        accuracy: 10,
+        altitude: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null
+      },
+      timestamp: Date.now()
+    };
+    onPos(fakePos as GeolocationPosition);
+    startWatching();
+    return;
+  }
+
   if (!('geolocation' in navigator)) return;
   if (permissionDenied) {
     alert(
@@ -1475,6 +1528,8 @@ function requestLocationPermission() {
 // Lifecycle: Setup & Tear Down Map (Astro View Transitions support)
 // ---------------------------------------------------------------------------
 const DEFAULT_CENTER: [number, number] = [-99.1332, 19.4326]; // CDMX fallback
+const DEMO_CENTER: [number, number] = [-99.1679, 19.4262]; // Centro Cultural El Rule for demo
+const isInDemoMode = typeof window !== 'undefined' && window.location.pathname === '/demo';
 let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
 let searchAbortController: AbortController | null = null;
@@ -2437,15 +2492,16 @@ function initMap() {
   sheetBody = $('sheet-body');
   floatingControls = $('map-floating-controls');
 
-  // Always load CDMX historic center first
-  const initialCenter: [number, number] = DEFAULT_CENTER;
+  // Demo mode: start at El Rule; otherwise CDMX historic center
+  const initialCenter: [number, number] = isInDemoMode ? DEMO_CENTER : DEFAULT_CENTER;
+  const initialZoom = isInDemoMode ? 16 : 15;
 
   // Create Mapbox instance
   map = new mapboxgl.Map({
     container: 'map',
     style: STYLES[currentStyleIdx].id,
     center: initialCenter,
-    zoom: 15,
+    zoom: initialZoom,
     pitch: 45,
     bearing: -17.6,
     antialias: !isLowPowerDevice,
@@ -2459,6 +2515,9 @@ function initMap() {
       },
     },
   });
+  // Expose map and monuments for demo mode
+  (window as unknown as { __edificarteMap?: unknown }).__edificarteMap = map;
+  (window as unknown as { __edificarteMonuments?: unknown }).__edificarteMonuments = MONUMENTS;
   travelVisualization = new TravelVisualization(
     map,
     () => activeMapLifecycle === lifecycle && !isMapRemoved()
@@ -2474,11 +2533,21 @@ function initMap() {
     if (!shouldLoadPois(map.getZoom())) return;
     const context = getCurrentViewport();
     if (!context) return;
-    const localPlaces = getLocalPlaces(
-      context.center.lng,
-      context.center.lat,
-      context.viewport
-    ).slice(0, context.budget.renderLimit);
+    // Demo mode: only load CDMX monuments for faster performance
+    const localPlaces = isInDemoMode
+      ? getLocalPlaces(
+          context.center.lng,
+          context.center.lat,
+          context.viewport
+        ).filter(p => {
+          const monument = MONUMENTS.find(m => m.id === p.id);
+          return monument?.city === 'Ciudad de México' || monument?.city === 'CDMX';
+        }).slice(0, context.budget.renderLimit)
+      : getLocalPlaces(
+          context.center.lng,
+          context.center.lat,
+          context.viewport
+        ).slice(0, context.budget.renderLimit);
     if (!localPlaces.length) return;
     nearbyPlaces = localPlaces;
     renderList(getFilteredPlaces(localPlaces));
