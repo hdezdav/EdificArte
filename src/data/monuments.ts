@@ -270,4 +270,27 @@ export const MONUMENTS: Monument[] = [
     image:
       'https://www.mexicodesconocido.com.mx/wp-content/uploads/2020/11/46171515_319810011943872_8112943512745410560_n.jpg',
   },
+  {
+    id: 'el-rule',
+    name: 'Centro Cultural El Rule',
+    category: 'Centro Cultural',
+    dist: '0.1 km',
+    lat: 19.4340,
+    lng: -99.1412,
+    emoji: '🎨',
+    desc: 'Espacio cultural multidisciplinario en el Centro Histórico, promotor del diálogo social, la inclusión y la diversidad artística.',
+    audioDuration: '4:20',
+    type: 'museo',
+    country: 'MX',
+    city: 'Mexico City',
+    currency: 'MXN',
+    translations: {
+      es: {
+        name: 'Centro Cultural El Rule',
+        desc: 'Espacio cultural multidisciplinario en el Centro Histórico. Sede de la exposición multilingüe y multisensorial "Nombrar el Orgullo Neo" presentada por Metalingua en alianza con EdificARTE y UNESCO.',
+        category: 'Centro Cultural · Exposición',
+      },
+    },
+    image: 'https://mexicocity.cdmx.gob.mx/wp-content/uploads/2022/11/el-rule-2.jpg',
+  },
 ];

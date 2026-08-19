@@ -5,6 +5,10 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Custom slate shade between 800 (#1e293b) and 900 (#0f172a)
+        slate: {
+          850: '#162032',
+        },
         // Brand: neutral slate (replaces old purple #3f043a palette).
         // Used for high-contrast text, wordmarks, headers.
         brand: {
