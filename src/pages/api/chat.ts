@@ -75,16 +75,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const distMeters = getDistance(userLocation.lat, userLocation.lng, 19.4326, -99.1332);
       if (distMeters >= 30000) {
         isUserFarFromCDMX = true;
-        locationPromptAddition = `ESTADO DE UBICACIÓN DEL USUARIO: UBICACIÓN ACTIVADA Y DETECTADA [${userLocation.lat}, ${userLocation.lng}]. El usuario está FUERA de la CDMX (a unos ${Math.round(distMeters / 1000)} km de distancia).
-MENCIONA ENTUSIASTAMENTE ALGO COMO: "¡Veo que estás fuera de la ciudad! Si planeas viajar pronto a la CDMX, te recomiendo mucho este itinerario para tu llegada:".
+      locationPromptAddition = `ESTADO DE UBICACIÓN DEL USUARIO: UBICACIÓN ACTIVADA Y DETECTADA [${userLocation.lat}, ${userLocation.lng}]. El usuario está FUERA de la CDMX (a unos ${Math.round(distMeters / 1000)} km de distancia).
+INSTRUCCIÓN CRÍTICA DE CONTEXTO: A partir de las coordenadas [${userLocation.lat}, ${userLocation.lng}], INFIERE la ciudad o región aproximada donde se encuentra el usuario (ej. "Medellín", "Guadalajara", "Monterrey", "Bogotá", etc.) y MENCIÓNALA en tu respuesta con algo como: "¡Ahh, veo que estás en [ciudad inferida]! Cuando llegues a la CDMX, te recomiendo empezar por:".
+Si el usuario ya mencionó la ciudad o destino que quiere conocer, úsalo directamente. Analiza los pines y lugares visibles en el mapa (listados en PINES EN TIEMPO REAL) y prioriza los que más se ajusten a lo que el usuario preguntó.
+PUNTO DE INICIO DE RUTA: Si el usuario mencionó un hotel, aeropuerto u otro punto de llegada en CDMX, extráelo en el campo "startAddress". Si NO lo ha mencionado, pregúntale en el reply: "¿Desde qué hotel o punto de la CDMX saldrás? Así trazo la ruta desde ahí 📍" — en ese caso deja "route" como [] y "action" como "chat" hasta saber el punto de partida.
 SIEMPRE establece "isTravelPlan": true en tu JSON de respuesta cuando recomiendes lugares o rutas.`;
       } else {
-        locationPromptAddition = `ESTADO DE UBICACIÓN DEL USUARIO: UBICACIÓN ACTIVADA Y DETECTADA [${userLocation.lat}, ${userLocation.lng}]. El usuario está DENTRO de la CDMX (a ${Math.round(distMeters)} metros del centro). Recomienda monumentos cercanos indicando distancia en metros y tiempo a pie.`;
+        locationPromptAddition = `ESTADO DE UBICACIÓN DEL USUARIO: UBICACIÓN ACTIVADA Y DETECTADA [${userLocation.lat}, ${userLocation.lng}]. El usuario está DENTRO de la CDMX (a ${Math.round(distMeters)} metros del centro). Analiza los pines visibles en el mapa (PINES EN TIEMPO REAL) y recomienda los más cercanos al usuario indicando distancia en metros y tiempo a pie.`;
       }
     } else {
       locationPromptAddition = `ESTADO DE UBICACIÓN DEL USUARIO: NO ACTIVADA / NO DISPONIBLE.
-MENCIONA AMABLEMENTE AL USUARIO QUE NECESITAS / RECOMIENDAS QUE ACTIVE O COMPARTA SU UBICACIÓN PARA DECIRLE LO QUE TIENE MÁS CERCA. Y AGREGA ALGO COMO: "Pero si estás planeando viajar a la CDMX, ¡te súper recomiendo esta ruta para tu llegada:".
-SIEMPRE establece "isTravelPlan": true en tu JSON cuando te pida una ruta o recomendación sin tener la ubicación activada.`;
+Si el usuario menciona que quiere conocer o visitar alguna ciudad o lugar, responde con entusiasmo y recomienda los mejores pines o monumentos relacionados disponibles en el catálogo. Menciona amablemente que si activa su ubicación podrás personalizar mejor las recomendaciones. SIEMPRE establece "isTravelPlan": true en tu JSON cuando recomiende una ruta sin ubicación.`;
     }
 
     let visiblePinsContext = '';
@@ -161,8 +162,10 @@ REGLAS ESTRICTAS DE RESPUESTA:
   "route": ["id1", "id2"],
   "action": "route",
   "target": "",
+  "startAddress": "Nombre del hotel, aeropuerto o punto de llegada del usuario en CDMX si lo mencionó; cadena vacía si no.",
   "isTravelPlan": true
-}`;
+}
+- El campo "startAddress" es CRÍTICO cuando el usuario está fuera de la CDMX: si mencionó un hotel, aeropuerto u otro punto de llegada, extráelo aquí para trazar la ruta desde ese origen. Si aún no lo mencionó, déjalo vacío y pregúntale en el "reply".`;
 
     // Determinar endpoint y modelo según la key
     const apiEndpoint = aiApiKey.startsWith('xai-')
@@ -206,7 +209,7 @@ REGLAS ESTRICTAS DE RESPUESTA:
 
     // Validar y sanitizar la respuesta JSON recibida de la IA
     const validMonumentIds = new Set(MONUMENTS.map((m) => m.id));
-    let parsed: { reply?: string; route?: unknown; action?: string; target?: string; isTravelPlan?: boolean } = {};
+    let parsed: { reply?: string; route?: unknown; action?: string; target?: string; startAddress?: string; isTravelPlan?: boolean } = {};
 
     try {
       parsed = JSON.parse(candidateText);
@@ -252,6 +255,7 @@ REGLAS ESTRICTAS DE RESPUESTA:
       route: cleanRoute,
       action: action,
       target: typeof parsed.target === 'string' ? parsed.target : '',
+      startAddress: typeof parsed.startAddress === 'string' ? parsed.startAddress : '',
       isTravelPlan: isTravelPlan
     };
 

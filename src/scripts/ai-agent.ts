@@ -442,22 +442,18 @@ function initAiAgent() {
       const botRoute = data.route || [];
       const botAction = data.action || 'chat';
       const botTarget = data.target || '';
+      const botStartAddress = data.startAddress || '';
 
       chatHistory.push({ role: 'assistant', content: botReply });
       updateAssistantMessage(loaderId, botReply, botRoute, botAction);
 
-      const isTravelPlan = !!data.isTravelPlan;
-
-      if (isTravelPlan) {
-        triggerAirplaneAnimation();
-      }
-
       // Ejecución automática de acciones del Agente Inteligente:
       if (botAction === 'route' && botRoute.length > 0) {
         if (window.location.pathname.startsWith('/mapa')) {
-          window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route: botRoute } }));
+          window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route: botRoute, startAddress: botStartAddress } }));
         } else {
-          window.location.href = `/mapa?route=${botRoute.join(',')}`;
+          const startParam = botStartAddress ? `&start=${encodeURIComponent(botStartAddress)}` : '';
+          window.location.href = `/mapa?route=${botRoute.join(',')}${startParam}`;
         }
       } else if (botAction === 'play_audio' && botRoute.length > 0) {
         if (window.location.pathname.startsWith('/mapa')) {
@@ -496,23 +492,6 @@ function initAiAgent() {
   }
 }
 
-function triggerAirplaneAnimation() {
-  const overlay = document.getElementById('flight-anim-overlay');
-  const plane = document.getElementById('flight-plane');
-  if (!overlay || !plane) return;
-
-  overlay.classList.remove('hidden');
-  plane.classList.remove('animate-flight');
-
-  void plane.offsetWidth;
-
-  plane.classList.add('animate-flight');
-
-  setTimeout(() => {
-    overlay.classList.add('hidden');
-    plane.classList.remove('animate-flight');
-  }, 3600);
-}
 
 document.addEventListener('astro:page-load', () => {
   initAiAgent();

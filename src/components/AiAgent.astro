@@ -74,21 +74,6 @@
       </div>
     </div>
 
-  <!-- Airplane Animation Overlay -->
-  <div
-    id="flight-anim-overlay"
-    class="pointer-events-none fixed inset-0 z-[10000] hidden overflow-hidden"
-  >
-    <div
-      id="flight-plane"
-      class="absolute bottom-[20%] left-[-160px] flex items-center gap-3 rounded-full border border-accent-400/50 bg-gradient-to-r from-accent-600/95 to-accent-700/95 px-6 py-3 text-white shadow-2xl shadow-accent-500/40 backdrop-blur-md ring-1 ring-white/20"
-    >
-      <span class="text-3xl animate-bounce">✈️</span>
-      <span class="text-sm font-extrabold tracking-wide uppercase">
-        ¡Planeando tu viaje!
-      </span>
-    </div>
-  </div>
 </div>
 
 <style>
@@ -159,32 +144,7 @@
     }
   }
 
-  @keyframes flight-across {
-    0% {
-      transform: translate(0, 0) rotate(18deg) scale(0.65);
-      opacity: 0;
-    }
-    12% {
-      opacity: 1;
-      transform: translate(20vw, -10vh) rotate(12deg) scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: translate(55vw, -32vh) rotate(4deg) scale(1.2);
-    }
-    88% {
-      opacity: 1;
-      transform: translate(90vw, -50vh) rotate(-8deg) scale(1);
-    }
-    100% {
-      transform: translate(120vw, -65vh) rotate(-18deg) scale(0.65);
-      opacity: 0;
-    }
-  }
 
-  :global(.animate-flight) {
-    animation: flight-across 3.8s cubic-bezier(0.33, 0.85, 0.56, 1) forwards !important;
-  }
 </style>
 
 <script>

@@ -2887,20 +2887,48 @@ function initMap() {
   documentClickHandler = documentClickHandlerForLifecycle;
   document.addEventListener('click', documentClickHandlerForLifecycle);
 
-  const aiRouteHandlerForLifecycle = (e: Event) => {
+  const aiRouteHandlerForLifecycle = async (e: Event) => {
     if (activeMapLifecycle !== lifecycle) return;
-    const customEvent = e as CustomEvent<{ route: string[] }>;
+    const customEvent = e as CustomEvent<{ route: string[]; startAddress?: string }>;
     const routeMonumentIds = customEvent.detail.route;
+    const startAddress = customEvent.detail.startAddress;
     if (!routeMonumentIds || routeMonumentIds.length === 0) return;
 
     const coordinates: [number, number][] = [];
     const firstMonument = MONUMENTS.find((m) => m.id === routeMonumentIds[0]);
+    let startPointAdded = false;
 
-    // Solo incluir la ubicación del usuario si está a menos de 10 km del primer monumento
-    if (userLng !== null && userLat !== null && firstMonument) {
+    // Si se especificó un startAddress, geocodificar y usar ese punto
+    if (startAddress && startAddress.trim()) {
+      try {
+        const currentLocale = detectLocale();
+        const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(startAddress)}.json?proximity=-99.1332,19.4326&limit=1&language=${currentLocale}&access_token=${MAPBOX_TOKEN}`;
+        const res = await fetch(geocodeUrl);
+        const data = await res.json();
+        if (data.features && data.features.length > 0) {
+          const [startLng, startLat] = data.features[0].center;
+          coordinates.push([startLng, startLat]);
+          startPointAdded = true;
+        }
+      } catch (err) {
+        console.warn('No se pudo geocodificar el punto de inicio:', err);
+      }
+    }
+
+    // Si no hay startAddress pero el usuario está cerca del primer monumento (<10 km), usar su ubicación
+    if (!startPointAdded && userLng !== null && userLat !== null && firstMonument) {
       const distFromUser = haversine(userLat, userLng, firstMonument.lat, firstMonument.lng);
       if (distFromUser <= 10) {
         coordinates.push([userLng, userLat]);
+        startPointAdded = true;
+      }
+    }
+
+    // Si el usuario está lejos y no especificó un startAddress, usar el AICM (Aeropuerto Internacional CDMX) como origen por defecto
+    if (!startPointAdded && userLng !== null && userLat !== null && firstMonument) {
+      const distFromUser = haversine(userLat, userLng, firstMonument.lat, firstMonument.lng);
+      if (distFromUser > 10) {
+        coordinates.push([-99.0721, 19.4363]); // Coordenadas del AICM
       }
     }
 
@@ -2979,7 +3007,26 @@ function initMap() {
   // Check for placeId in URL parameters to auto-select a place
   const params = new URLSearchParams(window.location.search);
   const urlPlaceId = params.get('placeId');
-  if (urlPlaceId) {
+  const urlRoute = params.get('route');
+  const urlStartAddress = params.get('start');
+
+  if (urlRoute) {
+    const routeIds = urlRoute.split(',').filter(Boolean);
+    if (routeIds.length > 0) {
+      const triggerRoute = () => {
+        window.dispatchEvent(
+          new CustomEvent('ai-route-generated', {
+            detail: { route: routeIds, startAddress: urlStartAddress || '' },
+          })
+        );
+      };
+      if (map.loaded()) {
+        triggerRoute();
+      } else {
+        map.once('load', triggerRoute);
+      }
+    }
+  } else if (urlPlaceId) {
     const monument = MONUMENTS.find((m) => m.id === urlPlaceId);
     if (monument) {
       const locale = detectLocale();
