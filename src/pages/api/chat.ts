@@ -222,7 +222,7 @@ REGLAS ESTRICTAS DE RESPUESTA:
       );
     }
 
-    let action = typeof parsed.action === 'string' ? parsed.action : 'chat';
+    const action = typeof parsed.action === 'string' ? parsed.action : 'chat';
 
     // Fallback inteligente si la IA pidió trazar ruta pero envió IDs inexistentes
     if ((action === 'route' || action === 'play_audio' || action === 'reserve') && cleanRoute.length === 0) {

@@ -2,13 +2,20 @@
 import Layout from '../layouts/Layout.astro';
 import AiAgent from '../components/AiAgent.astro';
 import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
+import { DEFAULT_LOCALE, type Locale } from '../lib/i18n';
+import esDict from '../i18n/es.json';
+import enDict from '../i18n/en.json';
+
+const locale = (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
+const dict = locale === 'es' ? esDict : enDict;
+
 // In Cloudflare adapter mode, .dev.vars are available via runtime env, not import.meta.env
 const runtimeEnv = Astro.locals?.runtime?.env;
 const mapboxToken =
   runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || '';
 ---
 
-<Layout title="EdificARTE - Explore" fullScreen={true}>
+<Layout title={`EdificARTE - ${dict.nav.map}`} fullScreen={true} locale={locale}>
   <!-- Floating Search Bar -->
   <div
     class="unified-search-map-layer pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col items-center gap-2 px-4 pt-2"

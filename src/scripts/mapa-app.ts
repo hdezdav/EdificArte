@@ -1007,7 +1007,8 @@ function selectPlace(place: Place) {
   const detailDuration = document.getElementById('detail-duration');
   stopAudio();
   if (audioContainer) {
-    if (monumentMatch?.audioDuration || (monumentMatch as any)?.audioUrl) {
+    const hasAudioFile = (monumentMatch as any)?.audioUrl;
+    if (hasAudioFile) {
       if (detailDuration)
         detailDuration.textContent = monumentMatch?.audioDuration || '1:50';
       audioContainer.classList.remove('hidden');

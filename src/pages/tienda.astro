@@ -4,6 +4,9 @@ import AiAgent from '../components/AiAgent.astro';
 import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
 import { MXN_PER_USDC } from '../lib/flows/money';
 import defaultProductsData from '../data/tianquiztlis_products.json';
+import { DEFAULT_LOCALE, type Locale } from '../lib/i18n';
+import esDict from '../i18n/es.json';
+import enDict from '../i18n/en.json';
 
 interface Product {
   name: string;
@@ -81,9 +84,12 @@ if (items.length === 0 && Array.isArray(defaultProductsData)) {
     file: p.file || '',
   }));
 }
+
+const locale = (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
+const dict = locale === 'es' ? esDict : enDict;
 ---
 
-<Layout title="EdificARTE - Tienda">
+<Layout title={`EdificARTE - ${dict.nav.shop}`} locale={locale}>
   <div class="unified-search-layer">
     <UnifiedSearchBar
       inputId="store-search-input"

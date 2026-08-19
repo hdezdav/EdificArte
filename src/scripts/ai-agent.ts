@@ -214,15 +214,20 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
       `;
 
       if (route.length === 1) {
-        actionsHtml += `
-          <button
-            class="ai-audio-trigger flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-300 bg-white hover:border-accent-500 hover:bg-accent-50 text-slate-700 hover:text-accent-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-accent-400 dark:hover:bg-accent-950/30 dark:hover:text-accent-400 font-bold px-3.5 py-2 text-[11.5px] transition-all active:scale-[0.96]"
-            data-monument="${route[0]}"
-          >
-            <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">headphones</span>
-            Audioguía
-          </button>
-        `;
+        const monument = (window as any).MONUMENTS?.find((m: any) => m.id === route[0]);
+        const hasAudio = monument?.audioUrl;
+
+        if (hasAudio) {
+          actionsHtml += `
+            <button
+              class="ai-audio-trigger flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-300 bg-white hover:border-accent-500 hover:bg-accent-50 text-slate-700 hover:text-accent-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-accent-400 dark:hover:bg-accent-950/30 dark:hover:text-accent-400 font-bold px-3.5 py-2 text-[11.5px] transition-all active:scale-[0.96]"
+              data-monument="${route[0]}"
+            >
+              <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">headphones</span>
+              Audioguía
+            </button>
+          `;
+        }
       }
     } else {
       actionsHtml += `
@@ -236,15 +241,20 @@ function updateAssistantMessage(id: string, text: string, route: string[] = [], 
       `;
 
       if (route.length === 1) {
-        actionsHtml += `
-          <a
-            href="/mapa?route=${route[0]}&play=true"
-            class="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-300 bg-white hover:border-accent-500 hover:bg-accent-50 text-slate-700 hover:text-accent-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-accent-400 dark:hover:bg-accent-950/30 dark:hover:text-accent-400 font-bold px-3.5 py-2 text-[11.5px] transition-all active:scale-[0.96]"
-          >
-            <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">headphones</span>
-            Audioguía
-          </a>
-        `;
+        const monument = (window as any).MONUMENTS?.find((m: any) => m.id === route[0]);
+        const hasAudio = monument?.audioUrl;
+
+        if (hasAudio) {
+          actionsHtml += `
+            <a
+              href="/mapa?route=${route[0]}&play=true"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-300 bg-white hover:border-accent-500 hover:bg-accent-50 text-slate-700 hover:text-accent-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-accent-400 dark:hover:bg-accent-950/30 dark:hover:text-accent-400 font-bold px-3.5 py-2 text-[11.5px] transition-all active:scale-[0.96]"
+            >
+              <span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1">headphones</span>
+              Audioguía
+            </a>
+          `;
+        }
       }
     }
 
@@ -317,7 +327,6 @@ function initAiAgent() {
   const aiInput = document.getElementById('ai-agent-input') as HTMLInputElement;
   const searchbarBtns = document.querySelectorAll('#ai-agent-btn-searchbar');
   const aiContainer = document.getElementById('ai-agent-container');
-  const micBtn = document.getElementById('ai-mic-btn') as HTMLButtonElement;
 
   function safeAddListener(
     el: HTMLElement | null,

@@ -2,6 +2,8 @@
 import Layout from '../layouts/Layout.astro';
 import LocaleSwitcher from '../components/LocaleSwitcher.astro';
 import { DEFAULT_LOCALE, type Locale } from '../lib/i18n';
+import esDict from '../i18n/es.json';
+import enDict from '../i18n/en.json';
 import {
   getUserBySession,
   createSession,
@@ -252,9 +254,10 @@ const isEmoji = (str: string) => {
 
 const localeCookie = Astro.cookies.get('edificarte_locale')?.value || Astro.cookies.get('turimap_locale')?.value;
 const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ? localeCookie : DEFAULT_LOCALE;
+const dict = currentLocale === 'es' ? esDict : enDict;
 ---
 
-<Layout title="EdificARTE - Yo">
+<Layout title={`EdificARTE - ${dict.nav.profile}`} locale={currentLocale}>
   {user && (!isGuest || !showAuthForm) ? (
     <div
       id="profile-container"
