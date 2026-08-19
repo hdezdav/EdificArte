@@ -13,6 +13,8 @@ import type { APIRoute } from 'astro';
  * Respuesta: { ok: true }
  */
 export const POST: APIRoute = async ({ cookies }) => {
+  cookies.delete('edificarte_guest', { path: '/' });
+  cookies.delete('edificarte_guest_name', { path: '/' });
   cookies.delete('turimap_guest', { path: '/' });
   cookies.delete('turimap_guest_name', { path: '/' });
   return new Response(

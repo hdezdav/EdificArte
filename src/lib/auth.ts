@@ -1,6 +1,6 @@
 import type { AstroCookies } from 'astro';
 
-const PASSWORD_SALT = "turimap-app-salt-2026";
+const PASSWORD_SALT = "edificarte-app-salt-2026";
 
 export async function hashPassword(password: string): Promise<string> {
   if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -38,7 +38,7 @@ export async function getUserBySession(
   cookies: AstroCookies,
   env: Env
 ): Promise<User | null> {
-  const sessionId = cookies.get('turimap_session')?.value;
+  const sessionId = cookies.get('edificarte_session')?.value;
   if (!sessionId) return null;
 
   try {
@@ -99,7 +99,7 @@ export async function createSession(
   // Guardamos la sesión en KV con expiración de 7 días (604800 segundos)
   await env.SESSION.put(sessionId, sessionData, { expirationTtl: 604800 });
 
-  cookies.set('turimap_session', sessionId, {
+  cookies.set('edificarte_session', sessionId, {
     path: '/',
     httpOnly: true,
     // secure: true en dev (http://localhost) hace que el navegador rechace
@@ -113,11 +113,11 @@ export async function createSession(
 }
 
 export async function deleteSession(cookies: AstroCookies, env: Env): Promise<void> {
-  const sessionId = cookies.get('turimap_session')?.value;
+  const sessionId = cookies.get('edificarte_session')?.value;
   if (sessionId) {
     await env.SESSION.delete(sessionId);
   }
-  cookies.delete('turimap_session', { path: '/' });
+  cookies.delete('edificarte_session', { path: '/' });
 }
 
 export async function getUserBadges(env: Env, userId: string): Promise<number[]> {

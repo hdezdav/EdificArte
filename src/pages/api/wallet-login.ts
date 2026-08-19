@@ -31,7 +31,7 @@ function abbrevAddress(addr: string): string {
 }
 
 async function createUserFromWallet(env: Env, address: string, phone: string | null): Promise<User> {
-  const email = `${address.toLowerCase()}@wallet.turimap.app`;
+  const email = `${address.toLowerCase()}@wallet.edificarte.app`;
   const name = `Wallet ${abbrevAddress(address)}`;
   
   const generateUUID = () => {
@@ -269,7 +269,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     } else {
       // 4a. Crear user nuevo + asociar wallet.
       try {
-        const syntheticEmail = `${address.toLowerCase()}@wallet.turimap.app`;
+        const syntheticEmail = `${address.toLowerCase()}@wallet.edificarte.app`;
         const orphan = await env.DB.prepare('SELECT * FROM users WHERE email = ?')
           .bind(syntheticEmail)
           .first<User>();
@@ -342,6 +342,8 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   }
 
   // Limpiar cookie de guest si existía (UX: si venías como guest, ya no lo sos).
+  cookies.delete('edificarte_guest', { path: '/' });
+  cookies.delete('edificarte_guest_name', { path: '/' });
   cookies.delete('turimap_guest', { path: '/' });
   cookies.delete('turimap_guest_name', { path: '/' });
 

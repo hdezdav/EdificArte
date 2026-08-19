@@ -383,7 +383,7 @@ function initAiAgent() {
 
   const welcomeSpeakBtn = document.querySelector('#ai-agent-messages .ai-speak-btn') as HTMLButtonElement;
   if (welcomeSpeakBtn) {
-    const welcomeText = '¡Hola! Soy tu asistente de TuriMap. ¿Quieres que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Pregúntame lo que quieras!';
+    const welcomeText = '¡Hola! Soy tu asistente de EdificARTE. ¿Quieres que te recomiende una ruta de monumentos o te cuente la historia de algún lugar de la CDMX? ¡Pregúntame lo que quieras!';
     safeAddListener(welcomeSpeakBtn, 'click', () => {
       speakText(welcomeText, welcomeSpeakBtn);
     });
@@ -402,8 +402,8 @@ function initAiAgent() {
 
     const loaderId = appendAssistantLoader();
 
-    const userLat = localStorage.getItem('turimap_user_lat');
-    const userLng = localStorage.getItem('turimap_user_lng');
+    const userLat = localStorage.getItem('edificarte_user_lat') || localStorage.getItem('turimap_user_lat');
+    const userLng = localStorage.getItem('edificarte_user_lng') || localStorage.getItem('turimap_user_lng');
     const userLocation = userLat && userLng ? {
       lat: parseFloat(userLat),
       lng: parseFloat(userLng)
@@ -413,16 +413,20 @@ function initAiAgent() {
     chatRequestController?.abort();
     chatRequestController = controller;
 
+    const getVisiblePins = (window as unknown as { __EDIFICARTE_GET_VISIBLE_PINS__?: () => Array<{ id: string; name: string; category?: string; lat: number; lng: number; address?: string }> }).__EDIFICARTE_GET_VISIBLE_PINS__;
+    const visiblePins = getVisiblePins ? getVisiblePins() : [];
+
     try {
       const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: chatHistory,
-          userLocation: userLocation
-        }),
-        signal: controller.signal,
-      });
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: chatHistory,
+        userLocation: userLocation,
+        visiblePins: visiblePins
+      }),
+      signal: controller.signal,
+    });
 
       if (!response.ok) {
         throw new Error('Response error');
@@ -438,9 +442,19 @@ function initAiAgent() {
       chatHistory.push({ role: 'assistant', content: botReply });
       updateAssistantMessage(loaderId, botReply, botRoute, botAction);
 
+      const isTravelPlan = !!data.isTravelPlan;
+
+      if (isTravelPlan) {
+        triggerAirplaneAnimation();
+      }
+
       // Ejecución automática de acciones del Agente Inteligente:
-      if (botAction === 'route' && botRoute.length > 0 && window.location.pathname.startsWith('/mapa')) {
-        window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route: botRoute } }));
+      if (botAction === 'route' && botRoute.length > 0) {
+        if (window.location.pathname.startsWith('/mapa')) {
+          window.dispatchEvent(new CustomEvent('ai-route-generated', { detail: { route: botRoute } }));
+        } else {
+          window.location.href = `/mapa?route=${botRoute.join(',')}`;
+        }
       } else if (botAction === 'play_audio' && botRoute.length > 0) {
         if (window.location.pathname.startsWith('/mapa')) {
           window.dispatchEvent(new CustomEvent('ai-play-audio', { detail: { monumentId: botRoute[0] } }));
@@ -475,6 +489,24 @@ function initAiAgent() {
   if (micBtn) {
     micBtn.style.display = 'none';
   }
+}
+
+function triggerAirplaneAnimation() {
+  const overlay = document.getElementById('flight-anim-overlay');
+  const plane = document.getElementById('flight-plane');
+  if (!overlay || !plane) return;
+
+  overlay.classList.remove('hidden');
+  plane.classList.remove('animate-flight');
+
+  void plane.offsetWidth;
+
+  plane.classList.add('animate-flight');
+
+  setTimeout(() => {
+    overlay.classList.add('hidden');
+    plane.classList.remove('animate-flight');
+  }, 3600);
 }
 
 document.addEventListener('astro:page-load', () => {

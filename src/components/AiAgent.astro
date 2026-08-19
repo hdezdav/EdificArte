@@ -79,6 +79,22 @@
         </form>
       </div>
     </div>
+
+  <!-- Airplane Animation Overlay -->
+  <div
+    id="flight-anim-overlay"
+    class="pointer-events-none fixed inset-0 z-[10000] hidden overflow-hidden"
+  >
+    <div
+      id="flight-plane"
+      class="absolute bottom-[20%] left-[-140px] flex items-center gap-2.5 rounded-full border border-purple-400/40 bg-slate-900/95 px-5 py-2.5 text-white shadow-[0_10px_30px_rgba(63,4,58,0.5)] backdrop-blur-md"
+    >
+      <span class="animate-bounce text-2xl">✈️</span>
+      <span class="text-xs font-black tracking-wide text-purple-200 uppercase">
+        ¡Planeando tu viaje a la CDMX!
+      </span>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -121,6 +137,33 @@
   @keyframes ai-pop-in {
     from { transform: translateY(8px) scale(0.97); opacity: 0; }
     to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  @keyframes flight-across {
+    0% {
+      transform: translate(0, 0) rotate(15deg) scale(0.7);
+      opacity: 0;
+    }
+    15% {
+      opacity: 1;
+      transform: translate(25vw, -12vh) rotate(10deg) scale(1.1);
+    }
+    50% {
+      opacity: 1;
+      transform: translate(55vw, -30vh) rotate(5deg) scale(1.25);
+    }
+    85% {
+      opacity: 1;
+      transform: translate(85vw, -45vh) rotate(-5deg) scale(1.1);
+    }
+    100% {
+      transform: translate(115vw, -60vh) rotate(-15deg) scale(0.7);
+      opacity: 0;
+    }
+  }
+
+  :global(.animate-flight) {
+    animation: flight-across 3.5s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
   }
 </style>
 

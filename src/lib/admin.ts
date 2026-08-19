@@ -8,7 +8,7 @@ export function isAdmin(locals: Pick<App.Locals, 'adminAuthorized'>): boolean {
 export const createRequestId = () => crypto.randomUUID();
 
 export function adminEmail(locals: Pick<App.Locals, 'user'>): string {
-  return locals.user?.email || 'admin@turimap.app';
+  return locals.user?.email || 'admin@edificarte.app';
 }
 
 export function validateSameOrigin(request: Request): boolean {
@@ -32,7 +32,7 @@ export function validateSameOrigin(request: Request): boolean {
 type CsrfCookies = Pick<AstroCookies, 'get' | 'set' | 'delete'>;
 
 export async function verifyAdminAccess(env: Env, cookies: CsrfCookies) {
-  const sessionId = cookies.get('turimap_admin_session')?.value;
+  const sessionId = cookies.get('edificarte_admin_session')?.value;
   if (!sessionId) {
     return { user: null, sessionId: null, authorized: false };
   }
@@ -47,7 +47,7 @@ export async function verifyAdminAccess(env: Env, cookies: CsrfCookies) {
     }
     const adminUser: User = {
       id: session.userId || 'admin',
-      email: session.email || 'admin@turimap.app',
+      email: session.email || 'admin@edificarte.app',
       name: 'Admin',
       avatar_url: null,
       bio: null,
@@ -69,8 +69,8 @@ export async function resolveAdminRequestContext(
   secure: boolean
 ) {
   const { user, sessionId, authorized } = await verifyAdminAccess(env, cookies);
-  const token = cookies.get('turimap_admin_csrf')?.value;
-  const binding = cookies.get('turimap_admin_csrf_session')?.value;
+  const token = cookies.get('edificarte_admin_csrf')?.value;
+  const binding = cookies.get('edificarte_admin_csrf_session')?.value;
   const options = {
     path: '/',
     httpOnly: true,
@@ -81,11 +81,11 @@ export async function resolveAdminRequestContext(
   let csrfToken = authorized && binding === sessionId ? token || null : null;
   if (authorized && !csrfToken) {
     csrfToken = crypto.randomUUID();
-    cookies.set('turimap_admin_csrf', csrfToken, options);
-    cookies.set('turimap_admin_csrf_session', sessionId!, options);
+    cookies.set('edificarte_admin_csrf', csrfToken, options);
+    cookies.set('edificarte_admin_csrf_session', sessionId!, options);
   } else if (!authorized && (token || binding)) {
-    cookies.delete('turimap_admin_csrf', { path: '/' });
-    cookies.delete('turimap_admin_csrf_session', { path: '/' });
+    cookies.delete('edificarte_admin_csrf', { path: '/' });
+    cookies.delete('edificarte_admin_csrf_session', { path: '/' });
   }
   return { user, sessionId, authorized, csrfToken };
 }

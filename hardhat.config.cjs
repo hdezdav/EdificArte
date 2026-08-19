@@ -1,5 +1,5 @@
 /**
- * Hardhat config para los contratos de TuriMap.
+ * Hardhat config para los contratos de EdificARTE.
  *
  * - OpenZeppelin Contracts v5.1.0 (pinneado vía package.json).
  * - Networks: Polygon mainnet (137) y Amoy testnet (80002).

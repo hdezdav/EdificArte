@@ -12,9 +12,9 @@ interface Env {
   // URL del RPC público de Polygon. Fallback si ALCHEMY_KEY no está
   // disponible. En prod conviene ALCHEMY_KEY (más rápido + SLA).
   POLYGON_RPC_URL?: string;
-  // Address del contrato TuriMapBadge. Vacía hasta deploy.
+  // Address del contrato EdificARteBadge. Vacía hasta deploy.
   PUBLIC_BADGE_CONTRACT_ADDRESS?: string;
-  // Address del contrato TuriMapReviews. Vacía hasta deploy.
+  // Address del contrato EdificARteReviews. Vacía hasta deploy.
   PUBLIC_REVIEW_CONTRACT_ADDRESS?: string;
   // Wallet receptora de pagos USDC (EDIFICARTE).
   EDIFICARTE_PAYMENT_ADDRESS?: string;

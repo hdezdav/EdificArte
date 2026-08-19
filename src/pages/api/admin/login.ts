@@ -38,11 +38,11 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
       if (user && (user.password === passwordHash || user.password === password)) {
         isValidAdmin = true;
         adminUserId = user.id;
-      } else if (email === 'admin@turimap.app' && (password === 'admin' || password === 'admin123')) {
+      } else if ((email === 'admin@edificarte.app' || email === 'admin@turimap.app') && (password === 'admin' || password === 'admin123')) {
         isValidAdmin = true;
       }
     } catch {
-      if (email === 'admin@turimap.app' && (password === 'admin' || password === 'admin123')) {
+      if ((email === 'admin@edificarte.app' || email === 'admin@turimap.app') && (password === 'admin' || password === 'admin123')) {
         isValidAdmin = true;
       }
     }
@@ -61,6 +61,13 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
 
   await env.SESSION.put(`admin_session_${sessionId}`, sessionData, { expirationTtl: 28800 });
 
+  cookies.set('edificarte_admin_session', sessionId, {
+    path: '/',
+    httpOnly: true,
+    secure: import.meta.env.PROD,
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 8,
+  });
   cookies.set('turimap_admin_session', sessionId, {
     path: '/',
     httpOnly: true,

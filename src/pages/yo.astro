@@ -21,17 +21,24 @@ const showAuthForm = !!authParam;
 let activeTab = authParam === 'register' ? 'register' : 'login';
 
 // Verificar si tiene cookie de invitado activa
-let isGuest = Astro.cookies.get('turimap_guest')?.value === 'true';
+let isGuest = (Astro.cookies.get('edificarte_guest')?.value || Astro.cookies.get('turimap_guest')?.value) === 'true';
 
 // Si no está registrado y no pidió explícitamente ver el login, lo pasamos a invitado automáticamente
 if (!user && !showAuthForm) {
   if (!isGuest) {
-    Astro.cookies.set('turimap_guest', 'true', {
+    Astro.cookies.set('edificarte_guest', 'true', {
       path: '/',
       httpOnly: false,
       secure: import.meta.env.PROD,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 365 // 1 año
+    });
+    Astro.cookies.set('turimap_guest', 'true', {
+      path: '/',
+      httpOnly: false,
+      secure: import.meta.env.PROD,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365
     });
     isGuest = true;
   }
@@ -42,13 +49,13 @@ if (!user && !showAuthForm) {
 // formulario de registro para que conserve su identidad al crear la cuenta.
 let guestPrefillName = '';
 if (isGuest) {
-  guestPrefillName = Astro.cookies.get('turimap_guest_name')?.value || '';
+  guestPrefillName = Astro.cookies.get('edificarte_guest_name')?.value || Astro.cookies.get('turimap_guest_name')?.value || '';
 }
 
 if (!user && isGuest) {
   user = {
     id: 'guest',
-    email: 'invitado@turimap.app',
+    email: 'invitado@edificarte.app',
     name: guestPrefillName || 'Edificador Invitado',
     avatar_url: '👷',
     bio: 'Explorando EdificARTE como edificador invitado. ¡Creá una cuenta para guardar tu progreso de forma permanente!',
@@ -89,7 +96,7 @@ if (Astro.request.method === 'POST') {
 
           // Avatar por defecto de edificador (Emoji)
           const avatarUrl = '👷';
-          const bio = '¡Hola! Soy un nuevo usuario explorando la ciudad con TuriMap.';
+          const bio = '¡Hola! Soy un nuevo usuario explorando la ciudad con EdificARTE.';
 
           await env.DB.prepare(
             'INSERT INTO users (id, email, password, name, avatar_url, bio, points, likes, visits) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0)'
@@ -98,6 +105,8 @@ if (Astro.request.method === 'POST') {
             .run();
 
           // Eliminar cookie de invitado si existía
+          Astro.cookies.delete('edificarte_guest', { path: '/' });
+          Astro.cookies.delete('edificarte_guest_name', { path: '/' });
           Astro.cookies.delete('turimap_guest', { path: '/' });
           Astro.cookies.delete('turimap_guest_name', { path: '/' });
 
@@ -126,6 +135,7 @@ if (Astro.request.method === 'POST') {
           errorMsg = 'Correo o contraseña incorrectos.';
         } else {
           // Eliminar cookie de invitado si existía
+          Astro.cookies.delete('edificarte_guest', { path: '/' });
           Astro.cookies.delete('turimap_guest', { path: '/' });
 
           await createSession(Astro.cookies, env, String(dbUser.id));
@@ -137,16 +147,23 @@ if (Astro.request.method === 'POST') {
       // NOTA: NO httpOnly - el cliente (modal de bienvenida, botón "registrarse")
       // necesita poder escribir/leer esta cookie. La cookie real de sesión
       // (turimap_session) SÍ es httpOnly, así que la seguridad sigue cubierta.
-      Astro.cookies.set('turimap_guest', 'true', {
+      Astro.cookies.set('edificarte_guest', 'true', {
         path: '/',
         httpOnly: false,
         secure: import.meta.env.PROD,
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 365 // 1 año
       });
+      Astro.cookies.set('turimap_guest', 'true', {
+        path: '/',
+        httpOnly: false,
+        secure: import.meta.env.PROD,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 365
+      });
       return Astro.redirect('/yo');
     } else if (action === 'edit_profile') {
-      const isGuestCookie = Astro.cookies.get('turimap_guest')?.value === 'true';
+      const isGuestCookie = (Astro.cookies.get('edificarte_guest')?.value || Astro.cookies.get('turimap_guest')?.value) === 'true';
       if (!user || isGuestCookie) return Astro.redirect('/yo');
 
       const name = formData.get('name')?.toString().trim();
@@ -168,6 +185,8 @@ if (Astro.request.method === 'POST') {
       }
     } else if (action === 'logout') {
       await deleteSession(Astro.cookies, env);
+      Astro.cookies.delete('edificarte_guest', { path: '/' });
+      Astro.cookies.delete('edificarte_guest_name', { path: '/' });
       Astro.cookies.delete('turimap_guest', { path: '/' });
       Astro.cookies.delete('turimap_guest_name', { path: '/' });
       return Astro.redirect('/yo?auth=login');
@@ -231,11 +250,11 @@ const isEmoji = (str: string) => {
   return !str.includes('/') && !str.includes('.') && !str.startsWith('http');
 };
 
-const localeCookie = Astro.cookies.get('turimap_locale')?.value;
+const localeCookie = Astro.cookies.get('edificarte_locale')?.value || Astro.cookies.get('turimap_locale')?.value;
 const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ? localeCookie : DEFAULT_LOCALE;
 ---
 
-<Layout title="TuriMap - Yo">
+<Layout title="EdificARTE - Yo">
   {user && (!isGuest || !showAuthForm) ? (
     <div
       id="profile-container"
@@ -706,7 +725,8 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
       <div class="border border-[#ECECEC] bg-white rounded-[18px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
         <!-- Header -->
         <div class="text-center mb-6">
-          <h2 class="text-2xl font-extrabold tracking-tight text-[#111111]">TuriMap</h2>
+          <img src="/favicon.ico" alt="EdificARTE" class="mx-auto h-12 w-12 object-contain mb-3" />
+          <h2 class="text-2xl font-extrabold tracking-tight text-[#111111]">EdificARTE</h2>
           <p class="mt-1.5 text-xs text-[#6B7280]" data-i18n="auth.subtitle">Coleccioná insignias e historia urbana</p>
         </div>
 
@@ -1084,7 +1104,7 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
         // Recuperar insignias de invitado desde localStorage
         let guestBadges: number[] = [];
         try {
-          guestBadges = JSON.parse(localStorage.getItem('turimap_guest_badges') || '[]');
+          guestBadges = JSON.parse(localStorage.getItem('edificarte_guest_badges') || localStorage.getItem('turimap_guest_badges') || '[]');
         } catch {}
  
         if (activeBtnLabel) activeBtnLabel.textContent = t('profile.alerts.verifying');
@@ -1107,6 +1127,9 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
  
         // Si es guest, borrar cookies y storage de guest
         if (guestBadges.length > 0) {
+          localStorage.removeItem('edificarte_guest_badges');
+          localStorage.removeItem('edificarte_guest_points');
+          localStorage.removeItem('edificarte_guest_visits');
           localStorage.removeItem('turimap_guest_badges');
           localStorage.removeItem('turimap_guest_points');
           localStorage.removeItem('turimap_guest_visits');
@@ -1243,11 +1266,11 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
     // 5. Carga de progreso del invitado desde localStorage y sincronización
     const guestFlag = document.getElementById('is-guest-flag');
     if (guestFlag) {
-      const guestVisits = parseInt(localStorage.getItem('turimap_guest_visits') || '0', 10);
-      const guestPoints = parseInt(localStorage.getItem('turimap_guest_points') || '0', 10);
+      const guestVisits = parseInt(localStorage.getItem('edificarte_guest_visits') || localStorage.getItem('turimap_guest_visits') || '0', 10);
+      const guestPoints = parseInt(localStorage.getItem('edificarte_guest_points') || localStorage.getItem('turimap_guest_points') || '0', 10);
       let guestBadges: number[] = [];
       try {
-        guestBadges = JSON.parse(localStorage.getItem('turimap_guest_badges') || '[]');
+        guestBadges = JSON.parse(localStorage.getItem('edificarte_guest_badges') || localStorage.getItem('turimap_guest_badges') || '[]');
       } catch {}
  
       // Actualizar visitas y puntos en el DOM
@@ -1327,6 +1350,8 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
               const name = formData.get('name')?.toString().trim() || 'Edificador Invitado';
               const avatarUrl = formData.get('avatar_url')?.toString().trim() || '👷';
  
+              localStorage.setItem('edificarte_guest_name', name);
+              localStorage.setItem('edificarte_guest_avatar', avatarUrl);
               localStorage.setItem('turimap_guest_name', name);
               localStorage.setItem('turimap_guest_avatar', avatarUrl);
  
@@ -1337,8 +1362,8 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
       }
  
       // Pre-cargar valores de invitado en la UI al cargar la página
-      const savedGuestName = localStorage.getItem('turimap_guest_name');
-      const savedGuestAvatar = localStorage.getItem('turimap_guest_avatar');
+      const savedGuestName = localStorage.getItem('edificarte_guest_name') || localStorage.getItem('turimap_guest_name');
+      const savedGuestAvatar = localStorage.getItem('edificarte_guest_avatar') || localStorage.getItem('turimap_guest_avatar');
  
       if (savedGuestName) {
         const nameEl = document.getElementById('profile-user-name');
@@ -1364,7 +1389,7 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
       // Usuario real autenticado: Sincronizar progreso local si existía antes de loguearse/registrarse
       let guestBadges: number[] = [];
       try {
-        guestBadges = JSON.parse(localStorage.getItem('turimap_guest_badges') || '[]');
+        guestBadges = JSON.parse(localStorage.getItem('edificarte_guest_badges') || localStorage.getItem('turimap_guest_badges') || '[]');
       } catch {}
  
       if (guestBadges.length > 0) {
@@ -1379,6 +1404,9 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
           )
         ).then(() => {
           // Limpiar el progreso de invitado para evitar envíos duplicados
+          localStorage.removeItem('edificarte_guest_badges');
+          localStorage.removeItem('edificarte_guest_points');
+          localStorage.removeItem('edificarte_guest_visits');
           localStorage.removeItem('turimap_guest_badges');
           localStorage.removeItem('turimap_guest_points');
           localStorage.removeItem('turimap_guest_visits');
@@ -1429,7 +1457,7 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
    * user-controlled → evita XSS. Mantiene orden: más recientes primero.
    */
   function renderReservations(): void {
-    const STORAGE_KEY = 'turimap_reservations';
+    const STORAGE_KEY = 'edificarte_reservations';
     const listEl = document.getElementById('reservations-list');
     const emptyEl = document.getElementById('reservations-empty');
     const countEl = document.getElementById('reservations-count-label');
@@ -1437,7 +1465,7 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
  
     let reservations: Array<Record<string, unknown>> = [];
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('turimap_reservations');
       if (raw) reservations = JSON.parse(raw);
       if (!Array.isArray(reservations)) reservations = [];
     } catch (e) {
@@ -1622,13 +1650,13 @@ const currentLocale: Locale = (localeCookie === 'en' || localeCookie === 'es') ?
  
     let favIds: string[] = [];
     try {
-      favIds = JSON.parse(localStorage.getItem('turimap_favorites') || '[]');
+      favIds = JSON.parse(localStorage.getItem('edificarte_favorites') || localStorage.getItem('turimap_favorites') || '[]');
       if (!Array.isArray(favIds)) favIds = [];
     } catch { favIds = []; }
  
     const knownExp: Record<string, { title: string; image: string; category: string }> = {};
     try {
-      const raw = (window as unknown as { __TURIMAP_EXPERIENCES__?: Record<string, { title: string; image: string; category: string }> }).__TURIMAP_EXPERIENCES__;
+      const raw = (window as unknown as { __EDIFICARTE_EXPERIENCES__?: Record<string, { title: string; image: string; category: string }>; __TURIMAP_EXPERIENCES__?: Record<string, { title: string; image: string; category: string }> }).__EDIFICARTE_EXPERIENCES__ || (window as unknown as { __TURIMAP_EXPERIENCES__?: Record<string, { title: string; image: string; category: string }> }).__TURIMAP_EXPERIENCES__;
       if (raw) Object.assign(knownExp, raw);
     } catch {}
  

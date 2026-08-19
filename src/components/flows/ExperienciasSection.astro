@@ -245,7 +245,7 @@ const cards = tours.map((t) => ({
   (function reservasApp() {
     if (!Array.isArray(cards) || cards.length === 0) return;
 
-    const DICTS = (window.__TURIMAP_I18N__ || { es: {}, en: {} });
+    const DICTS = (window.__EDIFICARTE_I18N__ || window.__TURIMAP_I18N__ || { es: {}, en: {} });
     function getDict() {
       // Mirrors detectLocale() in src/lib/i18n.ts (is:inline cannot import):
       // URL ?lang → localStorage → navigator.language, default 'es'.
@@ -254,7 +254,7 @@ const cards = tours.map((t) => ({
         if (q === 'es' || q === 'en') return DICTS[q];
       } catch { /* ignore */ }
       try {
-        const s = localStorage.getItem('turimap_locale');
+        const s = localStorage.getItem('edificarte_locale') || localStorage.getItem('turimap_locale');
         if (s === 'en' || s === 'es') return DICTS[s];
       } catch { /* ignore */ }
       const n = (navigator && navigator.language) || '';
@@ -315,7 +315,7 @@ const cards = tours.map((t) => ({
       return BigInt(Math.round(amount * 1_000_000)).toString();
     }
 
-    const PEOPLE_KEY = 'turimap_reserva_people';
+    const PEOPLE_KEY = 'edificarte_reserva_people';
     function peopleDefault() {
       try {
         const v = parseInt(localStorage.getItem(PEOPLE_KEY) || '0', 10);
@@ -557,6 +557,7 @@ const cards = tours.map((t) => ({
           const addr = await wallet.connect();
           const rawAmount = toUsdcRaw(totalUsdc);
           const paymentAddr =
+            window.__EDIFICARTE_PAYMENT_ADDRESS__ ||
             window.__TURIMAP_PAYMENT_ADDRESS__ ||
             '0xD540067d763bc792b81f816a677bB25d7e6d4B0B';
           const txHash = await wallet.sendUsdcTransfer({ to: paymentAddr, rawAmount });
@@ -616,8 +617,9 @@ const cards = tours.map((t) => ({
       }
       // Persist locally (same key /yo.astro already reads)
       try {
-        const all = JSON.parse(localStorage.getItem('turimap_reservations') || '[]');
+        const all = JSON.parse(localStorage.getItem('edificarte_reservations') || localStorage.getItem('turimap_reservations') || '[]');
         all.push(reservation);
+        localStorage.setItem('edificarte_reservations', JSON.stringify(all));
         localStorage.setItem('turimap_reservations', JSON.stringify(all));
       } catch {}
       submitBtn.disabled = false;
@@ -626,10 +628,12 @@ const cards = tours.map((t) => ({
     document.getElementById('reserva-close-success').addEventListener('click', () => hide(modalEl));
 
     // Expose for AI agent dispatch (legacy ai-reserve-tour event still works)
-    window.__TURIMAP_OPEN_RESERVA__ = (tourId) => {
+    const openReservaFn = (tourId) => {
       const t = cards.find((c) => c.id === tourId);
       if (t) openModal(t.id);
     };
+    window.__EDIFICARTE_OPEN_RESERVA__ = openReservaFn;
+    window.__TURIMAP_OPEN_RESERVA__ = openReservaFn;
     window.addEventListener('ai-reserve-tour', (e) => {
       const detail = (e && e.detail) || {};
       const id = detail.monumentId || detail.tourId;

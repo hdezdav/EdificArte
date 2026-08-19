@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
 
   // 1. Resolver usuario (registrado o guest)
   const user = await getUserBySession(cookies, env);
-  const isGuest = cookies.get('turimap_guest')?.value === 'true';
+  const isGuest = (cookies.get('edificarte_guest')?.value || cookies.get('turimap_guest')?.value) === 'true';
 
   if (!user && !isGuest) {
     return new Response(

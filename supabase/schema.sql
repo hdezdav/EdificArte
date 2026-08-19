@@ -1,4 +1,4 @@
--- TuriMap — Supabase / PostGIS schema scaffold
+-- EdificARTE — Supabase / PostGIS schema scaffold
 -- Migration target: Postgres 15+ with PostGIS 3.x (Supabase ships it by default).
 --
 -- Status: NOT yet applied. This file is a forward-looking scaffold for the

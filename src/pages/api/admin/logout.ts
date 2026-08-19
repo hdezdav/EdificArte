@@ -8,10 +8,13 @@ export const POST: APIRoute = async ({ cookies, locals }) => {
       { status: 401 }
     );
   }
-  const sessionId = cookies.get('turimap_admin_session')?.value;
+  const sessionId = cookies.get('edificarte_admin_session')?.value || cookies.get('turimap_admin_session')?.value;
   if (sessionId) {
     await locals.runtime.env.SESSION.delete(`admin_session_${sessionId}`);
   }
+  cookies.delete('edificarte_admin_session', { path: '/' });
+  cookies.delete('edificarte_admin_csrf', { path: '/' });
+  cookies.delete('edificarte_admin_csrf_session', { path: '/' });
   cookies.delete('turimap_admin_session', { path: '/' });
   cookies.delete('turimap_admin_csrf', { path: '/' });
   cookies.delete('turimap_admin_csrf_session', { path: '/' });

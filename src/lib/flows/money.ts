@@ -36,9 +36,10 @@ export function fromUsdcRaw(raw: string | bigint): number {
 // Payment receiver address. Fallback matches the old hardcoded values so we
 // don't break anything during migration.
 export function getPaymentAddress(
-  env: { TURIMAP_PAYMENT_ADDRESS?: string } | undefined
+  env: { EDIFICARTE_PAYMENT_ADDRESS?: string; TURIMAP_PAYMENT_ADDRESS?: string } | undefined
 ): string {
   return (
+    env?.EDIFICARTE_PAYMENT_ADDRESS ||
     env?.TURIMAP_PAYMENT_ADDRESS ||
     '0xD540067d763bc792b81f816a677bB25d7e6d4B0B'
   );

@@ -82,15 +82,15 @@ async function request(
 describe('Astro admin middleware integration', () => {
   beforeEach(() => {
     mockSessions.clear();
-    mockSessions.set('admin_session_test-123', JSON.stringify({ userId: 'admin-1', role: 'admin', email: 'admin@turimap.app' }));
+    mockSessions.set('admin_session_test-123', JSON.stringify({ userId: 'admin-1', role: 'admin', email: 'admin@edificarte.app' }));
   });
 
   it('shares the session-bound CSRF cookie with unsafe admin APIs', async () => {
     const jar = new BrowserCookies();
-    jar.entries.set('turimap_admin_session', { value: 'test-123', options: { path: '/' } });
+    jar.entries.set('edificarte_admin_session', { value: 'test-123', options: { path: '/' } });
 
     await request(jar, '/admin');
-    const csrf = jar.entries.get('turimap_admin_csrf')!;
+    const csrf = jar.entries.get('edificarte_admin_csrf')!;
     expect(csrf).toBeDefined();
 
     const valid = await request(jar, '/api/admin/products', {
@@ -107,7 +107,7 @@ describe('Astro admin middleware integration', () => {
 
   it('denies unsafe requests without valid CSRF', async () => {
     const jar = new BrowserCookies();
-    jar.entries.set('turimap_admin_session', { value: 'test-123', options: { path: '/' } });
+    jar.entries.set('edificarte_admin_session', { value: 'test-123', options: { path: '/' } });
 
     const denied = await request(jar, '/api/admin/products', {
       method: 'POST',

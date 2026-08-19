@@ -1,5 +1,5 @@
 # Local, non-production validation only. This checkout must not be linked remotely.
-project_id = "turimap-local"
+project_id = "edificarte-local"
 
 [api]
 enabled = true

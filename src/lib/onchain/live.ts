@@ -8,7 +8,7 @@
  * El usuario (cliente) firma con su propia wallet. El server solo:
  *   1. Llama a `safeMint()` para acuñar NFTs cuando un usuario gana un badge.
  *      Esto requiere que el server tenga una wallet admin (PRIVATE_KEY +
- *      TURIMAP_ADMIN_ADDRESS) configurada. Si no está, la acuñación falla
+ *      EDIFICARTE_ADMIN_ADDRESS) configurada. Si no está, la acuñación falla
  *      silenciosamente y se loguea - el usuario sigue teniendo su badge off-chain.
  *   2. Verifica que una tx de pago USDC del cliente es válida.
  *

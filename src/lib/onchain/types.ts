@@ -10,7 +10,7 @@
  *
  * Live = llama a los contratos reales en Polygon mainnet vía RPC público.
  * Requiere: PUBLIC_BADGE_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS,
- * TURIMAP_PAYMENT_ADDRESS, POLYGON_RPC_URL.
+ * EDIFICARTE_PAYMENT_ADDRESS, POLYGON_RPC_URL.
  */
 
 export type ChainId = 137; // Polygon mainnet
@@ -51,7 +51,7 @@ export interface UsdcTransfer {
   txHash: string;
   /** Address que envió el USDC (el cliente). */
   from: string;
-  /** Debe coincidir con TURIMAP_PAYMENT_ADDRESS. */
+  /** Debe coincidir con EDIFICARTE_PAYMENT_ADDRESS. */
   to: string;
   /** Monto en USDC con 6 decimales (formato raw: "1000000" = 1 USDC). */
   rawAmount: string;

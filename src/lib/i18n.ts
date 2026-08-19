@@ -1,8 +1,8 @@
 /**
- * Lightweight i18n for TuriMap.
+ * Lightweight i18n for EdificARTE.
  *
  * - Locales: 'es' (default) | 'en'
- * - Persistence: localStorage['turimap_locale'] (browser only).
+ * - Persistence: localStorage['edificarte_locale'] (browser only).
  * - Server-side: pass `defaultLocale` to <Layout locale={...} /> from the page,
  *   or accept the browser default via SSR cookie.
  * - Translation lookup uses dot-notation: t('mapa.welcome.title').
@@ -17,7 +17,7 @@ export type Locale = 'es' | 'en';
 export const SUPPORTED_LOCALES: Locale[] = ['es', 'en'];
 export const DEFAULT_LOCALE: Locale = 'es';
 
-export const LOCALE_STORAGE_KEY = 'turimap_locale';
+export const LOCALE_STORAGE_KEY = 'edificarte_locale';
 
 /** Read locale from URL (?lang=en) or localStorage or fallback. Browser-only. */
 export function detectLocale(): Locale {
@@ -55,7 +55,7 @@ export function setLocale(loc: Locale): void {
   try {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, loc);
     document.documentElement.setAttribute('lang', loc);
-    document.cookie = `turimap_locale=${loc}; path=/; max-age=31536000; SameSite=Lax`;
+    document.cookie = `edificarte_locale=${loc}; path=/; max-age=31536000; SameSite=Lax`;
   } catch {
     /* ignore */
   }

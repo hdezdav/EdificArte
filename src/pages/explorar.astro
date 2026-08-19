@@ -104,8 +104,8 @@ const experiencias: Experience[] = [
     price: '$250 MXN',
   },
   {
-    id: 'fundacion-turimap',
-    title: 'TuriMap Heritage Foundation',
+    id: 'fundacion-edificarte',
+    title: 'EdificARTE Heritage Foundation',
     description:
       'Preserving architectural and cultural heritage through education, technology, and community-driven programs worldwide.',
     image:
@@ -186,7 +186,7 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
       category: m.id === 'el-rule' ? 'Exposición / Evento' : m.category,
       cta: m.id === 'el-rule' ? 'Ver Evento' : 'Ver guía',
       guide: m.id === 'el-rule'
-        ? '¡Bienvenido al Centro Cultural El Rule! Te invitamos a la exposición multilingüe y multisensorial "Nombrar el Orgullo Neo". Esta exhibición, presentada por Metalingua en alianza con TuriMap y Unesco, celebra la identidad y la diversidad cultural a través del arte contemporáneo, el diálogo social y la inclusión.'
+        ? '¡Bienvenido al Centro Cultural El Rule! Te invitamos a la exposición multilingüe y multisensorial "Nombrar el Orgullo Neo". Esta exhibición, presentada por Metalingua en alianza con EdificARTE y Unesco, celebra la identidad y la diversidad cultural a través del arte contemporáneo, el diálogo social y la inclusión.'
         : `¡Bienvenido al ${m.name}! Este emblemático espacio es parte fundamental del patrimonio cultural histórico. Aquí podrás contemplar una arquitectura imponente y aprender sobre su evolución artística, social e histórica a través del tiempo. Disfrutá del recorrido detallado por sus salas principales y descubrí los secretos que sus paredes guardan.`,
     },
     en: {
@@ -195,7 +195,7 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
       category: m.id === 'el-rule' ? 'Exhibition / Event' : (m.category === 'Museo / Teatro' ? 'Museum / Theater' : (m.category === 'Museo / Castillo' ? 'Museum / Castle' : (m.category === 'Museo Histórico' ? 'Historical Museum' : 'Historical Monument'))),
       cta: m.id === 'el-rule' ? 'View Event' : 'View guide',
       guide: m.id === 'el-rule'
-        ? 'Welcome to El Rule Cultural Center! We invite you to the multilingual and multisensorial exhibition "Nombrar el Orgullo Neo". This exhibition, presented by Metalingua in partnership with TuriMap and Unesco, celebrates identity and cultural diversity through contemporary art, social dialogue, and inclusion.'
+        ? 'Welcome to El Rule Cultural Center! We invite you to the multilingual and multisensorial exhibition "Nombrar el Orgullo Neo". This exhibition, presented by Metalingua in partnership with EdificARTE and Unesco, celebrates identity and cultural diversity through contemporary art, social dialogue, and inclusion.'
         : `Welcome to the ${m.name}! This emblematic site is a key piece of cultural heritage. Here, you can contemplate stunning architecture and learn about its artistic, social, and historical evolution through time. Enjoy the detailed self-guided tour through its main halls and uncover the secrets written in its walls.`,
     },
     señas: {
@@ -390,21 +390,25 @@ function optimizeImageUrl(url: string, width: number = 400, quality: number = 75
   return url;
 }
 
-const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYMENT_ADDRESS?: string })?.TURIMAP_PAYMENT_ADDRESS;
+const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_PAYMENT_ADDRESS?: string; TURIMAP_PAYMENT_ADDRESS?: string })?.EDIFICARTE_PAYMENT_ADDRESS || (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYMENT_ADDRESS?: string })?.TURIMAP_PAYMENT_ADDRESS);
 ---
 
-<Layout title="TuriMap - Explorar">
+<Layout title="EdificARTE - Explorar">
   <script is:inline define:vars={{ paymentAddress }}>
+    window.__EDIFICARTE_PAYMENT_ADDRESS__ = paymentAddress || '';
     window.__TURIMAP_PAYMENT_ADDRESS__ = paymentAddress || '';
   </script>
   <script is:inline define:vars={{ experiencesMap: Object.fromEntries(todasLasExperiencias.map(e => [e.id, { title: e.title, image: e.image, category: e.category }])) }}>
+    window.__EDIFICARTE_EXPERIENCES__ = experiencesMap;
     window.__TURIMAP_EXPERIENCES__ = experiencesMap;
   </script>
   <script is:inline define:vars={{ toursData: TOURS }}>
+    window.__EDIFICARTE_TOURS__ = toursData || [];
     window.__TURIMAP_TOURS__ = toursData || [];
   </script>
   <script is:inline define:vars={{ monumentsList: MONUMENTS.map(m => ({ id: m.id, name: m.name, lat: m.lat, lng: m.lng, image: m.image })) }}>
     // For proximity notifications in Layout.astro
+    window.__EDIFICARTE_MONUMENTS__ = monumentsList;
     window.__TURIMAP_MONUMENTS__ = monumentsList;
   </script>
 
@@ -1118,13 +1122,14 @@ const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYME
 
   type I18nDict = Record<string, unknown>;
 
-  const TOURS: Tour[] = (window as unknown as { __TURIMAP_TOURS__?: Tour[] }).__TURIMAP_TOURS__ || [];
+  const TOURS: Tour[] = (window as unknown as { __EDIFICARTE_TOURS__?: Tour[]; __TURIMAP_TOURS__?: Tour[] }).__EDIFICARTE_TOURS__ || (window as unknown as { __TURIMAP_TOURS__?: Tour[] }).__TURIMAP_TOURS__ || [];
 
   document.addEventListener('astro:page-load', () => {
     // --- i18n runtime (mirrors tienda.astro; dicts injected globally by Layout) ---
     // The handler re-runs on every astro:page-load, so abort the previous
     // controller to drop stale document/window-level listeners before re-binding.
     const win = window as unknown as {
+      __EDIFICARTE_I18N__?: { es: I18nDict; en: I18nDict };
       __TURIMAP_I18N__?: { es: I18nDict; en: I18nDict };
       __turimapExplorarController?: AbortController;
     };
@@ -1134,7 +1139,7 @@ const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYME
     const explorarController = new AbortController();
     win.__turimapExplorarController = explorarController;
 
-    const DICTS = (win.__TURIMAP_I18N__ || { es: {}, en: {} });
+    const DICTS = (win.__EDIFICARTE_I18N__ || win.__TURIMAP_I18N__ || { es: {}, en: {} });
     function getDict(): I18nDict {
       return detectLocale() === 'en' ? DICTS.en : DICTS.es;
     }
@@ -1702,7 +1707,7 @@ const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYME
   function loadFavoritesState() {
     let favorites: string[] = [];
     try {
-      favorites = JSON.parse(localStorage.getItem('turimap_favorites') || '[]');
+      favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || localStorage.getItem('turimap_favorites') || '[]');
     } catch {}
 
     document.querySelectorAll<HTMLButtonElement>('.favorite-btn').forEach(btn => {
@@ -1736,7 +1741,7 @@ const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYME
 
       let favorites: string[] = [];
       try {
-        favorites = JSON.parse(localStorage.getItem('turimap_favorites') || '[]');
+        favorites = JSON.parse(localStorage.getItem('edificarte_favorites') || localStorage.getItem('turimap_favorites') || '[]');
       } catch {}
 
       const svg = btn.querySelector('svg');
@@ -1752,7 +1757,7 @@ const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYME
           svg.classList.add('fill-rose-500', 'text-rose-500');
         }
       }
-      localStorage.setItem('turimap_favorites', JSON.stringify(favorites));
+      localStorage.setItem('edificarte_favorites', JSON.stringify(favorites));
     });
   });
 
@@ -2158,7 +2163,7 @@ const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYME
       const wallet = new BrowserWalletProvider();
 
       const txHash = await wallet.sendUsdcTransfer({
-        to: window.__TURIMAP_PAYMENT_ADDRESS__ || '0xD540067d763bc792b81f816a677bB25d7e6d4B0B',
+        to: window.__EDIFICARTE_PAYMENT_ADDRESS__ || window.__TURIMAP_PAYMENT_ADDRESS__ || '0xD540067d763bc792b81f816a677bB25d7e6d4B0B',
         rawAmount,
       });
 
@@ -2184,8 +2189,8 @@ const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYME
 
       // Persistir reserva en localStorage
       try {
-        const STORAGE_KEY = 'turimap_reservations';
-        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<Record<string, unknown>>;
+        const STORAGE_KEY = 'edificarte_reservations';
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem('turimap_reservations') || '[]') as Array<Record<string, unknown>>;
         const reservation = {
           id: result.reservationId || `RES-${Date.now()}`,
           tourId: data.tourId,
@@ -2265,8 +2270,8 @@ const paymentAddress = (Astro.locals?.runtime?.env as unknown as { TURIMAP_PAYME
 
       // Persistir reserva en localStorage para que aparezca en /yo
       try {
-        const STORAGE_KEY = 'turimap_reservations';
-        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<Record<string, unknown>>;
+        const STORAGE_KEY = 'edificarte_reservations';
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem('turimap_reservations') || '[]') as Array<Record<string, unknown>>;
         const reservation = {
           id: result.reservationId || `RES-${Date.now()}`,
           tourId: data.tourId,

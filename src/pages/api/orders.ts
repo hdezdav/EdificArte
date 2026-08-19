@@ -7,7 +7,7 @@ import { getUsdcVerifier } from '../../lib/onchain';
  * Registra una orden de compra de artesanías pagada en USDC de Polygon.
  *
  * Validación on-chain: el server verifica la tx (que el destino sea
- * TURIMAP_PAYMENT_ADDRESS, el monto coincida, sea USDC) antes de
+ * EDIFICARTE_PAYMENT_ADDRESS, el monto coincida, sea USDC) antes de
  * persistir la orden. Esto evita que un cliente mande una tx fake.
  *
  * Body: {
@@ -146,7 +146,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   }
 
   // Resolver user_id (si hay sesión activa; guest puede comprar igual)
-  const session = cookies.get('turimap_session')?.value;
+  const session = cookies.get('edificarte_session')?.value || cookies.get('turimap_session')?.value;
   let userId: string | null = null;
   if (session) {
     const sessionDataStr = await env.SESSION.get(session);

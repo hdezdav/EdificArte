@@ -472,7 +472,7 @@ if (items.length === 0 && Array.isArray(defaultProductsData)) {
     const tiendaController = new AbortController();
     window.__turimapTiendaController = tiendaController;
 
-    const DICTS = (window.__TURIMAP_I18N__ || { es: {}, en: {} });
+    const DICTS = (window.__EDIFICARTE_I18N__ || window.__TURIMAP_I18N__ || { es: {}, en: {} });
     function getDict() {
       // Mirrors detectLocale() in src/lib/i18n.ts (is:inline cannot import):
       // URL ?lang → localStorage → navigator.language, default 'es'.
@@ -481,7 +481,7 @@ if (items.length === 0 && Array.isArray(defaultProductsData)) {
         if (q === 'es' || q === 'en') return DICTS[q];
       } catch { /* ignore */ }
       try {
-        const s = localStorage.getItem('turimap_locale');
+        const s = localStorage.getItem('edificarte_locale') || localStorage.getItem('turimap_locale');
         if (s === 'en' || s === 'es') return DICTS[s];
       } catch { /* ignore */ }
       const n = (navigator && navigator.language) || '';
@@ -549,11 +549,12 @@ if (items.length === 0 && Array.isArray(defaultProductsData)) {
       return BigInt(Math.round(amount * 1_000_000)).toString();
     }
 
-    const CART_KEY = 'turimap_cart';
-    const ORDERS_KEY = 'turimap_orders';
+    const CART_KEY = 'edificarte_cart';
+    const ORDERS_KEY = 'edificarte_orders';
     function readCart() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(CART_KEY) || '{"items":[]}');
+        const raw = localStorage.getItem(CART_KEY) || localStorage.getItem('turimap_cart');
+        const parsed = JSON.parse(raw || '{"items":[]}');
         return parsed && Array.isArray(parsed.items) ? parsed : { items: [] };
       } catch {
         return { items: [] };
@@ -1155,6 +1156,7 @@ if (items.length === 0 && Array.isArray(defaultProductsData)) {
         const addr = await wallet.connect();
         const rawAmount = toUsdcRaw(subtotalUsdc);
         const paymentAddr =
+          window.__EDIFICARTE_PAYMENT_ADDRESS__ ||
           window.__TURIMAP_PAYMENT_ADDRESS__ ||
           '0xD540067d763bc792b81f816a677bB25d7e6d4B0B';
         const txHash = await wallet.sendUsdcTransfer({
@@ -1237,7 +1239,7 @@ if (items.length === 0 && Array.isArray(defaultProductsData)) {
         extraEl.appendChild(link);
       } else {
         const lines = [
-          'Hola! Acabo de hacer un pedido en TuriMap.',
+          'Hola! Acabo de hacer un pedido en EdificARTE.',
           `Pedido: ${orderId}`,
           `Nombre: ${contact.name}`,
           `Total: ${fmtMxn(subtotalMxn)} MXN`,

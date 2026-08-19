@@ -133,7 +133,7 @@ export class BrowserWalletProvider implements WalletProvider {
         });
       } else {
         throw new Error(
-          'Necesitás estar en Polygon mainnet para usar TuriMap. Cambiá de red en tu wallet.'
+          'Necesitás estar en Polygon mainnet para usar EdificARTE. Cambiá de red en tu wallet.'
         );
       }
     }

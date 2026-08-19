@@ -11,8 +11,8 @@ const mask = (s: string | undefined) => s ? s.slice(0, 4) + '••••' + s.s
 const settings = [
   { label: 'AI_API_KEY', value: mask(env.AI_API_KEY || env.GROK_API_KEY), category: 'AI' },
   { label: 'MAPBOX_TOKEN', value: mask(env.MAPBOX_TOKEN), category: 'Mapas' },
-  { label: 'TURIMAP_PAYMENT_ADDRESS', value: mask(env.TURIMAP_PAYMENT_ADDRESS), category: 'Pagos' },
-  { label: 'TURIMAP_DONATION_ADDRESS', value: mask(env.TURIMAP_DONATION_ADDRESS), category: 'Pagos' },
+  { label: 'EDIFICARTE_PAYMENT_ADDRESS', value: mask(env.EDIFICARTE_PAYMENT_ADDRESS || env.TURIMAP_PAYMENT_ADDRESS), category: 'Pagos' },
+  { label: 'EDIFICARTE_DONATION_ADDRESS', value: mask(env.EDIFICARTE_DONATION_ADDRESS || env.TURIMAP_DONATION_ADDRESS), category: 'Pagos' },
   { label: 'USDC_CONTRACT_ADDRESS', value: mask(env.USDC_CONTRACT_ADDRESS), category: 'Blockchain' },
   { label: 'ALCHEMY_KEY', value: mask(env.ALCHEMY_KEY), category: 'Blockchain' },
 ];

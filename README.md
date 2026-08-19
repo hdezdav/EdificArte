@@ -1,6 +1,6 @@
-# TuriMap
+# EdificARTE
 
-TuriMap is a worldwide gamified audioguide and geo-localized exploration web app for landmarks, museums, temples, parks, viewpoints and archaeological sites. Powered by Mapbox GL JS for cartography and Cloudflare Workers for edge runtime, TuriMap is built to scale from a single city to the entire planet.
+EdificARTE is a worldwide gamified audioguide and geo-localized exploration web app for landmarks, museums, temples, parks, viewpoints and archaeological sites. Powered by Mapbox GL JS for cartography and Cloudflare Workers for edge runtime, EdificARTE is built to scale from a single city to the entire planet.
 
 The catalog grows from the [legacy CDMX seed](./src/data/monuments.ts) and is designed to be expanded via an admin panel backed by Supabase + PostGIS (see [`supabase/schema.sql`](./supabase/schema.sql)). The UI ships bilingual (Spanish + English) from day one with a header language switcher.
 
@@ -83,10 +83,10 @@ This writes `worker-configuration.d.ts` so TypeScript recognizes the runtime env
 
 ## Internationalization
 
-TuriMap ships bilingual Spanish (default) + English.
+EdificARTE ships bilingual Spanish (default) + English.
 
 - Strings live in [`src/i18n/es.json`](./src/i18n/es.json) and [`src/i18n/en.json`](./src/i18n/en.json).
-- The `<LocaleSwitcher />` component in the header persists the choice via `localStorage['turimap_locale']` and updates `document.documentElement.lang` on toggle.
+- The `<LocaleSwitcher />` component in the header persists the choice via `localStorage['edificarte_locale']` and updates `document.documentElement.lang` on toggle.
 - Server-rendered HTML is generated in the default locale; the client applies the user's choice on mount.
 - URL param `?lang=en` forces a locale for shareable links.
 - Data layer (monuments, tours) carries its own `translations` field — see [`pickLocalized()`](./src/lib/i18n.ts).

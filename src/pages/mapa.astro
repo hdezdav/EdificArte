@@ -592,6 +592,7 @@ const mapboxToken =
     scrollbar-width: none;
   }
 
+  :global(.edificarte-pin),
   :global(.turimap-pin) {
     display: flex;
     align-items: center;
@@ -608,16 +609,19 @@ const mapboxToken =
     cursor: pointer;
     font-size: 18px;
   }
+  .dark :global(.edificarte-pin),
   .dark :global(.turimap-pin) {
     background: rgba(15, 23, 42, 0.75) !important;
     border-color: rgba(255, 255, 255, 0.15);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
+  :global(.edificarte-pin:hover),
   :global(.turimap-pin:hover) {
     transform: scale(1.15);
     border-color: rgba(37, 99, 235, 0.6); /* accent-600/60 */
     box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
   }
+  :global(.edificarte-pin.selected),
   :global(.turimap-pin.selected) {
     border-color: rgba(37, 99, 235, 0.8);
     box-shadow:
@@ -629,16 +633,19 @@ const mapboxToken =
   }
 
   /* Cluster pins: same glass pin, slightly larger, accent ring + bold count. */
+  :global(.edificarte-pin-cluster),
   :global(.turimap-pin-cluster) {
     width: 46px;
     height: 46px;
     border-color: rgba(37, 99, 235, 0.55); /* accent-600/55 */
     box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22);
   }
+  .dark :global(.edificarte-pin-cluster),
   .dark :global(.turimap-pin-cluster) {
     border-color: rgba(96, 165, 250, 0.55); /* accent-400/55 */
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
   }
+  :global(.edificarte-pin-cluster-count),
   :global(.turimap-pin-cluster-count) {
     font-size: 15px;
     font-weight: 800;
@@ -647,11 +654,13 @@ const mapboxToken =
     font-variant-numeric: tabular-nums;
     color: #1d4ed8; /* accent-700 */
   }
+  .dark :global(.edificarte-pin-cluster-count),
   .dark :global(.turimap-pin-cluster-count) {
     color: #93c5fd; /* accent-300 */
   }
 
   @media (max-width: 767px), (pointer: coarse) {
+    :global(.edificarte-pin),
     :global(.turimap-pin) {
       background: rgba(255, 255, 255, 0.96) !important;
       backdrop-filter: none;
@@ -850,6 +859,7 @@ const mapboxToken =
 
 <script is:inline define:vars={{ mapboxToken }}>
   if (mapboxToken) {
+    window.__EDIFICARTE_TOKEN__ = mapboxToken;
     window.__TURIMAP_TOKEN__ = mapboxToken;
   } else {
     document.addEventListener('DOMContentLoaded', () => {

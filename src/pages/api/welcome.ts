@@ -28,17 +28,29 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Marcar como guest activo. httpOnly:false intencional - ver nota en
     // src/pages/yo.astro línea ~118.
-    cookies.set('turimap_guest', 'true', {
+    cookies.set('edificarte_guest', 'true', {
       path: '/',
       httpOnly: false,
       secure: import.meta.env.PROD,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 365, // 1 año
     });
+    cookies.set('turimap_guest', 'true', {
+      path: '/',
+      httpOnly: false,
+      secure: import.meta.env.PROD,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365,
+    });
 
     // Nombre del invitado para pre-rellenar el formulario de registro en /yo.
-    // También httpOnly:false para que el cliente pueda leerlo si lo necesita
-    // (ej. mostrar el nombre en el header). No es dato sensible.
+    cookies.set('edificarte_guest_name', name, {
+      path: '/',
+      httpOnly: false,
+      secure: import.meta.env.PROD,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365,
+    });
     cookies.set('turimap_guest_name', name, {
       path: '/',
       httpOnly: false,

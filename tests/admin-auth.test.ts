@@ -27,9 +27,9 @@ const mockEnv = {
 
 describe('Cloudflare admin identity', () => {
   it('verifies admin access with KV session', async () => {
-    mockSessions.set('admin_session_valid-session-1', JSON.stringify({ userId: 'admin-1', role: 'admin', email: 'admin@turimap.app' }));
+    mockSessions.set('admin_session_valid-session-1', JSON.stringify({ userId: 'admin-1', role: 'admin', email: 'admin@edificarte.app' }));
 
-    const jar = new Map<string, string>([['turimap_admin_session', 'valid-session-1']]);
+    const jar = new Map<string, string>([['edificarte_admin_session', 'valid-session-1']]);
     const cookies = {
       get: (name: string) => jar.has(name) ? { value: jar.get(name)! } : undefined,
       set: (name: string, value: string) => jar.set(name, value),
@@ -38,11 +38,11 @@ describe('Cloudflare admin identity', () => {
 
     const res = await resolveAdminRequestContext(mockEnv, cookies as never, true);
     expect(res.authorized).toBe(true);
-    expect(res.user?.email).toBe('admin@turimap.app');
+    expect(res.user?.email).toBe('admin@edificarte.app');
   });
 
   it('denies access with invalid session token', async () => {
-    const jar = new Map<string, string>([['turimap_admin_session', 'invalid-session']]);
+    const jar = new Map<string, string>([['edificarte_admin_session', 'invalid-session']]);
     const cookies = {
       get: (name: string) => jar.has(name) ? { value: jar.get(name)! } : undefined,
       set: (name: string, value: string) => jar.set(name, value),
@@ -100,7 +100,7 @@ describe('login endpoint', () => {
       request: new Request('https://app.test/api/admin/login', {
         method: 'POST',
         body: JSON.stringify({
-          email: 'admin@turimap.app',
+          email: 'admin@edificarte.app',
           password: 'admin',
         }),
       }),
@@ -111,7 +111,7 @@ describe('login endpoint', () => {
     } as never);
 
     expect(response.status).toBe(200);
-    expect(cookiesSet).toHaveBeenCalledWith('turimap_admin_session', expect.any(String), expect.any(Object));
+    expect(cookiesSet).toHaveBeenCalledWith('edificarte_admin_session', expect.any(String), expect.any(Object));
   });
 
   it('clears admin session on logout', async () => {
@@ -130,7 +130,7 @@ describe('login endpoint', () => {
 
     expect(response.status).toBe(200);
     expect(mockDelete).toHaveBeenCalledWith('admin_session_test-session');
-    expect(remove).toHaveBeenCalledWith('turimap_admin_session', { path: '/' });
+    expect(remove).toHaveBeenCalledWith('edificarte_admin_session', { path: '/' });
   });
 });
 

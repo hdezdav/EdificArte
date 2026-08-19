@@ -1,5 +1,5 @@
-// TuriMap Service Worker - Cache-first for static assets, network-first for API
-const CACHE_NAME = 'turimap-v2';
+// EdificARTE Service Worker - Cache-first for static assets, network-first for API
+const CACHE_NAME = 'edificarte-v2';
 const STATIC_ASSETS = [
   '/',
   '/mapa',

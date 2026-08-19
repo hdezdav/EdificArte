@@ -2,7 +2,7 @@ import type { Locale } from '../lib/i18n';
 
 /**
  * Monument - a landmark, museum, temple, park, viewpoint, or archaeological
- * site cataloged in TuriMap.
+ * site cataloged in EdificARTE.
  *
  * NOTE on scope: this seed currently contains only the legacy CDMX entries.
  * Multi-city seed grows from here via the future admin panel backed by

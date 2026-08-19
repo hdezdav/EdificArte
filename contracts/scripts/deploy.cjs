@@ -1,5 +1,5 @@
 /**
- * Deploy script para los contratos de TuriMap.
+ * Deploy script para los contratos de EdificARTE.
  *
  * Variables de entorno:
  *   ADMIN_ADDRESS     - Address del owner que va a controlar los contratos
@@ -24,19 +24,19 @@ async function main() {
   console.log("Deploying with:", deployer.address);
   console.log("Owner / admin will be:", adminAddress);
 
-  console.log("\nDeploying TuriMapBadge (ERC-721)...");
-  const Badge = await hre.ethers.getContractFactory("TuriMapBadge");
+  console.log("\nDeploying EdificARteBadge (ERC-721)...");
+  const Badge = await hre.ethers.getContractFactory("EdificARteBadge");
   const badge = await Badge.deploy(adminAddress);
   await badge.waitForDeployment();
   const badgeAddress = await badge.getAddress();
-  console.log("TuriMapBadge deployed to:", badgeAddress);
+  console.log("EdificARteBadge deployed to:", badgeAddress);
 
-  console.log("\nDeploying TuriMapReviews (event-only)...");
-  const Reviews = await hre.ethers.getContractFactory("TuriMapReviews");
+  console.log("\nDeploying EdificARteReviews (event-only)...");
+  const Reviews = await hre.ethers.getContractFactory("EdificARteReviews");
   const reviews = await Reviews.deploy(adminAddress);
   await reviews.waitForDeployment();
   const reviewsAddress = await reviews.getAddress();
-  console.log("TuriMapReviews deployed to:", reviewsAddress);
+  console.log("EdificARteReviews deployed to:", reviewsAddress);
 
   console.log("\n=== Copiá esto en wrangler.jsonc (vars): ===");
   console.log(`"PUBLIC_BADGE_CONTRACT_ADDRESS": "${badgeAddress}",`);

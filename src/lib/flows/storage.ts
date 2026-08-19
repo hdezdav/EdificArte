@@ -1,5 +1,5 @@
 // localStorage helpers — typed + safe. Both flows already used the same keys
-// (turimap_reservations, turimap_cart, turimap_orders) but with ad-hoc JSON.
+// (edificarte_reservations, edificarte_cart, edificarte_orders) but with ad-hoc JSON.
 
 export function readJson<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -40,7 +40,7 @@ export interface Reservation {
   status: 'pending' | 'confirmed' | 'paid';
 }
 
-export const RESERVATIONS_KEY = 'turimap_reservations';
+export const RESERVATIONS_KEY = 'edificarte_reservations';
 
 // Cart line item (craft purchase). Replaces the anonymous `cart` map.
 export interface CartItem {
@@ -57,7 +57,7 @@ export interface Cart {
   updatedAt: string;
 }
 
-export const CART_KEY = 'turimap_cart';
+export const CART_KEY = 'edificarte_cart';
 
 export function readCart(): Cart {
   return readJson<Cart>(CART_KEY, { items: [], updatedAt: '' });

@@ -41,8 +41,8 @@ import {
 // ---------------------------------------------------------------------------
 // Token - injected at build time via Astro's inline script
 // ---------------------------------------------------------------------------
-const MAPBOX_TOKEN = (window as unknown as { __TURIMAP_TOKEN__?: string })
-  .__TURIMAP_TOKEN__;
+const MAPBOX_TOKEN = (window as unknown as { __EDIFICARTE_TOKEN__?: string; __TURIMAP_TOKEN__?: string })
+  .__EDIFICARTE_TOKEN__ || (window as unknown as { __TURIMAP_TOKEN__?: string }).__TURIMAP_TOKEN__;
 if (!MAPBOX_TOKEN) {
   console.error(
     '[EdificARTE] No Mapbox token found. Set MAPBOX_TOKEN in .dev.vars'
@@ -128,6 +128,67 @@ let clusterIndex: PinClusterIndex | null = null;
 // Bumped on every index rebuild so the render signature can never go stale.
 let clusterDataVersion = 0;
 let clusterRenderSignature = '';
+
+window.__EDIFICARTE_GET_VISIBLE_PINS__ = () => {
+  const result: Array<{ id: string; name: string; category?: string; lat: number; lng: number; address?: string }> = [];
+
+  placeMarkers.forEach(({ place }) => {
+    if (place && place.name) {
+      result.push({
+        id: place.id,
+        name: place.name,
+        category: place.category,
+        lat: place.lat,
+        lng: place.lng,
+        address: place.address,
+      });
+    }
+  });
+
+  if (result.length < 15 && Array.isArray(nearbyPlaces)) {
+    nearbyPlaces.forEach((place) => {
+      if (place && place.name && !result.some((r) => r.id === place.id)) {
+        result.push({
+          id: place.id,
+          name: place.name,
+          category: place.category,
+          lat: place.lat,
+          lng: place.lng,
+          address: place.address,
+        });
+      }
+    });
+  }
+
+  if (typeof map !== 'undefined' && map && map.getBounds) {
+    try {
+      const bounds = map.getBounds();
+      if (bounds) {
+        MONUMENTS.forEach((m) => {
+          if (
+            m.lng >= bounds.getWest() &&
+            m.lng <= bounds.getEast() &&
+            m.lat >= bounds.getSouth() &&
+            m.lat <= bounds.getNorth()
+          ) {
+            if (!result.some((r) => r.id === m.id)) {
+              result.push({
+                id: m.id,
+                name: m.name,
+                category: m.type || m.category,
+                lat: m.lat,
+                lng: m.lng,
+                address: m.desc,
+              });
+            }
+          }
+        });
+      }
+    } catch {}
+  }
+
+  return result.slice(0, 35);
+};
 
 // Pin filter chips state (mapa.astro #map-filter-chips)
 // Chip data-filter values map 1:1 to canonical category ids; the mapping
@@ -346,7 +407,7 @@ async function fetchNearbyPlaces(
     return writeNearbyCache(cacheKey, places);
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err;
-    console.warn('[TuriMap] Category search failed, trying geocoding:', err);
+    console.warn('[EdificARTE] Category search failed, trying geocoding:', err);
     const fallback = await fetchNearbyViaGeocoding(lng, lat, viewport, signal);
     return writeNearbyCache(cacheKey, fallback);
   }
@@ -514,7 +575,7 @@ function updateMarkerElement(element: HTMLElement, place: Place): void {
 
 function createPlacePinMarker(place: Place): void {
   const el = document.createElement('div');
-  el.className = 'turimap-pin';
+  el.className = 'edificarte-pin turimap-pin';
   el.role = 'button';
   el.tabIndex = 0;
   updateMarkerElement(el, place);
@@ -540,10 +601,10 @@ function createPlacePinMarker(place: Place): void {
 
 function createClusterPinMarker(entry: PinClusterGroup): void {
   const el = document.createElement('div');
-  el.className = 'turimap-pin turimap-pin-cluster';
+  el.className = 'edificarte-pin edificarte-pin-cluster turimap-pin turimap-pin-cluster';
   el.role = 'button';
   el.tabIndex = 0;
-  el.innerHTML = `<span class="turimap-pin-cluster-count">${entry.pointCount}</span>`;
+  el.innerHTML = `<span class="edificarte-pin-cluster-count turimap-pin-cluster-count">${entry.pointCount}</span>`;
   const hint = trMapa(
     'mapa.cluster.expand_hint',
     'Lugares agrupados — toca para acercar'
@@ -660,6 +721,17 @@ function refreshClusteredPins(): void {
 // window.__TURIMAP_I18N__; falls back to the es dict, then to `fallback`.
 function trMapa(key: string, fallback: string): string {
   const dicts = (
+    window as unknown as {
+      __EDIFICARTE_I18N__?: {
+        es?: Record<string, unknown>;
+        en?: Record<string, unknown>;
+      };
+      __TURIMAP_I18N__?: {
+        es?: Record<string, unknown>;
+        en?: Record<string, unknown>;
+      };
+    }
+  ).__EDIFICARTE_I18N__ || (
     window as unknown as {
       __TURIMAP_I18N__?: {
         es?: Record<string, unknown>;
@@ -1100,7 +1172,13 @@ async function drawRoute(
         return;
     }
     if (!route) {
-      alert(`No ${mode} route found.`);
+      const directCoords: [number, number][] = [[fromLng, fromLat], [toLng, toLat]];
+      travelVisualization?.clear();
+      travelVisualization?.showRoute(mode, directCoords);
+      const distKm = haversine(fromLat, fromLng, toLat, toLng);
+      const mins = Math.max(3, Math.round((distKm / (mode === 'walking' ? 4.5 : 25)) * 60));
+      updateRouteInfo(mode, `${mins} min · ${distKm.toFixed(1)} km`);
+      fitTravelBounds(directCoords, 15);
       return;
     }
 
@@ -1115,8 +1193,14 @@ async function drawRoute(
     fitTravelBounds(coordinates, mode === 'walking' ? 17 : 14);
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') return;
-    console.warn('[TuriMap] Route error:', err);
-    alert('Could not calculate route. Try again.');
+    console.warn('[EdificARTE] Directions API error, rendering direct route:', err);
+    const directCoords: [number, number][] = [[fromLng, fromLat], [toLng, toLat]];
+    travelVisualization?.clear();
+    travelVisualization?.showRoute(mode, directCoords);
+    const distKm = haversine(fromLat, fromLng, toLat, toLng);
+    const mins = Math.max(3, Math.round((distKm / (mode === 'walking' ? 4.5 : 25)) * 60));
+    updateRouteInfo(mode, `${mins} min · ${distKm.toFixed(1)} km`);
+    fitTravelBounds(directCoords, 15);
   } finally {
     if (routeRequestController === controller) routeRequestController = null;
   }
@@ -1128,6 +1212,31 @@ async function drawMultiStopRoute(
 ) {
   if (coordinates.length < 2) return;
   const lifecycle = activeMapLifecycle;
+
+  const fallbackStraightLine = () => {
+    travelVisualization?.clear();
+    travelVisualization?.showRoute('walking', coordinates);
+
+    let totalDistKm = 0;
+    for (let i = 0; i < coordinates.length - 1; i++) {
+      totalDistKm += haversine(
+        coordinates[i][1],
+        coordinates[i][0],
+        coordinates[i + 1][1],
+        coordinates[i + 1][0]
+      );
+    }
+    const approxMins = Math.max(5, Math.round((totalDistKm / 4.5) * 60));
+    updateRouteInfo('walking', `${approxMins} min · ${totalDistKm.toFixed(1)} km`);
+
+    const bounds = new mapboxgl.LngLatBounds();
+    coordinates.forEach((c) => bounds.extend(c));
+    map.fitBounds(bounds, {
+      padding: { top: 120, bottom: 200, left: 60, right: 60 },
+      maxZoom: 17,
+    });
+  };
+
   const waypointString = coordinates.map((c) => `${c[0]},${c[1]}`).join(';');
   const formattedUrl =
     `https://api.mapbox.com/directions/v5/mapbox/walking/${waypointString}?` +
@@ -1135,12 +1244,41 @@ async function drawMultiStopRoute(
 
   try {
     const res = await fetch(formattedUrl, { signal });
-    if (!res.ok) throw new Error('Directions API error');
+    if (!res.ok) {
+      const drivingUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${waypointString}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
+      const drivingRes = await fetch(drivingUrl, { signal });
+      if (drivingRes.ok) {
+        const drivingData = await drivingRes.json();
+        const route = drivingData.routes?.[0];
+        if (route && !signal?.aborted && activeMapLifecycle === lifecycle) {
+          const geojson = route.geometry;
+          const durationMin = Math.round(route.duration / 60);
+          const distanceKm = (route.distance / 1000).toFixed(1);
+          travelVisualization?.clear();
+          travelVisualization?.showRoute(
+            'driving',
+            geojson.coordinates as [number, number][]
+          );
+          updateRouteInfo('driving', `${durationMin} min drive · ${distanceKm} km`);
+          const coords = geojson.coordinates as [number, number][];
+          const bounds = new mapboxgl.LngLatBounds();
+          coords.forEach((c: [number, number]) => bounds.extend(c));
+          map.fitBounds(bounds, {
+            padding: { top: 120, bottom: 200, left: 60, right: 60 },
+            maxZoom: 17,
+          });
+          return;
+        }
+      }
+      fallbackStraightLine();
+      return;
+    }
+
     const data = await res.json();
     if (signal?.aborted || activeMapLifecycle !== lifecycle) return;
     const route = data.routes?.[0];
     if (!route) {
-      alert('No walking route found.');
+      fallbackStraightLine();
       return;
     }
 
@@ -1154,10 +1292,8 @@ async function drawMultiStopRoute(
       geojson.coordinates as [number, number][]
     );
 
-    // Show route info bar
     updateRouteInfo('walking', `${durationMin} min walk · ${distanceKm} km`);
 
-    // Fit map to show entire route
     const coords = geojson.coordinates as [number, number][];
     const bounds = new mapboxgl.LngLatBounds();
     coords.forEach((c: [number, number]) => bounds.extend(c));
@@ -1167,8 +1303,8 @@ async function drawMultiStopRoute(
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') return;
-    console.warn('[TuriMap] Route error:', err);
-    alert('Could not calculate route. Try again.');
+    console.warn('[EdificARTE] Route error:', err);
+    fallbackStraightLine();
   }
 }
 
@@ -1239,6 +1375,8 @@ const onPos = async (pos: GeolocationPosition) => {
   userLng = lng;
   permissionDenied = false;
 
+  safeSet('edificarte_user_lat', lat.toString());
+  safeSet('edificarte_user_lng', lng.toString());
   safeSet('turimap_user_lat', lat.toString());
   safeSet('turimap_user_lng', lng.toString());
 
@@ -1404,7 +1542,7 @@ async function refreshNearbyPlacesForViewport(
     lastRenderedCacheKey = context.cacheKey;
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') return;
-    console.warn('[TuriMap] Viewport POI refresh failed:', err);
+    console.warn('[EdificARTE] Viewport POI refresh failed:', err);
   } finally {
     if (nearbyRequestController === controller) nearbyRequestController = null;
     if (activeMapLifecycle === lifecycle && showLoading) {
@@ -1467,7 +1605,7 @@ function scheduleDetailed3DUpgrade(lifecycle: number): void {
         });
       } catch (error) {
         console.warn(
-          '[TuriMap] Detailed 3D upgrade could not be enabled:',
+          '[EdificARTE] Detailed 3D upgrade could not be enabled:',
           error
         );
       }
@@ -2594,7 +2732,7 @@ function initMap() {
             );
           } catch (err) {
             if (!(err instanceof DOMException && err.name === 'AbortError')) {
-              console.warn('[TuriMap] Search failed:', err);
+              console.warn('[EdificARTE] Search failed:', err);
             }
           } finally {
             if (searchAbortController === controller)
@@ -2755,9 +2893,16 @@ function initMap() {
     if (!routeMonumentIds || routeMonumentIds.length === 0) return;
 
     const coordinates: [number, number][] = [];
-    if (userLng !== null && userLat !== null) {
-      coordinates.push([userLng, userLat]);
+    const firstMonument = MONUMENTS.find((m) => m.id === routeMonumentIds[0]);
+
+    // Solo incluir la ubicación del usuario si está a menos de 10 km del primer monumento
+    if (userLng !== null && userLat !== null && firstMonument) {
+      const distFromUser = haversine(userLat, userLng, firstMonument.lat, firstMonument.lng);
+      if (distFromUser <= 10) {
+        coordinates.push([userLng, userLat]);
+      }
     }
+
     routeMonumentIds.forEach((id) => {
       const monument = MONUMENTS.find((m) => m.id === id);
       if (monument) {
@@ -2765,16 +2910,17 @@ function initMap() {
       }
     });
 
-    if (coordinates.length < 2) {
-      alert('No coordinates found to draw the route.');
-      return;
+    if (coordinates.length === 0) return;
+
+    // Si solo hay un punto (por ej. un único monumento y el usuario está lejos), duplicar ligeramente para trazar
+    if (coordinates.length === 1) {
+      coordinates.push([coordinates[0][0] + 0.0005, coordinates[0][1] + 0.0005]);
     }
 
     routeRequestController?.abort();
     const controller = new AbortController();
     routeRequestController = controller;
 
-    const firstMonument = MONUMENTS.find((m) => m.id === routeMonumentIds[0]);
     const routePlace: Place = {
       id: 'ai-route',
       name: 'Ruta Recomendada por IA',

@@ -97,7 +97,9 @@ const enJson = JSON.stringify(enDict);
     <!-- Inject both locale dictionaries so client scripts can translate
          without a fetch. LocaleSwitcher script also reuses these globals. -->
     <script is:inline define:vars={{ esJson, enJson }}>
-      window.__TURIMAP_I18N__ = { es: JSON.parse(esJson), en: JSON.parse(enJson) };
+      const dicts = { es: JSON.parse(esJson), en: JSON.parse(enJson) };
+      window.__EDIFICARTE_I18N__ = dicts;
+      window.__TURIMAP_I18N__ = dicts;
     </script>
     <ViewTransitions />
   
@@ -128,7 +130,7 @@ const enJson = JSON.stringify(enDict);
           style="padding-top: env(safe-area-inset-top, 0px);"
         >
           <div class="pointer-events-auto flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3.5 py-1.5 shadow-md border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 transition-all hover:bg-white active:scale-95">
-            <span class="text-xs">🏛️</span>
+            <img src="/favicon.ico" alt="EdificARTE" class="h-4 w-4 object-contain inline-block" />
             <span class="text-[12px] font-extrabold tracking-tight text-slate-900 dark:text-white">
               Edific<span class="text-[#3f043a] dark:text-[#e085b3] font-black">ARTE</span>
             </span>
@@ -185,7 +187,7 @@ const enJson = JSON.stringify(enDict);
 
     <script is:inline>
     (function proximityNotifications() {
-      const DICTS = (window.__TURIMAP_I18N__ || { es: {}, en: {} });
+      const DICTS = (window.__EDIFICARTE_I18N__ || window.__TURIMAP_I18N__ || { es: {}, en: {} });
       function resolve(dict, key) {
         const parts = key.split('.');
         let cur = dict;
@@ -200,7 +202,7 @@ const enJson = JSON.stringify(enDict);
       }
       function getDict() {
         try {
-          const stored = localStorage.getItem('turimap_locale');
+          const stored = localStorage.getItem('edificarte_locale') || localStorage.getItem('turimap_locale');
           return (stored === 'en') ? DICTS.en : DICTS.es;
         } catch {
           return DICTS.es;
@@ -215,12 +217,12 @@ const enJson = JSON.stringify(enDict);
         return s;
       }
 
-      const MONUMENTS = (window.__TURIMAP_MONUMENTS__ || []);
+      const MONUMENTS = (window.__EDIFICARTE_MONUMENTS__ || window.__TURIMAP_MONUMENTS__ || []);
       if (!MONUMENTS.length) return;
       if (!('geolocation' in navigator)) return;
 
       const RADIUS_M = 300;
-      const STORAGE_KEY = 'turimap_proximity_seen';
+      const STORAGE_KEY = 'edificarte_proximity_seen';
       let toastTimeout = null;
       let proximityWatchId = null;
       let isPageVisible = true;
@@ -289,7 +291,7 @@ const enJson = JSON.stringify(enDict);
           if (dist <= RADIUS_M) {
             showToast(m);
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-              new Notification('TuriMap - ' + tr('proximity.toast_title') + ' ' + m.name, {
+              new Notification('EdificARTE - ' + tr('proximity.toast_title') + ' ' + m.name, {
                 body: tr('proximity.notification_body'),
                 icon: '/favicon-32x32.png',
                 tag: 'proximity-' + m.id,
@@ -351,7 +353,7 @@ const enJson = JSON.stringify(enDict);
     <script is:inline data-astro-rerun>
     try {
       (function() {
-        var DICTS = window.__TURIMAP_I18N__;
+        var DICTS = window.__EDIFICARTE_I18N__ || window.__TURIMAP_I18N__;
         if (!DICTS) return;
         function detect() {
           try {
@@ -359,7 +361,7 @@ const enJson = JSON.stringify(enDict);
             if (q && (q === 'es' || q === 'en')) return q;
           } catch {}
           try {
-            var s = localStorage.getItem('turimap_locale');
+            var s = localStorage.getItem('edificarte_locale') || localStorage.getItem('turimap_locale');
             if (s === 'en' || s === 'es') return s;
           } catch {}
           var n = (navigator && navigator.language) || '';
