@@ -67,25 +67,28 @@ export const POST: APIRoute = async ({ request, locals }) => {
     }).join('\n');
 
     let locationPromptAddition = '';
-    let isUserFarFromCDMX = false;
     let isLocationEnabled = false;
 
     if (userLocation && typeof userLocation.lat === 'number' && typeof userLocation.lng === 'number') {
       isLocationEnabled = true;
-      const distMeters = getDistance(userLocation.lat, userLocation.lng, 19.4326, -99.1332);
-      if (distMeters >= 30000) {
-        isUserFarFromCDMX = true;
-      locationPromptAddition = `ESTADO DE UBICACIÓN DEL USUARIO: UBICACIÓN ACTIVADA Y DETECTADA [${userLocation.lat}, ${userLocation.lng}]. El usuario está FUERA de la CDMX (a unos ${Math.round(distMeters / 1000)} km de distancia).
-INSTRUCCIÓN CRÍTICA DE CONTEXTO: A partir de las coordenadas [${userLocation.lat}, ${userLocation.lng}], INFIERE la ciudad o región aproximada donde se encuentra el usuario (ej. "Medellín", "Guadalajara", "Monterrey", "Bogotá", etc.) y MENCIÓNALA en tu respuesta con algo como: "¡Ahh, veo que estás en [ciudad inferida]! Cuando llegues a la CDMX, te recomiendo empezar por:".
-Si el usuario ya mencionó la ciudad o destino que quiere conocer, úsalo directamente. Analiza los pines y lugares visibles en el mapa (listados en PINES EN TIEMPO REAL) y prioriza los que más se ajusten a lo que el usuario preguntó.
-PUNTO DE INICIO DE RUTA: Si el usuario mencionó un hotel, aeropuerto u otro punto de llegada en CDMX, extráelo en el campo "startAddress". Si NO lo ha mencionado, pregúntale en el reply: "¿Desde qué hotel o punto de la CDMX saldrás? Así trazo la ruta desde ahí 📍" — en ese caso deja "route" como [] y "action" como "chat" hasta saber el punto de partida.
-SIEMPRE establece "isTravelPlan": true en tu JSON de respuesta cuando recomiendes lugares o rutas.`;
-      } else {
-        locationPromptAddition = `ESTADO DE UBICACIÓN DEL USUARIO: UBICACIÓN ACTIVADA Y DETECTADA [${userLocation.lat}, ${userLocation.lng}]. El usuario está DENTRO de la CDMX (a ${Math.round(distMeters)} metros del centro). Analiza los pines visibles en el mapa (PINES EN TIEMPO REAL) y recomienda los más cercanos al usuario indicando distancia en metros y tiempo a pie.`;
-      }
+      locationPromptAddition = `ESTADO DE UBICACIÓN DEL USUARIO: UBICACIÓN ACTIVADA Y DETECTADA [${userLocation.lat}, ${userLocation.lng}].
+INSTRUCCIÓN CRÍTICA DE CONTEXTO GLOBAL:
+1. EdificARTE funciona EN TODO EL MUNDO, no solo en CDMX. Los pines visibles en el mapa pueden ser de cualquier ciudad o país.
+2. ANALIZA los pines en tiempo real (PINES Y LUGARES EN TIEMPO REAL VISIBLES EN EL MAPA) para saber QUÉ ciudad o región está viendo el usuario actualmente.
+3. A partir de las coordenadas [${userLocation.lat}, ${userLocation.lng}] y los pines visibles, INFIERE la ciudad o región donde está el usuario (ej. "Medellín", "Guadalajara", "París", "Buenos Aires", etc.).
+4. Menciona la ciudad inferida en tu respuesta: "¡Ahh, veo que estás en [ciudad inferida]!" o "Veo que estás explorando [ciudad]".
+5. RECOMIENDA lugares basándote en los pines visibles, NO asumas que todo es CDMX.
+6. Si el usuario pregunta por otro destino (ej. "quiero conocer Medellín"), analiza si hay pines de esa ciudad en el mapa y recomiéndalos.
+7. PUNTO DE INICIO DE RUTA: Si el usuario menciona un hotel, dirección o punto de partida específico, úsalo como "startAddress". Si NO lo menciona, pregúntale: "¿Desde dónde saldrás? Dame una dirección o punto de referencia para trazar la ruta 📍".
+8. Establece "isTravelPlan": true cuando traces rutas o recomiendes itinerarios.`;
     } else {
       locationPromptAddition = `ESTADO DE UBICACIÓN DEL USUARIO: NO ACTIVADA / NO DISPONIBLE.
-Si el usuario menciona que quiere conocer o visitar alguna ciudad o lugar, responde con entusiasmo y recomienda los mejores pines o monumentos relacionados disponibles en el catálogo. Menciona amablemente que si activa su ubicación podrás personalizar mejor las recomendaciones. SIEMPRE establece "isTravelPlan": true en tu JSON cuando recomiende una ruta sin ubicación.`;
+INSTRUCCIÓN CRÍTICA DE CONTEXTO GLOBAL:
+1. EdificARTE funciona EN TODO EL MUNDO. Los pines visibles (PINES Y LUGARES EN TIEMPO REAL) pueden ser de cualquier ciudad.
+2. Si el usuario menciona una ciudad específica ("quiero conocer Medellín", "lugares en París"), analiza los pines visibles y recomienda los más relevantes.
+3. NO asumas que todo es CDMX. Usa los pines visibles para inferir el contexto geográfico.
+4. Menciona amablemente que si activa su ubicación podrás personalizar mejor las recomendaciones y calcular distancias.
+5. Establece "isTravelPlan": true cuando traces rutas o recomiendes itinerarios.`;
     }
 
     let visiblePinsContext = '';
@@ -107,15 +110,17 @@ Si el usuario pregunta por lugares o pines visibles en su pantalla, comercios, m
 `;
     }
 
-    const systemInstruction = `Eres Edi, el Guía Cultural y Asistente Inteligente Oficial de EdificARTE, la plataforma interactiva de patrimonio, historia, arquitectura y cultura de la Ciudad de México (CDMX).
+    const systemInstruction = `Eres Edi, el Guía Cultural y Asistente Inteligente Oficial de EdificARTE, la plataforma interactiva global de patrimonio, historia, arquitectura y cultura.
+
+IMPORTANTE: EdificARTE funciona EN TODO EL MUNDO, no solo en CDMX. Los usuarios pueden explorar monumentos, museos, parques y sitios históricos de cualquier ciudad o país.
 
 CONOCIMIENTO INTEGRAL DE LA PLATAFORMA EDIFICARTE:
 1. SECCIÓN MAPA INTERACTIVO (/mapa):
-   - Mapa 3D interactivo impulsado por Mapbox GL JS con visualización detallada de monumentos.
-   - Audioguías con narración hablada sobre la historia de cada monumento o museo.
+   - Mapa 3D interactivo impulsado por Mapbox GL JS con visualización global de monumentos y lugares de interés.
+   - Audioguías con narración hablada sobre la historia de cada monumento o museo (donde disponible).
    - Trazado de rutas y paseos guiados inteligentes (a pie o en vehículo según la distancia).
    - Filtros dinámicos por categorías: Museos 🏛️, Templos ⛪, Parques 🌳, Historia 🏰, Miradores 🔭, Rascacielos 🏙️ y Arqueología 🗿.
-   - Notificaciones por proximidad: la app avisa al usuario cuando está a menos de 300 metros de un sitio histórico.
+   - Notificaciones por proximidad: la app avisa al usuario cuando está cerca de un sitio histórico.
 
 2. SECCIÓN EXPLORAR Y EXPERIENCIAS (/explorar):
    - Catálogo completo de recintos culturales y recorridos temáticos guiados (ej. "Tenochtitlan Sagrado", "Muralismo Mexicano", "Ruta Porfiriana").
@@ -236,13 +241,14 @@ REGLAS ESTRICTAS DE RESPUESTA:
       }
     }
 
-    let isTravelPlan = Boolean(parsed.isTravelPlan) || isUserFarFromCDMX;
+    let isTravelPlan = Boolean(parsed.isTravelPlan);
     const lastMsgText = messages[messages.length - 1]?.content?.toLowerCase() || '';
     if (
       lastMsgText.includes('viaj') ||
       lastMsgText.includes('vuelo') ||
       lastMsgText.includes('visitar') ||
       lastMsgText.includes('ir a') ||
+      lastMsgText.includes('conocer') ||
       !isLocationEnabled
     ) {
       if (action === 'route') {

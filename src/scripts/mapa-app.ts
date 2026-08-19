@@ -1041,6 +1041,42 @@ function selectPlace(place: Place) {
     }
   }
 
+  // Share button handler
+  const shareBtn = $('btn-share');
+  if (shareBtn) {
+    shareBtn.onclick = async () => {
+      const shareData = {
+        title: place.name,
+        text: `${place.name} - ${place.category}\n${place.address || ''}`,
+        url: `${window.location.origin}/mapa?placeId=${place.id}`,
+      };
+
+      try {
+        // Use Web Share API if available (mobile devices)
+        if (navigator.share) {
+          await navigator.share(shareData);
+        } else {
+          // Fallback: copy to clipboard
+          await navigator.clipboard.writeText(shareData.url);
+
+          // Show temporary toast notification
+          const toast = document.createElement('div');
+          toast.textContent = 'Link copied to clipboard!';
+          toast.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-lg animate-fade-in';
+          document.body.appendChild(toast);
+
+          setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 300ms';
+            setTimeout(() => toast.remove(), 300);
+          }, 2000);
+        }
+      } catch (err) {
+        console.error('Share failed:', err);
+      }
+    };
+  }
+
   $('view-list')?.classList.add('hidden');
   $('view-detail')?.classList.remove('hidden');
   isCollapsed = false;
@@ -1994,8 +2030,13 @@ function ensureZoneCardVisible(card: HTMLElement) {
 }
 
 function showZoneCard(zone: ZoneCardData) {
+  console.log('[showZoneCard] Called with:', zone.name);
   const card = $('zone-card');
-  if (!card) return;
+  if (!card) {
+    console.error('[showZoneCard] Card element not found');
+    return;
+  }
+  console.log('[showZoneCard] Card element found');
   // Tear down any previous popup before re-parenting the shared template.
   hideZoneCard();
   activeZone = zone;
@@ -2348,19 +2389,25 @@ function setupRecintosLayer(mapInstance: mapboxgl.Map): void {
     );
 
     mapInstance.on('click', 'recintos-zones-fill', (e) => {
-      const feature = e.features?.[0];
-      if (!feature || !feature.properties) return;
-      const props = feature.properties;
-      // A zone gets its own card and keeps the map framed on the AREA.
-      // It must not go through selectPlace(), which flies to zoom 17 / pitch 55
-      // and reframes a whole region as if it were a single pin.
-      bindZoneCardControls();
-      showZoneCard(
-        zoneDataFromFeature(
-          props as unknown as Record<string, unknown>,
-          feature.geometry
-        )
-      );
+      try {
+        const feature = e.features?.[0];
+        if (!feature || !feature.properties) return;
+        const props = feature.properties;
+        console.log('[Zone Click] Feature:', feature.properties.name);
+        console.log('[Zone Click] Map exists:', !!map);
+        // A zone gets its own card and keeps the map framed on the AREA.
+        // It must not go through selectPlace(), which flies to zoom 17 / pitch 55
+        // and reframes a whole region as if it were a single pin.
+        bindZoneCardControls();
+        showZoneCard(
+          zoneDataFromFeature(
+            props as unknown as Record<string, unknown>,
+            feature.geometry
+          )
+        );
+      } catch (error) {
+        console.error('[Zone Click] Error:', error);
+      }
     });
 
     mapInstance.on('mouseenter', 'recintos-zones-fill', () => {

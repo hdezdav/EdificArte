@@ -1,8 +1,8 @@
 export function astroCookieAdapter(
-  cookies: any,
-  requestHeaders: Headers,
-  responseHeaders = new Headers(),
-  secure = import.meta.env.PROD
+  _cookies: unknown,
+  _requestHeaders: Headers,
+  _responseHeaders = new Headers(),
+  _secure = import.meta.env.PROD
 ) {
   return {
     getAll: () => [],
@@ -11,8 +11,8 @@ export function astroCookieAdapter(
 }
 
 export function createServerSupabase(
-  _env: any,
-  _cookies: any,
+  _env: unknown,
+  _cookies: unknown,
   _requestHeaders: Headers,
   _responseHeaders?: Headers,
   _secure?: boolean

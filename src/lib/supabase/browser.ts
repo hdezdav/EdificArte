@@ -1,3 +1,3 @@
-export function createBrowserSupabase(_env?: any) {
+export function createBrowserSupabase(_env?: unknown) {
   return null;
 }

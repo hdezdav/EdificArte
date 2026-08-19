@@ -1,3 +1,3 @@
-export function createServiceRoleSupabase(_env: any) {
+export function createServiceRoleSupabase(_env: unknown) {
   return null;
 }

@@ -353,50 +353,50 @@ const enJson = JSON.stringify(enDict);
     <script is:inline data-astro-rerun>
     try {
       (function() {
-        var DICTS = window.__EDIFICARTE_I18N__ || window.__TURIMAP_I18N__;
+        const DICTS = window.__EDIFICARTE_I18N__ || window.__TURIMAP_I18N__;
         if (!DICTS) return;
         function detect() {
           try {
-            var q = new URL(window.location.href).searchParams.get('lang');
+            const q = new URL(window.location.href).searchParams.get('lang');
             if (q && (q === 'es' || q === 'en')) return q;
           } catch {}
           try {
-            var s = localStorage.getItem('edificarte_locale') || localStorage.getItem('turimap_locale');
+            const s = localStorage.getItem('edificarte_locale') || localStorage.getItem('turimap_locale');
             if (s === 'en' || s === 'es') return s;
           } catch {}
-          var n = (navigator && navigator.language) || '';
+          const n = (navigator && navigator.language) || '';
           if (n.toLowerCase().startsWith('en')) return 'en';
           return 'es';
         }
         function resolve(dict, key) {
-          var parts = key.split('.');
-          var cur = dict;
-          for (var i = 0; i < parts.length; i++) {
+          const parts = key.split('.');
+          let cur = dict;
+          for (let i = 0; i < parts.length; i++) {
             if (cur && typeof cur === 'object' && parts[i] in cur) cur = cur[parts[i]];
             else return null;
           }
           return typeof cur === 'string' ? cur : null;
         }
-        var loc = detect();
-        var dict = DICTS[loc] || DICTS.es;
-        var el, key, val;
-        var i18nEls = document.querySelectorAll('[data-i18n]');
-        for (var i = 0; i < i18nEls.length; i++) {
+        const loc = detect();
+        const dict = DICTS[loc] || DICTS.es;
+        let el, key, val;
+        const i18nEls = document.querySelectorAll('[data-i18n]');
+        for (let i = 0; i < i18nEls.length; i++) {
           el = i18nEls[i];
           key = el.getAttribute('data-i18n');
           val = resolve(dict, key);
           if (val !== null) el.textContent = val;
         }
-        var htmlEls = document.querySelectorAll('[data-i18n-html]');
-        for (var i = 0; i < htmlEls.length; i++) {
-          el = htmlEls[i];
+        const htmlEls = document.querySelectorAll('[data-i18n-html]');
+        for (let j = 0; j < htmlEls.length; j++) {
+          el = htmlEls[j];
           key = el.getAttribute('data-i18n-html');
           val = resolve(dict, key);
           if (val !== null) el.innerHTML = val;
         }
-        var phEls = document.querySelectorAll('[data-i18n-placeholder]');
-        for (var i = 0; i < phEls.length; i++) {
-          el = phEls[i];
+        const phEls = document.querySelectorAll('[data-i18n-placeholder]');
+        for (let k = 0; k < phEls.length; k++) {
+          el = phEls[k];
           key = el.getAttribute('data-i18n-placeholder');
           val = resolve(dict, key);
           if (val !== null) el.placeholder = val;

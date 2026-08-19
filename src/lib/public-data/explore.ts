@@ -109,9 +109,7 @@ export async function getPublicExploreInfo(input: LocationInput, fetcher: typeof
 
   const countryNames = COUNTRY_NAMES[countryCode];
   const countryEs = countryNames?.[0] ?? 'México';
-  const countryEn = countryNames?.[1] ?? 'Mexico';
   const loc = [city, countryEs].filter(Boolean).join(' ');
-  const locEn = [city, countryEn].filter(Boolean).join(' ');
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);

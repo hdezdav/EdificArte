@@ -1,0 +1,442 @@
+---
+import Layout from '../layouts/Layout.astro';
+import AiAgent from '../components/AiAgent.astro';
+import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
+import { DEFAULT_LOCALE, type Locale } from '../lib/i18n';
+
+const locale = (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
+
+const runtimeEnv = Astro.locals?.runtime?.env;
+const mapboxToken =
+  runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || '';
+---
+
+<Layout title="EdificARTE - Demo Mode" fullScreen={true} locale={locale}>
+  <!-- Demo Overlay Controls -->
+  <div
+    id="demo-controls"
+    class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-500"
+  >
+    <!-- Demo Card -->
+    <div
+      id="demo-card"
+      class="liquid-glass pointer-events-auto relative mx-4 max-w-md rounded-3xl p-6 shadow-2xl"
+    >
+      <!-- Progress Indicator -->
+      <div class="mb-4 flex gap-1.5">
+        <div class="progress-dot h-2 flex-1 rounded-full bg-accent-600 transition-all duration-300"></div>
+        <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
+        <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
+        <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
+        <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
+        <div class="progress-dot h-2 flex-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-all duration-300"></div>
+      </div>
+
+      <!-- Content -->
+      <div id="demo-content">
+        <div class="mb-2 flex items-center gap-2">
+          <span
+            class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-600 text-xl transition-transform duration-300"
+            id="demo-emoji"
+          >
+            🌍
+          </span>
+          <h2
+            class="text-xl font-bold text-slate-800 dark:text-white"
+            id="demo-title"
+          >
+            Welcome to EdificARTE
+          </h2>
+        </div>
+        <p
+          class="mb-6 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300"
+          id="demo-description"
+        >
+          Discover cultural heritage around the world with AI-powered guides,
+          AR experiences, and immersive audio tours.
+        </p>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-3">
+        <button
+          id="btn-demo-skip"
+          class="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-[12px] font-semibold text-slate-600 transition-all hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          Skip
+        </button>
+        <button
+          id="btn-demo-next"
+          class="flex-1 rounded-xl bg-accent-600 px-4 py-2.5 text-[12px] font-semibold text-white shadow-lg shadow-accent-600/20 transition-all hover:bg-accent-700 active:scale-95"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Demo Spotlight -->
+  <div
+    id="demo-spotlight"
+    class="pointer-events-none fixed z-40 hidden rounded-2xl border-4 border-accent-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] transition-all duration-700 ease-in-out"
+  ></div>
+
+  <!-- Demo Annotations (floating hints) -->
+  <div
+    id="demo-annotation"
+    class="liquid-glass pointer-events-none fixed z-40 hidden max-w-xs rounded-2xl px-4 py-3 shadow-xl transition-all duration-500"
+  >
+    <p class="text-[11px] font-semibold text-slate-700 dark:text-slate-200" id="demo-annotation-text"></p>
+  </div>
+
+  <!-- Embedded Map Page -->
+  <div class="h-screen w-full">
+    <!-- Floating Search Bar -->
+    <div
+      class="unified-search-map-layer pointer-events-none absolute left-0 right-0 top-0 z-30 flex flex-col items-center gap-2 px-4 pt-2"
+    >
+      <UnifiedSearchBar
+        inputId="search-input"
+        clearId="map-search-clear"
+        suggestionsId="search-suggestions"
+        placeholder="Buscar lugares, ciudades y monumentos..."
+        ariaLabel="Buscar lugares"
+        i18nPlaceholder="mapa.search_placeholder"
+        outerClass="pointer-events-auto"
+      />
+
+      <!-- Filter Chips -->
+      <div
+        id="map-filter-chips"
+        class="no-scrollbar pointer-events-auto relative z-10 -mx-4 flex w-full max-w-lg gap-2 overflow-x-auto scroll-smooth px-4 pb-3 pt-1 sm:flex-wrap sm:justify-center sm:overflow-x-visible"
+      >
+        <button
+          data-filter="all"
+          data-i18n="mapa.filters.all"
+          class="filter-chip active flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+        >
+          All
+        </button>
+        <button
+          data-filter="museum"
+          data-i18n="mapa.filters.museums"
+          class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+        >
+          🏛️ Museums
+        </button>
+        <button
+          data-filter="temple"
+          data-i18n="mapa.filters.temples"
+          class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+        >
+          ⛪ Temples
+        </button>
+        <button
+          data-filter="park"
+          data-i18n="mapa.filters.parks"
+          class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+        >
+          🌳 Parks
+        </button>
+        <button
+          data-filter="historic"
+          data-i18n="mapa.filters.historic"
+          class="filter-chip flex-shrink-0 rounded-full border px-4 py-[7px] text-[11px] font-bold shadow-sm transition-all active:scale-95"
+        >
+          🏰 Historic
+        </button>
+      </div>
+    </div>
+
+    <!-- Floating Controls -->
+    <div
+      id="map-floating-controls"
+      class="pointer-events-auto fixed right-3 z-30 flex flex-col items-end gap-2 transition-all duration-300 ease-in-out sm:right-4"
+      style="bottom: calc(8.25rem + env(safe-area-inset-bottom, 0px));"
+    >
+      <button
+        id="btn-locate"
+        class="liquid-glass flex h-11 w-11 items-center justify-center rounded-full text-slate-700 shadow-lg transition-all active:scale-90 dark:text-slate-200"
+        aria-label="Center location"
+      >
+        <span class="material-symbols-outlined text-[20px]" id="locate-icon"
+          >my_location</span
+        >
+      </button>
+    </div>
+
+    <!-- Fullscreen Map -->
+    <div id="map" class="absolute inset-0 z-0 h-full w-full"></div>
+
+    <!-- Bottom Sheet -->
+    <div
+      id="bottom-sheet"
+      class="liquid-glass absolute left-3 right-3 z-20 mx-auto max-w-lg overflow-hidden rounded-3xl transition-all duration-300"
+      style="bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));"
+    >
+      <div
+        id="sheet-header"
+        class="flex w-full cursor-pointer select-none flex-col items-center pb-2 pt-3"
+      >
+        <div
+          class="mb-2 h-[5px] w-10 rounded-full bg-slate-300 dark:bg-slate-700"
+        >
+        </div>
+        <div class="flex w-full items-center justify-between px-4">
+          <h2
+            class="flex items-center gap-1.5 text-[14px] font-bold text-slate-800 dark:text-white"
+          >
+            <span
+              class="material-symbols-outlined text-[18px] text-accent-600 dark:text-accent-400"
+              >explore</span
+            >
+            <span data-i18n="mapa.sheet.title">Nearby Places</span>
+          </h2>
+          <span
+            id="sheet-chevron"
+            class="material-symbols-outlined text-slate-450 text-[20px] transition-transform duration-300 dark:text-slate-500"
+            >keyboard_arrow_up</span
+          >
+        </div>
+      </div>
+
+      <div
+        id="sheet-body"
+        class="overflow-y-auto px-4 pb-5 transition-all duration-300 ease-in-out"
+      >
+        <div id="view-list">
+          <div
+            class="no-scrollbar flex flex-col gap-2"
+            id="places-list-container"
+          >
+            <p
+              class="py-6 text-center text-[12px] text-slate-400 dark:text-slate-500"
+              data-i18n="mapa.sheet.empty_cta"
+            >
+              Enable location to discover nearby places
+            </p>
+          </div>
+        </div>
+        <div id="view-detail" class="hidden"></div>
+      </div>
+    </div>
+
+    <!-- AI Agent -->
+    <AiAgent />
+  </div>
+</Layout>
+
+<script>
+  // Import map script to initialize the embedded map
+  import '../scripts/mapa-app.ts';
+</script>
+
+<script>
+  interface DemoStep {
+    emoji: string;
+    title: string;
+    description: string;
+    spotlightSelector?: string;
+    annotation?: string;
+    action?: () => void;
+  }
+
+  const steps: DemoStep[] = [
+    {
+      emoji: '🌍',
+      title: 'Bienvenido a EdificARTE',
+      description:
+        'Descubre patrimonio cultural en todo el mundo con guías impulsadas por IA, experiencias AR e tours de audio inmersivos.',
+    },
+    {
+      emoji: '🗺️',
+      title: 'Mapa Interactivo Global',
+      description:
+        'Explora monumentos y sitios patrimoniales en todo el mundo. Toca cualquier pin para conocer su historia, ver imágenes y obtener direcciones.',
+      spotlightSelector: '#map',
+      annotation: 'Toca los pines para explorar monumentos',
+    },
+    {
+      emoji: '🔍',
+      title: 'Búsqueda y Filtros',
+      description:
+        'Busca ciudades, monumentos específicos o filtra por tipo: museos, templos, parques, sitios históricos y miradores.',
+      spotlightSelector: '#search-input',
+      annotation: 'Busca cualquier lugar o filtra por categoría',
+    },
+    {
+      emoji: '🤖',
+      title: 'Asistente IA (Edi)',
+      description:
+        'Pregunta lo que quieras: "Quiero conocer Medellín" o "Muéstrame museos cercanos". Edi analiza los pines visibles y crea itinerarios personalizados con rutas.',
+      spotlightSelector: '#ai-fab',
+      annotation: 'Haz clic aquí para hablar con Edi',
+    },
+    {
+      emoji: '🎧',
+      title: 'Audioguías & NFT Badges',
+      description:
+        'Escucha tours de audio curados en monumentos selectos. Visítalos para desbloquear badges NFT conmemorativos en Polygon.',
+      spotlightSelector: '#bottom-sheet',
+      annotation: 'Selecciona un monumento para ver sus detalles',
+    },
+    {
+      emoji: '🚀',
+      title: 'Listo para Explorar',
+      description:
+        'EdificARTE funciona globalmente. Tu viaje comienza ahora—toca Explorar para descubrir patrimonio cerca de ti o en cualquier ciudad del mundo.',
+    },
+  ];
+
+  let currentStep = 0;
+
+  function updateDemo() {
+    const step = steps[currentStep];
+    const demoEmoji = document.getElementById('demo-emoji');
+    const demoTitle = document.getElementById('demo-title');
+    const demoDescription = document.getElementById('demo-description');
+    const demoSpotlight = document.getElementById('demo-spotlight');
+    const demoAnnotation = document.getElementById('demo-annotation');
+    const demoAnnotationText = document.getElementById('demo-annotation-text');
+    const btnNext = document.getElementById('btn-demo-next');
+    const progressDots = document.querySelectorAll('.progress-dot');
+
+    if (!demoEmoji || !demoTitle || !demoDescription || !btnNext) return;
+
+    // Smooth emoji transition
+    demoEmoji.style.transform = 'scale(0)';
+    setTimeout(() => {
+      demoEmoji.textContent = step.emoji;
+      demoEmoji.style.transform = 'scale(1)';
+    }, 150);
+
+    demoTitle.textContent = step.title;
+    demoDescription.textContent = step.description;
+
+    // Update progress dots
+    progressDots.forEach((dot, idx) => {
+      if (idx <= currentStep) {
+        dot.classList.remove('bg-slate-300', 'dark:bg-slate-700');
+        dot.classList.add('bg-accent-600');
+      } else {
+        dot.classList.add('bg-slate-300', 'dark:bg-slate-700');
+        dot.classList.remove('bg-accent-600');
+      }
+    });
+
+    // Update button text
+    if (currentStep === steps.length - 1) {
+      btnNext.textContent = 'Comenzar';
+    } else {
+      btnNext.textContent = 'Siguiente';
+    }
+
+    // Handle spotlight and annotation
+    if (step.spotlightSelector && demoSpotlight) {
+      const target = document.querySelector(step.spotlightSelector) as HTMLElement;
+
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        demoSpotlight.style.display = 'block';
+        demoSpotlight.style.width = `${rect.width + 16}px`;
+        demoSpotlight.style.height = `${rect.height + 16}px`;
+        demoSpotlight.style.left = `${rect.left - 8}px`;
+        demoSpotlight.style.top = `${rect.top - 8}px`;
+
+        // Show annotation if present
+        if (step.annotation && demoAnnotation && demoAnnotationText) {
+          demoAnnotationText.textContent = step.annotation;
+          demoAnnotation.style.display = 'block';
+
+          // Position annotation below spotlight
+          const annotTop = rect.bottom + 16;
+          const annotLeft = rect.left + rect.width / 2;
+          demoAnnotation.style.left = `${annotLeft}px`;
+          demoAnnotation.style.top = `${annotTop}px`;
+          demoAnnotation.style.transform = 'translateX(-50%)';
+        }
+      } else {
+        demoSpotlight.style.display = 'none';
+        if (demoAnnotation) demoAnnotation.style.display = 'none';
+      }
+    } else {
+      if (demoSpotlight) demoSpotlight.style.display = 'none';
+      if (demoAnnotation) demoAnnotation.style.display = 'none';
+    }
+
+    // Execute step action
+    step.action?.();
+  }
+
+  function nextStep() {
+    if (currentStep < steps.length - 1) {
+      currentStep++;
+      updateDemo();
+    } else {
+      // Demo complete - hide overlay and let user interact
+      const demoControls = document.getElementById('demo-controls');
+      const demoSpotlight = document.getElementById('demo-spotlight');
+      const demoAnnotation = document.getElementById('demo-annotation');
+
+      if (demoControls) demoControls.style.display = 'none';
+      if (demoSpotlight) demoSpotlight.style.display = 'none';
+      if (demoAnnotation) demoAnnotation.style.display = 'none';
+    }
+  }
+
+  function skipDemo() {
+    const demoControls = document.getElementById('demo-controls');
+    const demoSpotlight = document.getElementById('demo-spotlight');
+    const demoAnnotation = document.getElementById('demo-annotation');
+
+    if (demoControls) demoControls.style.display = 'none';
+    if (demoSpotlight) demoSpotlight.style.display = 'none';
+    if (demoAnnotation) demoAnnotation.style.display = 'none';
+  }
+
+  document.getElementById('btn-demo-next')?.addEventListener('click', nextStep);
+  document.getElementById('btn-demo-skip')?.addEventListener('click', skipDemo);
+
+  // Initialize after a short delay to let the map load
+  setTimeout(() => {
+    updateDemo();
+  }, 500);
+
+  // Allow advancing with arrow keys
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') {
+      e.preventDefault();
+      nextStep();
+    } else if (e.key === 'Escape') {
+      skipDemo();
+    }
+  });
+</script>
+
+<style>
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  :global(.dark) .liquid-glass {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  #demo-spotlight {
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-ring {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+</style>
