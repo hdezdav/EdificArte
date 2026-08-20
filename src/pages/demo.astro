@@ -3,15 +3,18 @@ import Layout from '../layouts/Layout.astro';
 import AiAgent from '../components/AiAgent.astro';
 import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
 import { DEFAULT_LOCALE, type Locale } from '../lib/i18n';
+import esDict from '../i18n/es.json';
+import enDict from '../i18n/en.json';
 
 const locale = (Astro.currentLocale as Locale) || DEFAULT_LOCALE;
+const dict = locale === 'es' ? esDict : enDict;
 
 const runtimeEnv = Astro.locals?.runtime?.env;
 const mapboxToken =
   runtimeEnv?.MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || '';
 ---
 
-<Layout title="EdificARTE - Demo Mode" fullScreen={true} locale={locale}>
+<Layout title={`EdificARTE - ${dict.demo?.title || 'Demo Mode'}`} fullScreen={true} locale={locale}>
   <!-- Fake GPS: Centro Cultural El Rule coordinates - MUST run FIRST -->
   <script is:inline define:vars={{ mapboxToken }}>
     window.__EDIFICARTE_TOKEN__ = mapboxToken;
@@ -70,12 +73,13 @@ const mapboxToken =
   <!-- Demo Overlay Controls -->
   <div
     id="demo-controls"
-    class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[3px] transition-opacity duration-500"
+    class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-500"
   >
     <!-- Demo Card -->
     <div
       id="demo-card"
       class="liquid-glass pointer-events-auto relative mx-4 w-full max-w-md rounded-3xl p-5 shadow-2xl sm:p-6"
+      style="box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.2);"
     >
       <!-- Progress Indicator -->
       <div class="mb-3 flex gap-1.5 sm:mb-4">
@@ -98,15 +102,17 @@ const mapboxToken =
           <h2
             class="text-lg font-bold text-slate-800 dark:text-white sm:text-xl"
             id="demo-title"
+            data-i18n="demo.title"
           >
-            Bienvenido a EdificARTE
+            {dict.demo?.title || 'Bienvenido a EdificARTE'}
           </h2>
         </div>
         <p
           class="mb-5 text-[12px] leading-relaxed text-slate-600 dark:text-slate-300 sm:mb-6 sm:text-[13px]"
           id="demo-description"
+          data-i18n="demo.description"
         >
-          Descubre el patrimonio cultural con guías de IA, experiencias inmersivas y recorridos de audio multilingües.
+          {dict.demo?.description || 'Descubre el patrimonio cultural con guías de IA, experiencias inmersivas y recorridos de audio multilingües.'}
         </p>
       </div>
 
@@ -114,15 +120,17 @@ const mapboxToken =
       <div class="flex gap-2.5 sm:gap-3">
         <button
           id="btn-demo-skip"
+          data-i18n="demo.skip"
           class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-semibold text-slate-600 transition-all hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:px-4 sm:py-2.5 sm:text-[12px]"
         >
-          Omitir
+          {dict.demo?.skip || 'Omitir'}
         </button>
         <button
           id="btn-demo-next"
+          data-i18n="demo.next"
           class="flex-1 rounded-xl bg-accent-600 px-3 py-2 text-[11px] font-semibold text-white shadow-lg shadow-accent-600/20 transition-all hover:bg-accent-700 active:scale-95 sm:px-4 sm:py-2.5 sm:text-[12px]"
         >
-          Siguiente
+          {dict.demo?.next || 'Siguiente'}
         </button>
       </div>
     </div>
@@ -303,6 +311,34 @@ const mapboxToken =
 </script>
 
 <script>
+  import { detectLocale } from '../lib/i18n';
+
+  type I18nDict = Record<string, unknown>;
+
+  function getDict(): I18nDict {
+    const win = window as unknown as {
+      __EDIFICARTE_I18N__?: { es: I18nDict; en: I18nDict };
+      __TURIMAP_I18N__?: { es: I18nDict; en: I18nDict };
+    };
+    const dicts = win.__EDIFICARTE_I18N__ || win.__TURIMAP_I18N__ || { es: {}, en: {} };
+    return detectLocale() === 'en' ? dicts.en : dicts.es;
+  }
+
+  function resolve(dict: I18nDict, key: string): string {
+    const parts = key.split('.');
+    let cur: unknown = dict;
+    for (const p of parts) {
+      if (cur && typeof cur === 'object' && p in cur) cur = (cur as I18nDict)[p];
+      else return key;
+    }
+    return typeof cur === 'string' ? cur : key;
+  }
+
+  function tr(key: string, fallback: string): string {
+    const res = resolve(getDict(), key);
+    return res !== key ? res : fallback;
+  }
+
   interface DemoStep {
     emoji: string;
     title: string;
@@ -312,130 +348,152 @@ const mapboxToken =
     action?: () => void;
   }
 
-  const steps: DemoStep[] = [
-    {
-      emoji: '🗺️',
-      title: 'Explora el Patrimonio Cultural',
-      description:
-        'Visualiza sitios históricos y culturales de México con pines 3D interactivos. Puedes filtrar por categoría, rotar el mapa y descubrir el patrimonio en tiempo real.',
-      action: () => {
-        setTimeout(() => {
-          const map = (window as any).__edificarteMap;
-          if (map) {
-            map.flyTo({
-              center: [-99.1412, 19.4340],
-              zoom: 15,
-              pitch: 45,
-              bearing: 0,
-              duration: 2200,
-            });
-          }
-        }, 200);
-      },
-    },
-    {
-      emoji: '🎧',
-      title: 'Exposición Metalingua en El Rule',
-      description:
-        'El Centro Cultural El Rule alberga "Nombrar el Orgullo Neo" con más de 200 audios y transcripciones en lenguas originarias de México.',
-      action: () => {
-        setTimeout(() => {
-          const map = (window as any).__edificarteMap;
-          const monuments = (window as any).__edificarteMonuments || [];
-          const elRule = monuments.find((m: any) => m.id === 'el-rule');
-
-          if (map && elRule) {
-            map.flyTo({
-              center: [elRule.lng, elRule.lat],
-              zoom: 18.5,
-              pitch: 60,
-              bearing: 45,
-              duration: 2000,
-            });
-
-            setTimeout(() => {
-              const event = new CustomEvent('open-monument-detail', {
-                detail: { monument: elRule }
+  function getSteps(): DemoStep[] {
+    return [
+      {
+        emoji: '🗺️',
+        title: tr('demo.step1_title', 'Explora el Patrimonio Cultural'),
+        description: tr(
+          'demo.step1_desc',
+          'Visualiza sitios históricos y culturales de México con pines 3D interactivos. Puedes filtrar por categoría, rotar el mapa y descubrir el patrimonio en tiempo real.'
+        ),
+        action: () => {
+          setTimeout(() => {
+            const map = (window as unknown as { __edificarteMap?: { flyTo: (opts: unknown) => void } }).__edificarteMap;
+            if (map) {
+              map.flyTo({
+                center: [-99.1412, 19.4340],
+                zoom: 15,
+                pitch: 45,
+                bearing: 0,
+                duration: 2200,
               });
-              window.dispatchEvent(event);
-              if ((window as any).handlePinClick) {
-                (window as any).handlePinClick(elRule);
-              }
-            }, 2100);
-          }
-        }, 200);
+            }
+          }, 200);
+        },
       },
-    },
-    {
-      emoji: '🥇',
-      title: 'Coleccionable NFT Desbloqueado',
-      description:
-        'Al explorar el Centro Cultural El Rule, recibes una medalla digital representativa que premia el descubrimiento cultural.',
-      action: () => {
-        setTimeout(() => {
-          const map = (window as any).__edificarteMap;
-          const monuments = (window as any).__edificarteMonuments || [];
-          const elRule = monuments.find((m: any) => m.id === 'el-rule');
+      {
+        emoji: '🎧',
+        title: tr('demo.step2_title', 'Exposición Metalingua en El Rule'),
+        description: tr(
+          'demo.step2_desc',
+          'El Centro Cultural El Rule alberga "Nombrar el Orgullo Neo" con más de 200 audios y transcripciones en lenguas originarias de México.'
+        ),
+        action: () => {
+          setTimeout(() => {
+            const win = window as unknown as {
+              __edificarteMap?: { flyTo: (opts: unknown) => void };
+              __edificarteMonuments?: Array<{ id: string; lng: number; lat: number }>;
+              handlePinClick?: (m: unknown) => void;
+            };
+            const map = win.__edificarteMap;
+            const monuments = win.__edificarteMonuments || [];
+            const elRule = monuments.find((m) => m.id === 'el-rule');
 
-          if (map && elRule) {
-            map.easeTo({
-              bearing: 135,
-              pitch: 65,
-              duration: 2500,
-            });
-
-            setTimeout(() => {
-              const toast = document.createElement('div');
-              toast.className =
-                'fixed top-5 left-1/2 -translate-x-1/2 z-[999999] flex items-center gap-2.5 rounded-full border border-white/50 bg-white/95 px-3.5 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-500 -translate-y-16 opacity-0 dark:border-slate-700/60 dark:bg-slate-900/95 text-slate-800 dark:text-white pointer-events-auto max-w-[92vw] sm:gap-3.5 sm:px-4 sm:py-2.5';
-              toast.innerHTML = `
-                <div class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 p-0.5 shadow-md sm:h-10 sm:w-10">
-                  <img src="https://coming-aqua-flyingfish.myfilebase.com/ipfs/QmSb45pdEwGTuJFivhHuaRwZZFX83nrx4Gki1o5cCXqDo1" alt="Medalla" class="h-full w-full rounded-full object-cover" />
-                  <span class="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm">✓</span>
-                </div>
-                <div class="text-left min-w-0 pr-1.5 sm:pr-2">
-                  <div class="flex items-center gap-1.5 leading-none mb-0.5">
-                    <span class="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 sm:text-[10px]">EdificARTE</span>
-                    <span class="text-[8px] text-slate-400 sm:text-[9px]">• ahora</span>
-                  </div>
-                  <p class="truncate text-[11px] font-bold text-slate-900 dark:text-white leading-tight sm:text-[12px]">Medalla: Centro Cultural El Rule</p>
-                  <p class="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 leading-tight sm:text-[10px]">¡Logro desbloqueado y añadido a tu perfil!</p>
-                </div>
-              `;
-              document.body.appendChild(toast);
-              requestAnimationFrame(() => {
-                toast.classList.remove('-translate-y-16', 'opacity-0');
-                toast.classList.add('translate-y-0', 'opacity-100');
+            if (map && elRule) {
+              map.flyTo({
+                center: [elRule.lng, elRule.lat],
+                zoom: 18.5,
+                pitch: 60,
+                bearing: 45,
+                duration: 2000,
               });
+
               setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('-translate-y-16', 'opacity-0');
-                setTimeout(() => toast.remove(), 500);
-              }, 4000);
-            }, 1200);
-          }
-        }, 200);
+                const event = new CustomEvent('open-monument-detail', {
+                  detail: { monument: elRule }
+                });
+                window.dispatchEvent(event);
+                if (win.handlePinClick) {
+                  win.handlePinClick(elRule);
+                }
+              }, 2100);
+            }
+          }, 200);
+        },
       },
-    },
-    {
-      emoji: '🤖',
-      title: 'Asistente IA Cultural (Edi)',
-      description:
-        'Pregúntale lo que quieras: "Recomiéndame una ruta cultural" o "Háblame de Bellas Artes". Edi conoce todo el patrimonio del mapa.',
-      spotlightSelector: '#ai-fab',
-      annotation: 'Haz clic aquí para chatear con Edi',
-    },
-    {
-      emoji: '🚀',
-      title: 'Navegación Demo Activa',
-      description:
-        'Estás en el entorno de demostración interactivo de EdificARTE. Toca cualquier pin o botón para explorar libremente.',
-    },
-  ];
+      {
+        emoji: '🥇',
+        title: tr('demo.step3_title', 'Coleccionable NFT Desbloqueado'),
+        description: tr(
+          'demo.step3_desc',
+          'Al explorar el Centro Cultural El Rule, recibes una medalla digital representativa que premia el descubrimiento cultural.'
+        ),
+        action: () => {
+          setTimeout(() => {
+            const win = window as unknown as {
+              __edificarteMap?: { easeTo: (opts: unknown) => void };
+              __edificarteMonuments?: Array<{ id: string }>;
+            };
+            const map = win.__edificarteMap;
+            const monuments = win.__edificarteMonuments || [];
+            const elRule = monuments.find((m) => m.id === 'el-rule');
+
+            if (map && elRule) {
+              map.easeTo({
+                bearing: 135,
+                pitch: 65,
+                duration: 2500,
+              });
+
+              setTimeout(() => {
+                const toast = document.createElement('div');
+                toast.className =
+                  'fixed top-5 left-1/2 -translate-x-1/2 z-[999999] flex items-center gap-2.5 rounded-full border border-white/50 bg-white/95 px-3.5 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-500 -translate-y-16 opacity-0 dark:border-slate-700/60 dark:bg-slate-900/95 text-slate-800 dark:text-white pointer-events-auto max-w-[92vw] sm:gap-3.5 sm:px-4 sm:py-2.5';
+                toast.innerHTML = `
+                  <div class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 p-0.5 shadow-md sm:h-10 sm:w-10">
+                    <img src="https://coming-aqua-flyingfish.myfilebase.com/ipfs/QmSb45pdEwGTuJFivhHuaRwZZFX83nrx4Gki1o5cCXqDo1" alt="Medalla" class="h-full w-full rounded-full object-cover" />
+                    <span class="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm">✓</span>
+                  </div>
+                  <div class="text-left min-w-0 pr-1.5 sm:pr-2">
+                    <div class="flex items-center gap-1.5 leading-none mb-0.5">
+                      <span class="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 sm:text-[10px]">${tr('demo.badge_company', 'EdificARTE')}</span>
+                      <span class="text-[8px] text-slate-400 sm:text-[9px]">• ${tr('demo.just_now', 'ahora')}</span>
+                    </div>
+                    <p class="truncate text-[11px] font-bold text-slate-900 dark:text-white leading-tight sm:text-[12px]">${tr('demo.step3_toast_title', 'Medalla: Centro Cultural El Rule')}</p>
+                    <p class="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 leading-tight sm:text-[10px]">${tr('demo.step3_toast_desc', '¡Logro desbloqueado y añadido a tu perfil!')}</p>
+                  </div>
+                `;
+                document.body.appendChild(toast);
+                requestAnimationFrame(() => {
+                  toast.classList.remove('-translate-y-16', 'opacity-0');
+                  toast.classList.add('translate-y-0', 'opacity-100');
+                });
+                setTimeout(() => {
+                  toast.classList.remove('translate-y-0', 'opacity-100');
+                  toast.classList.add('-translate-y-16', 'opacity-0');
+                  setTimeout(() => toast.remove(), 500);
+                }, 4000);
+              }, 1200);
+            }
+          }, 200);
+        },
+      },
+      {
+        emoji: '🤖',
+        title: tr('demo.step4_title', 'Asistente IA y Guías Expertos'),
+        description: tr(
+          'demo.step4_desc',
+          'Pregúntale lo que quieras a Edi: recorridos con guías certificados como el Mtro. Henryk Karol Kocyba, rutas personalizadas o historia del patrimonio.'
+        ),
+        spotlightSelector: '#ai-fab',
+        annotation: tr('demo.step4_annotation', 'Haz clic aquí para chatear con Edi'),
+      },
+      {
+        emoji: '🚀',
+        title: tr('demo.step5_title', 'Navegación Demo Activa'),
+        description: tr(
+          'demo.step5_desc',
+          'Estás en el entorno de demostración interactivo de EdificARTE. Toca cualquier pin o botón para explorar libremente.'
+        ),
+      },
+    ];
+  }
 
   let currentStep = 0;
 
   function updateDemo() {
+    const steps = getSteps();
     const step = steps[currentStep];
     const demoEmoji = document.getElementById('demo-emoji');
     const demoTitle = document.getElementById('demo-title');
@@ -444,9 +502,14 @@ const mapboxToken =
     const demoAnnotation = document.getElementById('demo-annotation');
     const demoAnnotationText = document.getElementById('demo-annotation-text');
     const btnNext = document.getElementById('btn-demo-next');
+    const btnSkip = document.getElementById('btn-demo-skip');
     const progressDots = document.querySelectorAll('.progress-dot');
 
     if (!demoEmoji || !demoTitle || !demoDescription || !btnNext) return;
+
+    if (btnSkip) {
+      btnSkip.textContent = tr('demo.skip', 'Omitir');
+    }
 
     // Smooth emoji transition
     demoEmoji.style.transform = 'scale(0)';
@@ -471,9 +534,9 @@ const mapboxToken =
 
     // Update button text
     if (currentStep === steps.length - 1) {
-      btnNext.textContent = 'Explorar Demo';
+      btnNext.textContent = tr('demo.explore', 'Explorar Demo');
     } else {
-      btnNext.textContent = 'Siguiente';
+      btnNext.textContent = tr('demo.next', 'Siguiente');
     }
 
     // Handle spotlight and annotation
@@ -521,6 +584,7 @@ const mapboxToken =
   }
 
   function nextStep() {
+    const steps = getSteps();
     if (currentStep < steps.length - 1) {
       currentStep++;
       updateDemo();
@@ -670,5 +734,39 @@ const mapboxToken =
       transform: scale(2.8);
       opacity: 0;
     }
+  }
+
+  /* Filter Chips */
+  .filter-chip {
+    background-color: rgba(255, 255, 255, 0.75) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    color: #334155 !important; /* slate-700 */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .dark .filter-chip {
+    background-color: rgba(15, 23, 42, 0.7) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #cbd5e1 !important; /* slate-300 */
+  }
+  .filter-chip.active {
+    background-color: #3f043a !important; /* OG brand-500 */
+    color: #ffffff !important;
+    border-color: #3f043a !important;
+    box-shadow: 0 4px 12px rgba(63, 4, 58, 0.25) !important;
+  }
+  .dark .filter-chip.active {
+    background-color: #c45490 !important; /* OG brand-400 */
+    color: #ffffff !important;
+    border-color: #c45490 !important;
+    box-shadow: 0 4px 12px rgba(196, 84, 144, 0.35) !important;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 </style>

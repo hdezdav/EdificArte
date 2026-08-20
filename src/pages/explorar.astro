@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import UnifiedSearchBar from '../components/UnifiedSearchBar.astro';
 import AiAgent from '../components/AiAgent.astro';
 import { MONUMENTS } from '../data/monuments';
-import type { Tour } from '../data/tours';
+import { TOURS as STATIC_TOURS, type Tour } from '../data/tours';
 import { DEFAULT_LOCALE, type Locale } from '../lib/i18n';
 import esDict from '../i18n/es.json';
 import enDict from '../i18n/en.json';
@@ -48,12 +48,19 @@ try {
     city: r.city,
     country: r.country,
     countryCode: __normalizeCountryCode(r.country_code, r.country),
-    guide: __parseTourJson<{ name: string; title: string; bio: string }>(r.guide, { name: '', title: '', bio: '' }),
+    guide: __parseTourJson<{ id?: string; name: string; title: string; bio: string; avatar?: string; rating?: number; languages?: string[] }>(r.guide, { name: '', title: '', bio: '' }),
     category: (r.category || 'tour') as Tour['category'],
     translations: __parseTourJson<Tour['translations']>(r.translations, undefined),
   }));
 } catch (err) {
   console.warn('[explorar.astro] DB tours query failed, using static fallback:', err);
+}
+
+if (TOURS.length === 0) {
+  TOURS = STATIC_TOURS.map((t) => ({
+    ...t,
+    countryCode: __normalizeCountryCode(t.country, t.country),
+  }));
 }
 
 type Category = 'todos' | 'turismo' | 'patrimonio' | 'cultura' | 'gastronomia' | 'museo' | 'sitio-remoto' | 'eventos' | 'educacion';
@@ -105,6 +112,8 @@ const experiencias: Experience[] = [
     rating: 4.95,
     reviewCount: 124,
     price: '$250 MXN',
+    lat: 19.4326,
+    lng: -99.1332,
   },
   {
     id: 'fundacion-edificarte',
@@ -121,6 +130,8 @@ const experiencias: Experience[] = [
     reviewCount: 98,
     customBadge: 'Voluntariado',
     price: 'Gratis',
+    lat: 19.4340,
+    lng: -99.1415,
   },
   {
     id: 'casa-lamm',
@@ -136,6 +147,8 @@ const experiencias: Experience[] = [
     rating: 4.88,
     reviewCount: 156,
     price: 'Varios',
+    lat: 19.4187,
+    lng: -99.1592,
   },
   {
     id: 'mercado-san-juan',
@@ -151,6 +164,8 @@ const experiencias: Experience[] = [
     rating: 4.92,
     reviewCount: 342,
     price: 'Gratis',
+    lat: 19.4300,
+    lng: -99.1432,
   },
 
   {
@@ -167,6 +182,8 @@ const experiencias: Experience[] = [
     rating: 4.96,
     reviewCount: 210,
     price: '$80 MXN',
+    lat: 19.3242,
+    lng: -99.1444,
   },
 ];
 
@@ -180,6 +197,7 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
     'chapultepec': { rating: 4.98, reviewCount: 520, price: '$90 MXN' },
     'memorial-68': { rating: 4.88, reviewCount: 95, price: '$30 MXN' },
     'el-rule': { rating: 4.85, reviewCount: 78, price: 'Gratis' },
+    'hotel-virreyes': { rating: 4.92, reviewCount: 156, price: 'Desde $1,800 MXN' },
   };
 
   const translations = {
@@ -187,19 +205,19 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
       name: m.name,
       desc: m.desc,
       category: m.id === 'el-rule' ? 'Exposición / Evento' : m.category,
-      cta: m.id === 'el-rule' ? 'Ver Evento' : 'Ver guía',
+      cta: m.id === 'el-rule' ? 'Ver Evento' : (m.id === 'hotel-virreyes' ? 'Ver Audio' : 'Ver guía'),
       guide: m.id === 'el-rule'
         ? '¡Bienvenido al Centro Cultural El Rule! Te invitamos a la exposición multilingüe y multisensorial "Nombrar el Orgullo Neo". Esta exhibición, presentada por Metalingua en alianza con EdificARTE y Unesco, celebra la identidad y la diversidad cultural a través del arte contemporáneo, el diálogo social y la inclusión.'
-        : `¡Bienvenido al ${m.name}! Este emblemático espacio es parte fundamental del patrimonio cultural histórico. Aquí podrás contemplar una arquitectura imponente y aprender sobre su evolución artística, social e histórica a través del tiempo. Disfrutá del recorrido detallado por sus salas principales y descubrí los secretos que sus paredes guardan.`,
+        : (m.id === 'hotel-virreyes' ? `¡Bienvenido al Hotel Virreyes! Este hotel boutique es un refugio de diseño contemporáneo que rinde homenaje a la historia y la cultura mexicana. Cada habitación temática está inspirada en los grandes artistas y arquitectos del país, creando una experiencia cultural única en el corazón del Centro Histórico de la Ciudad de México.` : `¡Bienvenido al ${m.name}! Este emblemático espacio es parte fundamental del patrimonio cultural histórico. Aquí podrás contemplar una arquitectura imponente y aprender sobre su evolución artística, social e histórica a través del tiempo. Disfrutá del recorrido detallado por sus salas principales y descubrí los secretos que sus paredes guardan.`),
     },
     en: {
       name: m.id === 'el-rule' ? 'El Rule Cultural Center' : (m.name === 'Palacio de Bellas Artes' ? 'Palace of Fine Arts' : (m.name === 'Palacio Nacional' ? 'National Palace' : (m.name === 'Castillo de Chapultepec' ? 'Chapultepec Castle' : (m.name === 'Ángel de la Independencia' ? 'Angel of Independence' : (m.name === 'Museo Memorial del 68' ? '68 Memorial Museum' : (m.name === 'Hotel Virreyes' ? 'Hotel Virreyes' : 'Monument to the Revolution')))))),
-      desc: m.id === 'el-rule' ? 'Multidisciplinary cultural space in a historic city center, hosting multilingual and multisensorial exhibitions.' : (m.name === 'Palacio de Bellas Artes' ? 'One of the world\'s most famous opera houses, known for its Art Nouveau exterior and Art Deco interior.' : m.desc),
-      category: m.id === 'el-rule' ? 'Exhibition / Event' : (m.category === 'Museo / Teatro' ? 'Museum / Theater' : (m.category === 'Museo / Castillo' ? 'Museum / Castle' : (m.category === 'Museo Histórico' ? 'Historical Museum' : 'Historical Monument'))),
-      cta: m.id === 'el-rule' ? 'View Event' : 'View guide',
+      desc: m.id === 'el-rule' ? 'Multidisciplinary cultural space in a historic city center, hosting multilingual and multisensorial exhibitions.' : (m.name === 'Palacio de Bellas Artes' ? 'One of the world\'s most famous opera houses, known for its Art Nouveau exterior and Art Deco interior.' : (m.id === 'hotel-virreyes' ? 'Boutique hotel with thematic rooms inspired by Mexican artists and architects, featuring contemporary design that honors local culture.' : m.desc)),
+      category: m.id === 'el-rule' ? 'Exhibition / Event' : (m.id === 'hotel-virreyes' ? 'Boutique Hotel' : (m.category === 'Museo / Teatro' ? 'Museum / Theater' : (m.category === 'Museo / Castillo' ? 'Museum / Castle' : (m.category === 'Museo Histórico' ? 'Historical Museum' : 'Historical Monument')))),
+      cta: m.id === 'el-rule' ? 'View Event' : (m.id === 'hotel-virreyes' ? 'View Audio' : 'View guide'),
       guide: m.id === 'el-rule'
         ? 'Welcome to El Rule Cultural Center! We invite you to the multilingual and multisensorial exhibition "Nombrar el Orgullo Neo". This exhibition, presented by Metalingua in partnership with EdificARTE and Unesco, celebrates identity and cultural diversity through contemporary art, social dialogue, and inclusion.'
-        : `Welcome to the ${m.name}! This emblematic site is a key piece of cultural heritage. Here, you can contemplate stunning architecture and learn about its artistic, social, and historical evolution through time. Enjoy the detailed self-guided tour through its main halls and uncover the secrets written in its walls.`,
+        : (m.id === 'hotel-virreyes' ? `Welcome to Hotel Virreyes! This boutique hotel is a contemporary design sanctuary that pays tribute to Mexican history and culture. Each thematic room is inspired by the country's great artists and architects, creating a unique cultural experience in the heart of Mexico City's historic center.` : `Welcome to the ${m.name}! This emblematic site is a key piece of cultural heritage. Here, you can contemplate stunning architecture and learn about its artistic, social, and historical evolution through time. Enjoy the detailed self-guided tour through its main halls and uncover the secrets written in its walls.`),
     },
     señas: {
       name: `${m.name} (LSM)`,
@@ -358,6 +376,14 @@ const categories: Exclude<Category, 'todos'>[] = [
 
 // Helper: convierte un Tour en Experience para mezclarlo en el carousel de Turismo
 function toExperience(tour: Tour): Experience {
+  const coordsMap: Record<string, { lat: number; lng: number }> = {
+    'coyoacan-anahuacalli': { lat: 19.3497, lng: -99.1628 },
+    'xochimilco-chinampas': { lat: 19.2638, lng: -99.1039 },
+    'centro-historico-murales': { lat: 19.4326, lng: -99.1332 },
+    'teotihuacan-arqueologia': { lat: 19.6925, lng: -98.8437 },
+  };
+  const coords = coordsMap[tour.id];
+
   return {
     id: tour.id,
     title: tour.title,
@@ -375,6 +401,8 @@ function toExperience(tour: Tour): Experience {
     currency: tour.currency,
     duration: tour.duration,
     isTour: true,
+    lat: coords?.lat,
+    lng: coords?.lng,
   };
 }
 
@@ -601,7 +629,7 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
                         {exp.isTour && exp.highlights && (
                           <div class="px-3 pt-2 pb-1 flex flex-wrap gap-1">
                             {exp.highlights.slice(0, 2).map((h) => (
-                              <span class="text-[9px] bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded-full border border-brand-200/50 font-semibold">
+                              <span class="text-[9px] bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 px-1.5 py-0.5 rounded-full border border-brand-200/50 dark:border-brand-800/40 font-semibold">
                                 {h.length > 30 ? h.substring(0, 30) + '…' : h}
                               </span>
                             ))}
@@ -666,8 +694,6 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
         })
       }
 
-
-
       <!-- Empty state (shown by JS when no matches) -->
       <div
         id="empty-state"
@@ -684,9 +710,6 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
         </p>
       </div>
     </div>
-
-    <!-- Recorridos Guiados: ahora viven DENTRO del carousel de Turismo (cards .exp-card con isTour) -->
-      <!-- (Sección estática de tours removida; ahora viven dentro del carousel de Turismo) -->
 
   <!-- Museum/Guide Details Modal (Overlay) -->
   <div
@@ -1447,9 +1470,12 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
 
     function sortCardsByProximity(userLat: number, userLng: number) {
       document.querySelectorAll<HTMLElement>('.category-section').forEach((section) => {
+        if (section.dataset.category === 'tienda') return;
         const container = section.querySelector<HTMLElement>('.scroll-container');
         if (!container) return;
-        const cards = Array.from(container.querySelectorAll<HTMLElement>('.exp-card'));
+        const cards = Array.from(container.querySelectorAll<HTMLElement>(':scope > .exp-card'));
+        if (!cards.length) return;
+
         cards.sort((a, b) => {
           const latA = parseFloat(a.dataset.lat || '');
           const lngA = parseFloat(a.dataset.lng || '');
@@ -1481,7 +1507,13 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
     }
 
     function filterLocationCards(countryCode: string) {
-      activeCountry = countryCode.toUpperCase();
+      const normalizedCountry = (countryCode || '').toUpperCase();
+      const allCards = Array.from(document.querySelectorAll<HTMLElement>('.exp-card'));
+      const hasMatchingCards = allCards.some((card) => {
+        const c = (card.dataset.country || '').toUpperCase();
+        return c === normalizedCountry;
+      });
+      activeCountry = hasMatchingCards ? normalizedCountry : 'ALL';
       updateList();
     }
 
@@ -1538,7 +1570,7 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
         const matchesSearch = title.includes(searchQuery) || desc.includes(searchQuery);
 
         const cardCountry = (card.dataset.country || '').toUpperCase();
-        const matchesCountry = cardCountry ? activeCountry === cardCountry : true;
+        const matchesCountry = (activeCountry === 'ALL' || !cardCountry) ? true : (activeCountry === cardCountry);
         const isVisible = matchesCategory && matchesSearch && matchesCountry;
         card.classList.toggle('hidden-card', !isVisible);
         if (isVisible) {
@@ -1692,12 +1724,22 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
         return name.includes(q) || desc.includes(q) || cat.includes(q);
       }).slice(0, 4);
 
-      // 2) Filter tours matching search query
+      // 2) Filter tours matching search query (including guide name, credentials and bio)
       const tourMatches = TOURS.filter(t => {
         const title = pickLocalized(t, 'title', locale).toLowerCase();
         const desc = pickLocalized(t, 'description', locale).toLowerCase();
         const highlights = (t.highlights || []).join(' ').toLowerCase();
-        return title.includes(q) || desc.includes(q) || highlights.includes(q);
+        const guideName = (t.guide?.name || '').toLowerCase();
+        const guideTitle = (t.guide?.title || '').toLowerCase();
+        const guideBio = (t.guide?.bio || '').toLowerCase();
+        return (
+          title.includes(q) ||
+          desc.includes(q) ||
+          highlights.includes(q) ||
+          guideName.includes(q) ||
+          guideTitle.includes(q) ||
+          guideBio.includes(q)
+        );
       }).slice(0, 4);
 
       if (monumentMatches.length === 0 && tourMatches.length === 0) {

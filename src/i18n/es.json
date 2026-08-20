@@ -164,6 +164,18 @@
       "review_geo_error": "No se pudo obtener tu ubicación. Acercate al lugar para dejar una reseña.",
       "view_route": "Ver ruta en el mapa"
     },
+    "guides": {
+      "title": "Nuestros Guías Expertos",
+      "subtitle": "Arqueólogos, historiadores y especialistas certificados que lideran cada recorrido.",
+      "badge_verified": "Guía Certificado",
+      "languages": "Idiomas",
+      "specialties": "Especialidades",
+      "tours_count": "{count} recorridos guiados",
+      "reviews_count": "({count} reseñas)",
+      "cta_reserve": "Reservar con este guía",
+      "cta_view_tours": "Ver recorridos",
+      "guide_official": "Guía Oficial"
+    },
     "tour": {
       "badge": "Recorrido guiado",
       "modal_title": "Reservar tour",
@@ -196,6 +208,28 @@
       "error_server": "Error en el servidor",
       "error_server_payment": "Error en el servidor al registrar el pago"
     }
+  },
+  "demo": {
+    "title": "Bienvenido a EdificARTE",
+    "description": "Descubre el patrimonio cultural con guías de IA, experiencias inmersivas y recorridos de audio multilingües.",
+    "skip": "Omitir",
+    "next": "Siguiente",
+    "explore": "Explorar Demo",
+    "badge_company": "EdificARTE",
+    "just_now": "ahora",
+    "step1_title": "Explora el Patrimonio Cultural",
+    "step1_desc": "Visualiza sitios históricos y culturales de México con pines 3D interactivos. Puedes filtrar por categoría, rotar el mapa y descubrir el patrimonio en tiempo real.",
+    "step2_title": "Exposición Metalingua en El Rule",
+    "step2_desc": "El Centro Cultural El Rule alberga \"Nombrar el Orgullo Neo\" con más de 200 audios y transcripciones en lenguas originarias de México.",
+    "step3_title": "Coleccionable NFT Desbloqueado",
+    "step3_desc": "Al explorar el Centro Cultural El Rule, recibes una medalla digital representativa que premia el descubrimiento cultural.",
+    "step3_toast_title": "Medalla: Centro Cultural El Rule",
+    "step3_toast_desc": "¡Logro desbloqueado y añadido a tu perfil!",
+    "step4_title": "Asistente IA y Guías Expertos",
+    "step4_desc": "Pregúntale lo que quieras a Edi: recorridos con guías certificados como el Mtro. Henryk Karol Kocyba, rutas personalizadas o historia del patrimonio.",
+    "step4_annotation": "Haz clic aquí para chatear con Edi",
+    "step5_title": "Navegación Demo Activa",
+    "step5_desc": "Estás en el entorno de demostración interactivo de EdificARTE. Toca cualquier pin o botón para explorar libremente."
   },
   "profile": {
     "title": "Perfil",

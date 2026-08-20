@@ -164,6 +164,18 @@
       "review_geo_error": "We couldn't get your location. Move closer to the place to leave a review.",
       "view_route": "View route on the map"
     },
+    "guides": {
+      "title": "Our Expert Guides",
+      "subtitle": "Certified archaeologists, historians, and specialists leading every guided tour.",
+      "badge_verified": "Certified Guide",
+      "languages": "Languages",
+      "specialties": "Specialties",
+      "tours_count": "{count} guided tours",
+      "reviews_count": "({count} reviews)",
+      "cta_reserve": "Book with this guide",
+      "cta_view_tours": "View tours",
+      "guide_official": "Official Guide"
+    },
     "tour": {
       "badge": "Guided tour",
       "modal_title": "Book a tour",
@@ -196,6 +208,28 @@
       "error_server": "Server error",
       "error_server_payment": "Server error while registering the payment"
     }
+  },
+  "demo": {
+    "title": "Welcome to EdificARTE",
+    "description": "Discover cultural heritage with AI guides, immersive experiences, and multilingual audio tours.",
+    "skip": "Skip",
+    "next": "Next",
+    "explore": "Explore Demo",
+    "badge_company": "EdificARTE",
+    "just_now": "just now",
+    "step1_title": "Explore Cultural Heritage",
+    "step1_desc": "View historical and cultural landmarks in Mexico with interactive 3D pins. Filter by category, rotate the map, and discover heritage in real time.",
+    "step2_title": "Metalingua Exhibition at El Rule",
+    "step2_desc": "El Rule Cultural Center hosts 'Nombrar el Orgullo Neo' with over 200 audios and transcripts in Mexican indigenous languages.",
+    "step3_title": "NFT Collectible Unlocked",
+    "step3_desc": "By exploring El Rule Cultural Center, you receive a representative digital badge rewarding cultural discovery.",
+    "step3_toast_title": "Badge: El Rule Cultural Center",
+    "step3_toast_desc": "Achievement unlocked and added to your profile!",
+    "step4_title": "AI Assistant & Expert Guides",
+    "step4_desc": "Ask Edi anything: tours led by certified guides like Mtro. Henryk Karol Kocyba, custom cultural routes, or heritage history.",
+    "step4_annotation": "Click here to chat with Edi",
+    "step5_title": "Interactive Demo Active",
+    "step5_desc": "You are in EdificARTE's interactive demo mode. Tap any pin or button to explore freely."
   },
   "profile": {
     "title": "Profile",

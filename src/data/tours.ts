@@ -19,13 +19,69 @@ export interface Tour {
   city: string;
   country: string;              // ISO 3166-1 alpha-2
   guide: {
+    id?: string;
     name: string;
     title: string;
     bio: string;
+    avatar?: string;
+    rating?: number;
+    languages?: string[];
   };
   category: 'tour';
   translations?: Partial<Record<Locale, { title: string; subtitle?: string; description?: string; meetingPoint?: string; guideBio?: string }>>;
 }
+
+export interface TourGuide {
+  id: string;
+  name: string;
+  title: string;
+  institution: string;
+  bio: string;
+  avatar: string;
+  rating: number;
+  reviewCount: number;
+  toursCount: number;
+  languages: string[];
+  specialties: string[];
+  badge: string;
+  translations?: {
+    es: { title: string; institution: string; bio: string; badge: string; specialties: string[] };
+    en: { title: string; institution: string; bio: string; badge: string; specialties: string[] };
+  };
+}
+
+export const TOUR_GUIDES: TourGuide[] = [
+  {
+    id: 'henryk-kocyba',
+    name: 'Mtro. Henryk Karol Kocyba',
+    title: 'Anthropologist and Archaeologist',
+    institution: 'University of Warsaw',
+    bio: 'Graduate of the University of Warsaw. Specialist in the History of Mexico, with extensive research focused on Mesoamerican religion, cosmovision, and pre-Hispanic art.',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&h=400&q=80',
+    rating: 4.98,
+    reviewCount: 142,
+    toursCount: 4,
+    languages: ['ES', 'EN', 'PL'],
+    specialties: ['Pre-Hispanic Art', 'Mesoamerican Cosmovision', 'Colonial Monasteries'],
+    badge: 'Certified Guide',
+    translations: {
+      es: {
+        title: 'Antropólogo y Arqueólogo',
+        institution: 'Universidad de Varsovia',
+        bio: 'Egresado de la Universidad de Varsovia. Especialista en Historia de México, sus investigaciones destacan en religión, cosmovisión y arte prehispánico.',
+        badge: 'Guía Certificado',
+        specialties: ['Arte Prehispánico', 'Cosmovisión Mexica', 'Ex-Conventos Coloniales'],
+      },
+      en: {
+        title: 'Anthropologist and Archaeologist',
+        institution: 'University of Warsaw',
+        bio: 'Graduate of the University of Warsaw. Specialist in the History of Mexico, with extensive research focused on Mesoamerican religion, cosmovision, and pre-Hispanic art.',
+        badge: 'Certified Guide',
+        specialties: ['Pre-Hispanic Art', 'Mesoamerican Cosmovision', 'Colonial Monasteries'],
+      },
+    },
+  },
+];
 
 export const TOURS: Tour[] = [
   {
@@ -49,9 +105,13 @@ export const TOURS: Tour[] = [
     description: 'Tour through the historic heart of Coyoacan, from the most emblematic street to the basalt pyramid designed by Diego Rivera to house his pre-Hispanic art collection.',
     meetingPoint: 'Plaza de la Conchita, Coyoacan',
     guide: {
+      id: 'henryk-kocyba',
       name: 'Mtro. Henryk Karol Kocyba',
       title: 'Anthropologist and archaeologist',
       bio: 'Graduate of the University of Warsaw. Specialist in the History of Mexico, with research focused on religion, cosmology, and art.',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&h=400&q=80',
+      rating: 4.98,
+      languages: ['ES', 'EN', 'PL'],
     },
     translations: {
       es: {
@@ -84,9 +144,13 @@ export const TOURS: Tour[] = [
     description: 'Tour through the most beautiful colonial neighborhoods in southern Mexico City, with 17th-century convents and the famous flower market.',
     meetingPoint: 'Ex-convento del Carmen, San Angel',
     guide: {
+      id: 'henryk-kocyba',
       name: 'Mtro. Henryk Karol Kocyba',
       title: 'Anthropologist and archaeologist',
       bio: 'Graduate of the University of Warsaw. Specialist in the History of Mexico, with research focused on religion, cosmology, and art.',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&h=400&q=80',
+      rating: 4.98,
+      languages: ['ES', 'EN', 'PL'],
     },
     translations: {
       es: {
@@ -117,9 +181,13 @@ export const TOURS: Tour[] = [
     description: 'Tour of the pre-Hispanic chinampa system of Xochimilco, a UNESCO World Heritage site. Learn how the Mexica built an agricultural city on the water. The trajinera boat service is independent (Cuemanco embarcadero).',
     meetingPoint: 'Paradero Cuemanco, Xochimilco',
     guide: {
+      id: 'henryk-kocyba',
       name: 'Mtro. Henryk Karol Kocyba',
       title: 'Anthropologist and archaeologist',
       bio: 'Graduate of the University of Warsaw. Specialist in the History of Mexico, with research focused on religion, cosmology, and art.',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&h=400&q=80',
+      rating: 4.98,
+      languages: ['ES', 'EN', 'PL'],
     },
     translations: {
       es: {
@@ -150,9 +218,13 @@ export const TOURS: Tour[] = [
     description: 'A journey to the heart of the Aztec empire. Explore the sacred precinct of Tenochtitlan guided by an expert archaeologist.',
     meetingPoint: 'Main entrance of Templo Mayor (Plaza del Seminario)',
     guide: {
+      id: 'henryk-kocyba',
       name: 'Mtro. Henryk Karol Kocyba',
       title: 'Anthropologist and archaeologist',
       bio: 'Graduate of the University of Warsaw. Specialist in the History of Mexico, with research focused on religion, cosmology, and art.',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&h=400&q=80',
+      rating: 4.98,
+      languages: ['ES', 'EN', 'PL'],
     },
     translations: {
       es: {
