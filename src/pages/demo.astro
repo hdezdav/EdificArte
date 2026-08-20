@@ -890,6 +890,12 @@ const mapboxToken =
         ),
         action: () => {
           setTimeout(() => {
+            // Eliminar cualquier toast anterior si existe
+            const existingToast = document.getElementById('ai-demo-toast');
+            if (existingToast) {
+              existingToast.remove();
+            }
+
             // Mostrar un toast simulando el saludo de la IA
             const toast = document.createElement('div');
             toast.id = 'ai-demo-toast';
