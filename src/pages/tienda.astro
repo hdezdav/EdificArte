@@ -146,105 +146,117 @@ const dict = locale === 'es' ? esDict : enDict;
 <!-- Product modal (single instance, JS swaps content) -->
 <div
   id="product-modal"
-  class="fixed inset-0 z-[60] hidden items-center justify-center p-4 sm:p-0"
+  class="fixed inset-0 z-[60] [&:not(.hidden)]:flex hidden items-end justify-center bg-slate-900/80 p-0 backdrop-blur-md sm:items-center sm:p-4"
   role="dialog"
   aria-modal="true"
   aria-labelledby="product-modal-title"
 >
-  <div class="ios-backdrop absolute inset-0" data-modal-dismiss></div>
+  <div class="absolute inset-0" data-modal-dismiss></div>
   <div
-    class="ios-modal relative mx-auto w-full overflow-hidden sm:max-w-lg flex flex-col"
-    style="max-height: 92dvh; margin-bottom: env(safe-area-inset-bottom, 0px);"
+    id="product-modal-panel"
+    class="relative z-10 w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/95 dark:border-slate-800/60 dark:bg-slate-900/95 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100dvh-32px)] sm:max-h-[90vh] overflow-hidden"
   >
-    <button
-      type="button"
-      class="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-600 shadow-sm ring-1 ring-slate-900/5 backdrop-blur-sm transition hover:bg-white hover:text-slate-900 dark:bg-slate-800/95 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-slate-800 dark:hover:text-white"
-      aria-label="Cerrar"
-      data-i18n-attr="aria-label|tienda.a11y.close"
-      data-modal-dismiss
-    >
-      <span class="material-symbols-outlined text-[20px]">close</span>
-    </button>
-    <div class="overflow-y-auto flex-1 flex flex-col no-scrollbar">
+    <!-- Modal Header with Close Button -->
+    <div class="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+      <span
+        id="product-modal-category"
+        class="inline-flex items-center rounded-full bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border border-brand-200/60 dark:border-brand-800/40"
+      >
+        Artesanía
+      </span>
+      <button
+        type="button"
+        class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors"
+        aria-label="Cerrar"
+        data-i18n-attr="aria-label|tienda.a11y.close"
+        data-modal-dismiss
+      >
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="overflow-y-auto flex-1 flex flex-col p-5 space-y-4 no-scrollbar overscroll-contain">
+      <!-- Product Gallery / Image -->
       <div
         id="product-modal-gallery"
-        class="relative w-full overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0"
-        style="aspect-ratio: 1 / 1;"
+        class="relative w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200/50 dark:border-slate-800/50"
+        style="aspect-ratio: 16 / 10; max-height: 240px;"
       ></div>
-      <div class="flex flex-col gap-4 p-5 flex-grow">
-        <div>
-          <p
-            id="product-modal-category"
-            class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500"
-          >
-            Artesanía
-          </p>
-          <h2
-            id="product-modal-title"
-            class="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-white"
-          ></h2>
-          <p
-            id="product-modal-price"
-            class="mt-1 text-base font-semibold text-slate-900 dark:text-white"
-          ></p>
-        </div>
+
+      <div>
+        <h2
+          id="product-modal-title"
+          class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white"
+        ></h2>
         <p
-          id="product-modal-description"
-          class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+          id="product-modal-price"
+          class="mt-1 text-base sm:text-lg font-extrabold text-brand-700 dark:text-brand-300"
         ></p>
-        <div class="flex flex-col gap-2">
-          <label
-            for="product-modal-qty"
-            class="text-sm font-medium text-slate-700 dark:text-slate-300"
-            data-i18n="tienda.catalog.qty"
-          >Cantidad</label>
-          <div class="flex items-center gap-3">
-            <button
-              type="button"
-              class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-300 dark:hover:text-white"
-              id="product-modal-dec"
-              aria-label="Restar"
-              data-i18n-attr="aria-label|tienda.a11y.decrement"
-            >
-              <span class="material-symbols-outlined text-[18px]">remove</span>
-            </button>
-            <input
-              type="number"
-              id="product-modal-qty"
-              min="1"
-              max="99"
-              value="1"
-              class="w-16 rounded-lg border border-slate-300 bg-white px-2 py-2 text-center text-sm font-medium text-slate-900 focus:border-slate-900 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:focus:border-slate-300"
-            />
-            <button
-              type="button"
-              class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-300 dark:hover:text-white"
-              id="product-modal-inc"
-              aria-label="Sumar"
-              data-i18n-attr="aria-label|tienda.a11y.increment"
-            >
-              <span class="material-symbols-outlined text-[18px]">add</span>
-            </button>
-          </div>
-        </div>
-        <div class="flex flex-col gap-2 mt-auto shrink-0">
+      </div>
+
+      <p
+        id="product-modal-description"
+        class="text-xs sm:text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+      ></p>
+
+      <!-- Quantity Selector -->
+      <div class="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-200/50 dark:border-slate-700/50">
+        <label
+          for="product-modal-qty"
+          class="text-xs font-bold text-slate-700 dark:text-slate-300"
+          data-i18n="tienda.catalog.qty"
+        >Cantidad</label>
+        <div class="flex items-center gap-2">
           <button
             type="button"
-            id="product-modal-add"
-            class="ios-btn ios-btn-primary w-full shrink-0"
-            data-i18n="tienda.product.add_to_cart"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-brand-600 hover:text-brand-600 dark:hover:border-brand-400 dark:hover:text-brand-400 transition-colors"
+            id="product-modal-dec"
+            aria-label="Restar"
+            data-i18n-attr="aria-label|tienda.a11y.decrement"
           >
-            Agregar al carrito
+            <span class="material-symbols-outlined text-[16px]">remove</span>
           </button>
+          <input
+            type="number"
+            id="product-modal-qty"
+            min="1"
+            max="99"
+            value="1"
+            class="w-12 rounded-lg border border-slate-200 bg-white py-1 text-center text-xs font-bold text-slate-900 focus:border-brand-600 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+          />
           <button
             type="button"
-            id="product-modal-view-cart"
-            class="ios-btn ios-btn-ghost w-full shrink-0"
-            data-i18n="tienda.product.view_cart"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-brand-600 hover:text-brand-600 dark:hover:border-brand-400 dark:hover:text-brand-400 transition-colors"
+            id="product-modal-inc"
+            aria-label="Sumar"
+            data-i18n-attr="aria-label|tienda.a11y.increment"
           >
-            Ver carrito
+            <span class="material-symbols-outlined text-[16px]">add</span>
           </button>
         </div>
+      </div>
+
+      <!-- Action Buttons with Wine Color Accents -->
+      <div class="flex flex-col gap-2 pt-2 mt-auto shrink-0">
+        <button
+          type="button"
+          id="product-modal-add"
+          class="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 text-white font-bold py-2.5 text-xs shadow-md transition-all active:scale-[0.98]"
+          data-i18n="tienda.product.add_to_cart"
+        >
+          <span class="material-symbols-outlined text-[16px]">add_shopping_cart</span>
+          <span>Agregar al carrito</span>
+        </button>
+        <button
+          type="button"
+          id="product-modal-view-cart"
+          class="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/40 dark:hover:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-bold py-2 text-xs transition-all active:scale-[0.98] border border-brand-200/50 dark:border-brand-800/30"
+          data-i18n="tienda.product.view_cart"
+        >
+          <span class="material-symbols-outlined text-[16px]">shopping_bag</span>
+          <span>Ver carrito</span>
+        </button>
       </div>
     </div>
   </div>
@@ -319,14 +331,14 @@ const dict = locale === 'es' ? esDict : enDict;
           <dt class="text-slate-900 dark:text-white" data-i18n="tienda.cart.total">Total</dt>
           <dd
             id="cart-total"
-            class="text-slate-900 dark:text-white"
+            class="text-brand-700 dark:text-brand-300 font-extrabold"
           >$0 MXN</dd>
         </div>
       </dl>
       <button
         type="button"
         id="cart-checkout"
-        class="ios-btn ios-btn-primary w-full"
+        class="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 text-white font-bold py-3 text-xs shadow-md transition-all active:scale-[0.98]"
         data-i18n="tienda.cart.checkout"
       >
         Finalizar compra
@@ -338,25 +350,25 @@ const dict = locale === 'es' ? esDict : enDict;
 <!-- Checkout modal -->
 <div
   id="checkout-modal"
-  class="fixed inset-0 z-[80] hidden items-center justify-center p-4 sm:p-0"
+  class="fixed inset-0 z-[80] [&:not(.hidden)]:flex hidden items-end justify-center bg-slate-900/80 p-0 backdrop-blur-md sm:items-center sm:p-4"
   role="dialog"
   aria-modal="true"
   aria-labelledby="checkout-title"
 >
-  <div class="ios-backdrop absolute inset-0" data-checkout-dismiss></div>
+  <div class="absolute inset-0" data-checkout-dismiss></div>
   <div
-    class="ios-modal relative mx-auto flex w-full flex-col sm:max-w-lg"
-    style="max-height: 92dvh; margin-bottom: env(safe-area-inset-bottom, 0px);"
+    id="checkout-modal-panel"
+    class="relative z-10 w-full max-w-lg scale-95 transform rounded-2xl sm:rounded-[2rem] border border-white/20 bg-white/95 dark:border-slate-800/60 dark:bg-slate-900/95 shadow-2xl backdrop-blur-2xl transition-all duration-300 flex flex-col max-h-[calc(100dvh-32px)] sm:max-h-[90vh] overflow-hidden"
   >
-    <header class="flex items-center justify-between px-5 pb-3 pt-5">
+    <header class="flex items-center justify-between px-5 pb-3 pt-5 border-b border-slate-100 dark:border-slate-800/80">
       <h2
         id="checkout-title"
-        class="text-lg font-semibold tracking-tight text-slate-900 dark:text-white"
+        class="text-lg font-bold tracking-tight text-slate-900 dark:text-white"
         data-i18n="tienda.checkout.title"
       >Finalizar compra</h2>
       <button
         type="button"
-        class="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+        class="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors"
         data-checkout-dismiss
         aria-label="Cerrar"
         data-i18n-attr="aria-label|tienda.a11y.close"
@@ -364,11 +376,10 @@ const dict = locale === 'es' ? esDict : enDict;
         <span class="material-symbols-outlined text-[20px]">close</span>
       </button>
     </header>
-    <div class="ios-divider"></div>
 
     <div
       id="checkout-body"
-      class="flex-1 overflow-y-auto px-5 py-5"
+      class="flex-1 overflow-y-auto px-5 py-5 no-scrollbar overscroll-contain"
     >
       <form id="checkout-form" class="flex flex-col gap-4" novalidate>
         <fieldset class="flex flex-col gap-3">
@@ -378,32 +389,32 @@ const dict = locale === 'es' ? esDict : enDict;
           >Datos de contacto</legend>
           <div class="ios-field">
             <label for="ck-name" class="ios-field-label" data-i18n="tienda.checkout.name">Nombre</label>
-            <input id="ck-name" name="name" type="text" required class="ios-input" autocomplete="name" />
+            <input id="ck-name" name="name" type="text" required class="ios-input focus:border-brand-600 focus:ring-brand-600" autocomplete="name" />
           </div>
           <div class="ios-field">
             <label for="ck-email" class="ios-field-label" data-i18n="tienda.checkout.email">Correo</label>
-            <input id="ck-email" name="email" type="email" required class="ios-input" autocomplete="email" />
+            <input id="ck-email" name="email" type="email" required class="ios-input focus:border-brand-600 focus:ring-brand-600" autocomplete="email" />
           </div>
           <div class="ios-field">
             <label for="ck-phone" class="ios-field-label" data-i18n="tienda.checkout.phone">Teléfono</label>
-            <input id="ck-phone" name="phone" type="tel" required class="ios-input" autocomplete="tel" inputmode="tel" />
+            <input id="ck-phone" name="phone" type="tel" required class="ios-input focus:border-brand-600 focus:ring-brand-600" autocomplete="tel" inputmode="tel" />
           </div>
         </fieldset>
         <fieldset class="flex flex-col gap-3">
           <legend class="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500" data-i18n="tienda.checkout.payment">Pago</legend>
-          <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-slate-300 has-[:checked]:border-slate-900 has-[:checked]:ring-1 has-[:checked]:ring-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:has-[:checked]:border-slate-200 dark:has-[:checked]:ring-slate-200">
+          <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-slate-300 has-[:checked]:border-brand-600 has-[:checked]:ring-1 has-[:checked]:ring-brand-600 dark:border-slate-700 dark:hover:border-slate-600 dark:has-[:checked]:border-brand-400 dark:has-[:checked]:ring-brand-400">
             <input type="radio" name="payment" value="usdc" class="sr-only peer" checked />
-            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition peer-checked:bg-slate-900 peer-checked:text-white dark:bg-slate-800 dark:text-slate-400 dark:peer-checked:bg-white dark:peer-checked:text-slate-900">
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition peer-checked:bg-brand-600 peer-checked:text-white dark:bg-slate-800 dark:text-slate-400 dark:peer-checked:bg-brand-600 dark:peer-checked:text-white">
               <span class="material-symbols-outlined text-[16px]">token</span>
             </span>
             <span class="flex flex-col gap-0.5">
               <span class="text-sm font-semibold text-slate-900 dark:text-white" data-i18n="tienda.checkout.pay_usdc">USDC</span>
-              <span class="text-xs text-slate-500 dark:text-slate-400" data-i18n="tienda.checkout.pay_usdc_hint">Desde tu wallet.</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400" data-i18n="tienda.checkout.pay_usdc_hint">Desde tu wallet en Polygon.</span>
             </span>
           </label>
-          <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-slate-300 has-[:checked]:border-slate-900 has-[:checked]:ring-1 has-[:checked]:ring-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:has-[:checked]:border-slate-200 dark:has-[:checked]:ring-slate-200">
+          <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-slate-300 has-[:checked]:border-brand-600 has-[:checked]:ring-1 has-[:checked]:ring-brand-600 dark:border-slate-700 dark:hover:border-slate-600 dark:has-[:checked]:border-brand-400 dark:has-[:checked]:ring-brand-400">
             <input type="radio" name="payment" value="cash" class="sr-only peer" />
-            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition peer-checked:bg-slate-900 peer-checked:text-white dark:bg-slate-800 dark:text-slate-400 dark:peer-checked:bg-white dark:peer-checked:text-slate-900">
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition peer-checked:bg-brand-600 peer-checked:text-white dark:bg-slate-800 dark:text-slate-400 dark:peer-checked:bg-brand-600 dark:peer-checked:text-white">
               <span class="material-symbols-outlined text-[16px]">payments</span>
             </span>
             <span class="flex flex-col gap-0.5">
@@ -427,18 +438,17 @@ const dict = locale === 'es' ? esDict : enDict;
       </div>
     </div>
 
-    <div class="ios-divider"></div>
-    <div class="flex flex-col gap-2 px-5 pb-5 pt-4" id="checkout-actions">
+    <div class="flex flex-col gap-2 px-5 pb-5 pt-4 border-t border-slate-100 dark:border-slate-800/80" id="checkout-actions">
       <button
         type="button"
         id="checkout-submit-usdc"
-        class="ios-btn ios-btn-primary w-full"
+        class="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 text-white font-bold py-2.5 text-xs shadow-md transition-all active:scale-[0.98]"
         data-i18n="tienda.checkout.submit_usdc"
       >Confirmar y pagar</button>
       <button
         type="button"
         id="checkout-submit-cash"
-        class="ios-btn ios-btn-secondary w-full"
+        class="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-2 text-xs transition-all active:scale-[0.98]"
         data-i18n="tienda.checkout.submit_cash"
       >Hacer pedido</button>
     </div>
@@ -449,7 +459,7 @@ const dict = locale === 'es' ? esDict : enDict;
 <button
   type="button"
   id="cart-fab"
-  class="fixed right-5 z-30 hidden h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+  class="fixed right-5 z-30 hidden h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-700 text-white shadow-xl shadow-brand-900/20 hover:from-brand-700 hover:to-brand-800 transition-all active:scale-95"
   aria-label="Abrir carrito"
   data-i18n-attr="aria-label|tienda.a11y.open_cart"
   style="bottom: calc(6rem + env(safe-area-inset-bottom, 0px));"
@@ -457,7 +467,7 @@ const dict = locale === 'es' ? esDict : enDict;
   <span class="material-symbols-outlined text-[24px]">shopping_bag</span>
   <span
     id="cart-count"
-    class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-bold text-slate-900 ring-1 ring-slate-900/10 dark:bg-slate-900 dark:text-white dark:ring-white/20"
+    class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-extrabold text-brand-700 ring-2 ring-brand-600 dark:bg-slate-900 dark:text-brand-300 dark:ring-brand-500"
   >0</span>
 </button>
 
@@ -908,8 +918,9 @@ const dict = locale === 'es' ? esDict : enDict;
       const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
       const cart = readCart();
       const existing = cart.items.find((i) => i.sku === p.sku);
-      if (existing) existing.qty += qty;
-      else {
+      if (existing) {
+        existing.qty = Math.min(99, existing.qty + qty);
+      } else {
         cart.items.push({
           sku: p.sku || `no-sku-${activeProductIdx}`,
           name: p.name,
@@ -939,11 +950,25 @@ const dict = locale === 'es' ? esDict : enDict;
     }
 
     function showModal(el) {
+      if (!el) return;
       el.classList.remove('hidden');
       el.classList.add('flex');
+      const panel = el.querySelector('[id$="-panel"]');
+      if (panel) {
+        requestAnimationFrame(() => {
+          panel.classList.remove('scale-95');
+          panel.classList.add('scale-100');
+        });
+      }
       document.body.classList.add('modal-open');
     }
     function hideModal(el) {
+      if (!el) return;
+      const panel = el.querySelector('[id$="-panel"]');
+      if (panel) {
+        panel.classList.remove('scale-100');
+        panel.classList.add('scale-95');
+      }
       el.classList.add('hidden');
       el.classList.remove('flex');
       document.body.classList.remove('modal-open');
@@ -1321,32 +1346,11 @@ const dict = locale === 'es' ? esDict : enDict;
     overflow: hidden;
   }
 
-  /* Calm, solid modal surfaces for this page (Airbnb-style) — overrides the
-     shared liquid-glass look without touching the global ios-* classes. */
-  #product-modal > .ios-modal,
-  #checkout-modal > .ios-modal {
-    border: none;
-    border-radius: 24px;
-    background: #ffffff;
-    box-shadow:
-      0 24px 48px -12px rgba(15, 23, 42, 0.18),
-      0 4px 12px -4px rgba(15, 23, 42, 0.08);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-  :global(.dark) #product-modal > .ios-modal,
-  :global(.dark) #checkout-modal > .ios-modal {
-    background: #0f172a;
-    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.6);
-  }
-
   #cart-drawer .ios-sheet {
     border-top: none;
     border-radius: 24px 0 0 24px;
     background: #ffffff;
     box-shadow: -16px 0 40px -16px rgba(15, 23, 42, 0.18);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
   :global(.dark) #cart-drawer .ios-sheet {
     background: #0f172a;
@@ -1354,41 +1358,14 @@ const dict = locale === 'es' ? esDict : enDict;
   }
 
   @media (max-width: 639px) {
-    #product-modal > .ios-modal,
-    #checkout-modal > .ios-modal {
-      max-height: calc(
-        100dvh - 2rem - env(safe-area-inset-top, 0px) -
-          env(safe-area-inset-bottom, 0px)
-      );
-      margin-bottom: 0;
-      border-radius: 1.5rem;
-    }
-
     #cart-drawer .ios-sheet {
       border-radius: 0;
-    }
-
-    #product-modal,
-    #checkout-modal {
-      padding-top: max(1rem, env(safe-area-inset-top, 0px));
-      padding-right: max(1rem, env(safe-area-inset-right, 0px));
-      padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
-      padding-left: max(1rem, env(safe-area-inset-left, 0px));
-    }
-
-    #product-modal-gallery {
-      aspect-ratio: 4 / 3 !important;
     }
 
     #checkout-body,
     #product-modal .no-scrollbar {
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
-      padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
-    }
-
-    #checkout-actions {
-      padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
     }
   }
 </style>

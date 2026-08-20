@@ -294,6 +294,16 @@ let sheetHeader: HTMLElement | null = null;
 let sheetChevron: HTMLElement | null = null;
 let sheetBody: HTMLElement | null = null;
 let floatingControls: HTMLElement | null = null;
+let mapDomController: AbortController | null = null;
+
+function toggleSheet(forceOpen?: boolean) {
+  if (typeof forceOpen === 'boolean') {
+    isCollapsed = !forceOpen;
+  } else {
+    isCollapsed = !isCollapsed;
+  }
+  updateSheetUI();
+}
 
 function updateSheetUI() {
   if (!bottomSheet || !sheetChevron || !sheetBody) return;
@@ -304,20 +314,24 @@ function updateSheetUI() {
     sheetBody.style.maxHeight = '0px';
     sheetBody.style.opacity = '0';
     sheetBody.style.pointerEvents = 'none';
+    sheetBody.style.paddingTop = '0px';
+    sheetBody.style.paddingBottom = '0px';
     sheetChevron.style.transform = 'rotate(0deg)';
     if (floatingControls) {
       floatingControls.style.bottom =
         'calc(8.25rem + env(safe-area-inset-bottom, 0px))';
     }
   } else {
-    const h = isMobile ? '280px' : '450px';
+    const h = isMobile ? '340px' : '460px';
     sheetBody.style.maxHeight = h;
     sheetBody.style.opacity = '1';
     sheetBody.style.pointerEvents = 'auto';
+    sheetBody.style.paddingTop = '0.25rem';
+    sheetBody.style.paddingBottom = '1.25rem';
     sheetChevron.style.transform = 'rotate(180deg)';
     if (floatingControls) {
       const bottomOffset = isMobile
-        ? 'calc(26rem + env(safe-area-inset-bottom, 0px))'
+        ? 'calc(27rem + env(safe-area-inset-bottom, 0px))'
         : 'calc(36.5rem + env(safe-area-inset-bottom, 0px))';
       floatingControls.style.bottom = bottomOffset;
     }
@@ -1381,7 +1395,7 @@ function deselect() {
   clearRoute();
   $('view-detail')?.classList.add('hidden');
   $('view-list')?.classList.remove('hidden');
-  isCollapsed = true;
+  isCollapsed = false;
   updateSheetUI();
 }
 
@@ -2499,6 +2513,8 @@ function initMap() {
   activeMapLifecycle = lifecycle;
   window.dispatchEvent(new CustomEvent('map:mounted'));
 
+  mapDomController = new AbortController();
+
   // Resolve current sheet components
   bottomSheet = $('bottom-sheet');
   sheetHeader = $('sheet-header');
@@ -2510,28 +2526,23 @@ function initMap() {
   const initialCenter: [number, number] = isInDemoMode ? DEMO_CENTER : DEFAULT_CENTER;
   const initialZoom = isInDemoMode ? 16 : 15;
 
-  if (isInDemoMode) {
-    console.log('[DEMO] Initializing demo mode at', DEMO_CENTER);
-    userLat = DEMO_CENTER[1];
-    userLng = DEMO_CENTER[0];
+  userLat = initialCenter[1];
+  userLng = initialCenter[0];
 
-    // Force demo viewport with nearby monuments
-    const demoViewport = createPaddedViewport({
-      west: DEMO_CENTER[0] - 0.08,
-      south: DEMO_CENTER[1] - 0.08,
-      east: DEMO_CENTER[0] + 0.08,
-      north: DEMO_CENTER[1] + 0.08,
-    });
-    const initialPlaces = getLocalPlaces(DEMO_CENTER[0], DEMO_CENTER[1], demoViewport).slice(0, 20);
+  // Load initial local places immediately so the bottom sheet list is never empty on load
+  const initialViewport = createPaddedViewport({
+    west: initialCenter[0] - 0.08,
+    south: initialCenter[1] - 0.08,
+    east: initialCenter[0] + 0.08,
+    north: initialCenter[1] + 0.08,
+  });
+  const initialPlaces = getLocalPlaces(initialCenter[0], initialCenter[1], initialViewport).slice(0, 20);
 
-    if (initialPlaces.length > 0) {
-      console.log('[DEMO] Loaded', initialPlaces.length, 'initial places');
-      nearbyPlaces = initialPlaces;
-      renderList(getFilteredPlaces(initialPlaces));
-      // Build cluster index immediately for demo
-      clusterIndex = buildClusterIndex(getFilteredPlaces(initialPlaces));
-      clusterDataVersion++;
-    }
+  if (initialPlaces.length > 0) {
+    nearbyPlaces = initialPlaces;
+    renderList(getFilteredPlaces(initialPlaces));
+    clusterIndex = buildClusterIndex(getFilteredPlaces(initialPlaces));
+    clusterDataVersion++;
   }
 
   // Create Mapbox instance
@@ -2705,25 +2716,100 @@ function initMap() {
   });
 
   map.on('click', () => {
-    if (selectedPlace) deselect();
+    if (selectedPlace) {
+      deselect();
+      isCollapsed = true;
+      updateSheetUI();
+    } else if (!isCollapsed) {
+      isCollapsed = true;
+      updateSheetUI();
+    }
   });
 
   // Render sheet heights
   updateSheetUI();
-  resizeHandler = () => {
-    if (activeMapLifecycle === lifecycle) updateSheetUI();
-  };
-  window.addEventListener('resize', resizeHandler);
+  const domSignal = mapDomController?.signal;
 
-  // Attach DOM Listeners dynamically to current page nodes
-  sheetHeader?.addEventListener('click', () => {
-    isCollapsed = !isCollapsed;
-    updateSheetUI();
-  });
+  if (domSignal) {
+    window.addEventListener(
+      'resize',
+      () => {
+        if (activeMapLifecycle === lifecycle) updateSheetUI();
+      },
+      { signal: domSignal }
+    );
 
-  bottomSheet?.addEventListener('click', (e) => e.stopPropagation());
-  $('btn-cancel-route')?.addEventListener('click', () => clearRoute());
-  $('btn-close-detail')?.addEventListener('click', deselect);
+    // Attach DOM Listeners dynamically to current page nodes
+    sheetHeader?.addEventListener(
+      'click',
+      (e) => {
+        e.stopPropagation();
+        if ((e.target as HTMLElement).closest('#geo-status')) return;
+        toggleSheet();
+      },
+      { signal: domSignal }
+    );
+
+    bottomSheet?.addEventListener('click', (e) => e.stopPropagation(), {
+      signal: domSignal,
+    });
+    $('btn-cancel-route')?.addEventListener(
+      'click',
+      () => clearRoute(),
+      { signal: domSignal }
+    );
+    $('btn-close-detail')?.addEventListener(
+      'click',
+      deselect,
+      { signal: domSignal }
+    );
+
+    $('btn-style-toggle')?.addEventListener(
+      'click',
+      () => {
+        cancelDetailed3DUpgrade();
+        currentStyleIdx = (currentStyleIdx + 1) % STYLES.length;
+        detailed3DEnabled = currentStyleIdx === 0;
+        map.setStyle(STYLES[currentStyleIdx].id);
+      },
+      { signal: domSignal }
+    );
+
+    $('btn-locate')?.addEventListener(
+      'click',
+      () => {
+        if (userMarker && userLng && userLat) {
+          map.flyTo({
+            center: [userLng, userLat],
+            zoom: 16,
+            pitch: 45,
+            duration: 1000,
+          });
+        } else {
+          requestLocationPermission();
+        }
+      },
+      { signal: domSignal }
+    );
+
+    $('geo-status')?.addEventListener(
+      'click',
+      (e) => {
+        e.stopPropagation();
+        if (userMarker && userLng && userLat) {
+          map.flyTo({
+            center: [userLng, userLat],
+            zoom: 16,
+            pitch: 45,
+            duration: 1000,
+          });
+        } else {
+          requestLocationPermission();
+        }
+      },
+      { signal: domSignal }
+    );
+  }
 
   const sInput = $<HTMLInputElement>('search-input');
   const searchClear = $('map-search-clear');
@@ -2772,72 +2858,86 @@ function initMap() {
     }
   }
 
-  if (sInput) {
+  if (sInput && domSignal) {
     sInput.value = '';
     setSearchClearVisible(false);
 
-    searchClear?.addEventListener('click', () => {
-      sInput.value = '';
-      setSearchClearVisible(false);
-      sInput.dispatchEvent(new Event('input'));
-      sInput.focus();
-    });
-
-    sInput.addEventListener('keydown', (e) => {
-      if (!suggestionsEl || suggestionsEl.classList.contains('hidden')) return;
-      const items = suggestionsEl.querySelectorAll<HTMLButtonElement>(
-        'button.suggestion-item'
-      );
-      if (items.length === 0) return;
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
-        highlightSuggestion(items, activeSuggestionIndex);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        activeSuggestionIndex =
-          (activeSuggestionIndex - 1 + items.length) % items.length;
-        highlightSuggestion(items, activeSuggestionIndex);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (activeSuggestionIndex >= 0 && items[activeSuggestionIndex]) {
-          items[activeSuggestionIndex].click();
-        }
-      } else if (e.key === 'Escape') {
-        closeSuggestions();
-      }
-    });
-
-    sInput.addEventListener('focus', () => {
-      if (sInput.value.trim()) {
+    searchClear?.addEventListener(
+      'click',
+      () => {
+        sInput.value = '';
+        setSearchClearVisible(false);
         sInput.dispatchEvent(new Event('input'));
-      }
-    });
+        sInput.focus();
+      },
+      { signal: domSignal }
+    );
 
-    sInput.addEventListener('input', () => {
-      const q = sInput.value.trim();
-      setSearchClearVisible(Boolean(q));
-      if (!q) {
-        closeSuggestions();
-        void refreshNearbyPlacesForViewport(lifecycle, true);
-        return;
-      }
+    sInput.addEventListener(
+      'keydown',
+      (e) => {
+        if (!suggestionsEl || suggestionsEl.classList.contains('hidden')) return;
+        const items = suggestionsEl.querySelectorAll<HTMLButtonElement>(
+          'button.suggestion-item'
+        );
+        if (items.length === 0) return;
 
-      nearbyRequestController?.abort();
-      nearbyRequestController = null;
-      if (searchDebounce) clearTimeout(searchDebounce);
-      searchAbortController?.abort();
-      const requestSequence = ++searchRequestSequence;
-      searchDebounce = setTimeout(async () => {
-        searchDebounce = null;
-        if (
-          activeMapLifecycle !== lifecycle ||
-          requestSequence !== searchRequestSequence
-        )
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+          highlightSuggestion(items, activeSuggestionIndex);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeSuggestionIndex =
+            (activeSuggestionIndex - 1 + items.length) % items.length;
+          highlightSuggestion(items, activeSuggestionIndex);
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (activeSuggestionIndex >= 0 && items[activeSuggestionIndex]) {
+            items[activeSuggestionIndex].click();
+          }
+        } else if (e.key === 'Escape') {
+          closeSuggestions();
+        }
+      },
+      { signal: domSignal }
+    );
+
+    sInput.addEventListener(
+      'focus',
+      () => {
+        if (sInput.value.trim()) {
+          sInput.dispatchEvent(new Event('input'));
+        }
+      },
+      { signal: domSignal }
+    );
+
+    sInput.addEventListener(
+      'input',
+      () => {
+        const q = sInput.value.trim();
+        setSearchClearVisible(Boolean(q));
+        if (!q) {
+          closeSuggestions();
+          void refreshNearbyPlacesForViewport(lifecycle, true);
           return;
-        const queryLower = q.toLowerCase();
-        const locale = detectLocale();
+        }
+
+        nearbyRequestController?.abort();
+        nearbyRequestController = null;
+        if (searchDebounce) clearTimeout(searchDebounce);
+        searchAbortController?.abort();
+        const requestSequence = ++searchRequestSequence;
+        searchDebounce = setTimeout(async () => {
+          searchDebounce = null;
+          if (
+            activeMapLifecycle !== lifecycle ||
+            requestSequence !== searchRequestSequence
+          )
+            return;
+          const queryLower = q.toLowerCase();
+          const locale = detectLocale();
 
         const mapCenter = map.getCenter();
         const isViewingCDMX =
@@ -3065,6 +3165,11 @@ function initMap() {
     ) {
       closeSuggestions();
     }
+
+    if (!isCollapsed && bottomSheet && !bottomSheet.contains(target)) {
+      isCollapsed = true;
+      updateSheetUI();
+    }
   };
   documentClickHandler = documentClickHandlerForLifecycle;
   document.addEventListener('click', documentClickHandlerForLifecycle);
@@ -3149,40 +3254,6 @@ function initMap() {
   aiRouteHandler = aiRouteHandlerForLifecycle;
   window.addEventListener('ai-route-generated', aiRouteHandlerForLifecycle);
 
-  $('btn-style-toggle')?.addEventListener('click', () => {
-    cancelDetailed3DUpgrade();
-    currentStyleIdx = (currentStyleIdx + 1) % STYLES.length;
-    detailed3DEnabled = currentStyleIdx === 0;
-    map.setStyle(STYLES[currentStyleIdx].id);
-  });
-
-  $('btn-locate')?.addEventListener('click', () => {
-    if (userMarker && userLng && userLat) {
-      map.flyTo({
-        center: [userLng, userLat],
-        zoom: 16,
-        pitch: 45,
-        duration: 1000,
-      });
-    } else {
-      requestLocationPermission();
-    }
-  });
-
-  $('geo-status')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (userMarker && userLng && userLat) {
-      map.flyTo({
-        center: [userLng, userLat],
-        zoom: 16,
-        pitch: 45,
-        duration: 1000,
-      });
-    } else {
-      requestLocationPermission();
-    }
-  });
-
   // Start geolocation watch immediately without welcome modal
   startWatching();
 
@@ -3243,6 +3314,10 @@ function cleanUpMap() {
   activeMapLifecycle = ++mapLifecycleSequence;
   cancelDetailed3DUpgrade();
   detailed3DEnabled = false;
+  if (mapDomController) {
+    mapDomController.abort();
+    mapDomController = null;
+  }
   if (searchDebounce) {
     clearTimeout(searchDebounce);
     searchDebounce = null;

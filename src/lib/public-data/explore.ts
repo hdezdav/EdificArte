@@ -5,6 +5,8 @@ export type PublicInfoItem = {
   sourceUrl: string;
   imageUrl?: string;
   categoryHint?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type LocationInput = string | {
@@ -39,11 +41,11 @@ const COUNTRY_NAMES: Record<string, [string, string]> = {
 const SKIP_TITLE_PATTERN = /^(quebrada|arroyo|riachuelo|caño |acequia|zanja|vertiente|barrio |comuna |vereda |corregimiento |municipio de |departamento de |provincia de |distrito de )/i;
 
 function buildGeoUrl(base: string, lat: number, lng: number): string {
-  return `${base}?action=query&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=${GEO_RADIUS}&ggslimit=10&prop=pageimages|extracts&piprop=thumbnail&pithumbsize=600&exintro=1&explaintext=1&exchars=280&format=json&origin=*`;
+  return `${base}?action=query&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=${GEO_RADIUS}&ggslimit=10&prop=pageimages|extracts|coordinates&piprop=thumbnail&pithumbsize=600&exintro=1&explaintext=1&exchars=280&format=json&origin=*`;
 }
 
 function buildSearchUrl(base: string, term: string, limit = 4): string {
-  return `${base}?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrlimit=${limit}&prop=pageimages|extracts&piprop=thumbnail&pithumbsize=600&exintro=1&explaintext=1&exchars=280&format=json&origin=*`;
+  return `${base}?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrlimit=${limit}&prop=pageimages|extracts|coordinates&piprop=thumbnail&pithumbsize=600&exintro=1&explaintext=1&exchars=280&format=json&origin=*`;
 }
 
 async function fetchWikiPages(
@@ -68,7 +70,7 @@ async function fetchWikiPages(
     if (new TextEncoder().encode(text).byteLength > MAX_BYTES) return [];
     const payload = JSON.parse(text) as {
       query?: {
-        pages?: Record<string, { pageid?: number; title?: string; extract?: string; snippet?: string; thumbnail?: { source?: string } }>;
+        pages?: Record<string, { pageid?: number; title?: string; extract?: string; snippet?: string; thumbnail?: { source?: string }; coordinates?: Array<{ lat: number; lon: number }> }>;
       };
     };
     const pages = Object.values(payload.query?.pages ?? {});
@@ -76,12 +78,14 @@ async function fetchWikiPages(
       if (!item.title || !item.pageid) return [];
       if (SKIP_TITLE_PATTERN.test(item.title)) return [];
       const rawDesc = item.extract || (item.snippet || '').replace(/<[^>]*>/g, '');
+      const coord = item.coordinates?.[0];
       return [{
         title: item.title.slice(0, 160),
         description: rawDesc.slice(0, 400).trim(),
         sourceName: 'Wikipedia' as const,
         sourceUrl: `https://${domain}/?curid=${item.pageid}`,
         ...(item.thumbnail?.source ? { imageUrl: item.thumbnail.source } : {}),
+        ...(coord ? { latitude: coord.lat, longitude: coord.lon } : {}),
         ...(categoryHint ? { categoryHint } : {}),
       }];
     });
