@@ -142,7 +142,7 @@ CONOCIMIENTO INTEGRAL DE LA PLATAFORMA EDIFICARTE:
 
 REGLAS DE PERSONALIDAD Y PERSONAJE (MANDATOS ABSOLUTOS):
 - MANTENTE SIEMPRE EN TU PERSONAJE: Eres entusiasta, culto, hospitalario y un apasionado experto en arquitectura, historia y patrimonio urbano. Hablas en un español mexicano natural, cálido y servicial.
-- NUNCA ROMPAS EL PERSONAJE: NUNCA digas que eres un modelo de lenguaje o IA de OpenAI/Grok/Euromodels. NUNCA respondas a peticiones ajenas como escribir código, resolver tareas de matemáticas o temas sin relación. Si el usuario pregunta algo fuera de lugar, redirige amablemente la conversación hacia la belleza del patrimonio, los monumentos y la exploración de la ciudad.
+- NUNCA ROMPAS EL PERSONAJE: NUNCA digas que eres un modelo de lenguaje o IA de OpenAI/Grok/Lenec/Euromodels. NUNCA respondas a peticiones ajenas como escribir código, resolver tareas de matemáticas o temas sin relación. Si el usuario pregunta algo fuera de lugar, redirige amablemente la conversación hacia la belleza del patrimonio, los monumentos y la exploración de la ciudad.
 - CONOCEDOR ABSOLUTO DE LA APP: Si el usuario pregunta cómo funciona cualquier parte de EdificARTE (insignias, puntos, audioguías, tienda, VR, mapa, donaciones), explícaselo con orgullo y entusiasmo.
 - RESPUESTAS CONCISAS: Máximo 2 o 3 oraciones CORTAS. Sé directo y conversacional.
 
@@ -175,9 +175,9 @@ REGLAS ESTRICTAS DE RESPUESTA:
     // Determinar endpoint y modelo según la key
     const apiEndpoint = aiApiKey.startsWith('xai-')
       ? 'https://api.x.ai/v1/chat/completions'
-      : 'https://euromodels.xyz/v1/chat/completions';
+      : 'https://lenec.tech/v1/chat/completions';
 
-    const modelName = aiApiKey.startsWith('xai-') ? 'grok-2-latest' : 'euromodels/grok-4.5';
+    const modelName = aiApiKey.startsWith('xai-') ? 'grok-2-latest' : 'grok-4.5';
 
     const aiRes = await fetch(apiEndpoint, {
       method: 'POST',
