@@ -374,6 +374,9 @@ const museosExperiencias: Experience[] = MONUMENTS.filter((m) => m.type === 'mus
     reviewCount: rData.reviewCount,
     price: rData.price,
     translations,
+    audioUrl: (m as any).audioUrl,
+    videoUrl: (m as any).videoUrl,
+    isVRAvailable: (m as any).isVRAvailable,
   };
 });
 
@@ -424,6 +427,7 @@ const sitioRemotoExperiencias: Experience[] = MONUMENTS.filter((m) => m.type ===
     reviewCount: 287,
     price: 'Gratis',
     translations,
+    audioUrl: (m as any).audioUrl,
     videoUrl: m.videoUrl,
     isVRAvailable: m.isVRAvailable,
   };
@@ -718,6 +722,7 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
                       data-lng={exp.lng ?? ''}
                       data-is-vr={exp.isVRAvailable ? 'true' : 'false'}
                       data-vr-url={exp.videoUrl || ''}
+                      data-audio-url={exp.audioUrl || ''}
                       data-tour-id={exp.isTour ? exp.id : undefined}
                       data-tour-title={exp.isTour ? exp.title : undefined}
                       data-tour-meeting={exp.isTour ? (exp.meetingPoint || '') : undefined}
@@ -937,6 +942,20 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
           <p id="guide-modal-text" class="text-xs leading-relaxed text-slate-600 dark:text-slate-300" data-i18n="explorar.guide.loading">
             Cargando...
           </p>
+        </div>
+
+        <!-- Simple Audio Player (for monuments with audioUrl like Hotel Virreyes) -->
+        <div id="simple-audio-player" class="hidden mt-4 p-4 rounded-2xl bg-gradient-to-br from-brand-50 to-accent-50 dark:from-brand-950/40 dark:to-accent-950/40 border border-brand-200/50 dark:border-brand-800/50 shadow-sm space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-brand-600 dark:text-brand-400 text-[20px]">headphones</span>
+            <h4 class="font-bold text-[12px] text-brand-700 dark:text-brand-300 uppercase tracking-wider">
+              Audioguía
+            </h4>
+          </div>
+          <audio id="simple-audio-element" controls class="w-full h-10 rounded-xl outline-none accent-brand-600">
+            <source id="simple-audio-source" src="" type="audio/mpeg" />
+            Tu navegador no soporta el elemento de audio.
+          </audio>
         </div>
 
         <!-- Metalingua Multilingual Audio Gallery (visible when museumId === 'el-rule' and lang === 'native') -->
@@ -2363,6 +2382,21 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
       guideVideo.src = currentVRUrl;
     }
 
+    // Simple Audio Player (for monuments with audioUrl like Hotel Virreyes)
+    const simpleAudioPlayer = document.getElementById('simple-audio-player');
+    const simpleAudioElement = document.getElementById('simple-audio-element') as HTMLAudioElement | null;
+    const simpleAudioSource = document.getElementById('simple-audio-source') as HTMLSourceElement | null;
+    const audioUrl = card.getAttribute('data-audio-url') || '';
+
+    if (audioUrl && simpleAudioPlayer && simpleAudioElement && simpleAudioSource) {
+      simpleAudioSource.src = audioUrl;
+      simpleAudioElement.load();
+      simpleAudioPlayer.classList.remove('hidden');
+    } else if (simpleAudioPlayer) {
+      simpleAudioPlayer.classList.add('hidden');
+      if (simpleAudioElement) simpleAudioElement.pause();
+    }
+
     if (guideModal) {
       guideModal.classList.remove('hidden');
       document.body.classList.add('modal-open');
@@ -2380,6 +2414,13 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
       if (metalinguaAudioElement) metalinguaAudioElement.pause();
       if (metalinguaPlayerCard) metalinguaPlayerCard.classList.add('hidden');
       if (metalinguaGalleryContainer) metalinguaGalleryContainer.classList.add('hidden');
+
+      // Pause and hide simple audio player
+      const simpleAudioPlayer = document.getElementById('simple-audio-player');
+      const simpleAudioElement = document.getElementById('simple-audio-element') as HTMLAudioElement | null;
+      if (simpleAudioElement) simpleAudioElement.pause();
+      if (simpleAudioPlayer) simpleAudioPlayer.classList.add('hidden');
+
       guideModalPanel?.classList.remove('scale-100');
       guideModalPanel?.classList.add('scale-95');
       document.body.classList.remove('modal-open');
@@ -2494,6 +2535,18 @@ const paymentAddress = ((Astro.locals?.runtime?.env as unknown as { EDIFICARTE_P
       navigate(`/mapa?route=${currentMuseumId}&play=true`);
     }
   });
+
+  // Auto-open modal if URL has hash pointing to a monument (e.g., #el-rule)
+  const hash = window.location.hash.replace('#', '');
+  if (hash) {
+    const targetCard = document.querySelector<HTMLElement>(`.exp-card[data-id="${hash}"]`);
+    if (targetCard && targetCard.getAttribute('data-translations')) {
+      // Small delay to ensure page is fully loaded
+      setTimeout(() => {
+        openGuideModal(targetCard);
+      }, 300);
+    }
+  }
 
 
 

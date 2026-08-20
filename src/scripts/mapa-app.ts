@@ -995,22 +995,38 @@ function selectPlace(place: Place) {
     'detail-wiki-link'
   ) as HTMLAnchorElement | null;
 
-  if (monumentMatch?.image && img) {
+  // Special handling for El Rule - show image and link to explorar page with card opened
+  if (place.id === 'el-rule') {
+    if (monumentMatch?.image && img) {
+      img.src = monumentMatch.image;
+      if (link) {
+        link.href = '/explorar#el-rule';
+        link.textContent = 'Ver más';
+      }
+      if (wikiBlock) wikiBlock.classList.remove('hidden');
+    }
+  } else if (monumentMatch?.image && img) {
     img.src = monumentMatch.image;
     if (link) {
       link.href = `https://es.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(place.name)}`;
+      link.textContent = 'Ver artículo';
     }
     if (wikiBlock) wikiBlock.classList.remove('hidden');
   } else if (wikiBlock) {
     wikiBlock.classList.add('hidden');
   }
 
-  void fetchWikipediaEnrichment(place.name).then((wiki) => {
-    if (!wiki || selectedPlace?.id !== place.id) return; // user moved on
-    if (img && wiki.imageUrl) img.src = wiki.imageUrl;
-    if (link && wiki.articleUrl) link.href = wiki.articleUrl;
-    if (wikiBlock) wikiBlock.classList.remove('hidden');
-  });
+  if (place.id !== 'el-rule') {
+    void fetchWikipediaEnrichment(place.name).then((wiki) => {
+      if (!wiki || selectedPlace?.id !== place.id) return; // user moved on
+      if (img && wiki.imageUrl) img.src = wiki.imageUrl;
+      if (link && wiki.articleUrl) {
+        link.href = wiki.articleUrl;
+        link.textContent = 'Ver artículo';
+      }
+      if (wikiBlock) wikiBlock.classList.remove('hidden');
+    });
+  }
 
   // VR Video Experience — Embed VR video player when monument or place has videoUrl
   const vrContainer = document.getElementById('detail-vr-container');
